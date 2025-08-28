@@ -1213,55 +1213,12 @@
                 transform: rotate(360deg);
             }
         }
-
-        /* --- Stili per il pulsante di installazione PWA --- */
-        #install-pwa-btn {
-            position: fixed;
-            bottom: 120px; /* Posizionato sopra la barra di navigazione */
-            right: 1rem;
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1500;
-            transition: transform 0.2s ease-out, opacity 0.3s ease-in-out;
-            opacity: 1;
-        }
-
-        #install-pwa-btn.hidden {
-            transform: scale(0);
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        #install-pwa-btn:hover {
-            transform: scale(1.05);
-        }
-
-        #install-pwa-btn svg {
-            width: 28px;
-            height: 28px;
-        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
     <div id="app"></div>
-
-    <!-- Pulsante di installazione PWA (inizialmente nascosto) -->
-    <button id="install-pwa-btn" class="hidden" title="Installa l'applicazione">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zM7 9l1.41 1.41L11 7.83V16h2V7.83l2.59 2.58L17 9l-5-5-5 5z"/>
-        </svg>
-    </button>
 
     <div id="modal-container" class="modal-overlay hidden">
         <div class="modal-content">
@@ -1274,36 +1231,6 @@
     </div>
 
     <script type="module">
-        let deferredPrompt; // Variabile globale per salvare l'evento di installazione
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Impedisce al browser di mostrare il suo prompt automatico
-            e.preventDefault();
-            // Salva l'evento per poterlo usare in seguito
-            deferredPrompt = e;
-            // Mostra il nostro pulsante di installazione personalizzato
-            const installBtn = document.getElementById('install-pwa-btn');
-            if (installBtn) {
-                console.log('App installabile, mostro il pulsante.');
-                installBtn.classList.remove('hidden');
-            }
-        });
-
-        const installPwaBtn = document.getElementById('install-pwa-btn');
-        installPwaBtn?.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                // Nascondi il nostro pulsante
-                installPwaBtn.classList.add('hidden');
-                // Mostra il prompt di installazione del browser
-                deferredPrompt.prompt();
-                // Attendi la scelta dell'utente
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Scelta dell'utente per l'installazione: ${outcome}`);
-                // L'evento è stato usato, quindi lo annulliamo
-                deferredPrompt = null;
-            }
-        });
-
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
