@@ -1243,6 +1243,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
@@ -1254,6 +1255,14 @@
             measurementId: "G-2SM3DH41EZ"
         };
         const app = initializeApp(firebaseConfig);
+
+        // --- INIZIO BLOCCO AGGIUNTO ---
+        const appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6Lcj77UrAAAAAI6t5HOCyQC81U_tcKJzQ39SBlvN'),
+            isTokenAutoRefreshEnabled: true
+        });
+        // --- FINE BLOCCO AGGIUNTO ---
+
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
