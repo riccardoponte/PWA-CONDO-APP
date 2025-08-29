@@ -1263,6 +1263,7 @@
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
         let selectedReportFiles = []; // Array per i file della segnalazione
         let selectedCommunicationFiles = []; // Array per i file della comunicazione
+        let currentAdministrativePeriod = null; // NUOVO: Oggetto per il periodo amministrativo corrente
 
         // Stato per la registrazione, reso globale a livello di modulo per un reset corretto
         let groupedProperties = {};
@@ -1507,6 +1508,181 @@
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
         const loadUserProfile = async t => { if (t) { const e = await getDoc(doc(db, "users", t.uid)); e.exists() && (userProfile = e.data()) } };
+        
+        // NUOVO: Carica il periodo amministrativo corrente
+        const loadCurrentAdministrativePeriod = async () => {
+            try {
+                const now = new Date();
+                const q = query(collection(db, "administrativePeriods"), 
+                    where("startDate", "<=", now), 
+                    orderBy("startDate", "desc"),
+                    limit(1));
+
+                const snapshot = await getDocs(q);
+                if (!snapshot.empty) {
+                    const periodDoc = snapshot.docs[0];
+                    const periodData = periodDoc.data();
+                    if (periodData.endDate.toDate() >= now) {
+                        currentAdministrativePeriod = { id: periodDoc.id, ...periodData };
+                    } else {
+                        currentAdministrativePeriod = null;
+                    }
+                } else {
+                    currentAdministrativePeriod = null;
+                }
+            } catch (error) {
+                console.error("Errore nel caricamento del periodo amministrativo:", error);
+                currentAdministrativePeriod = null;
+            }
+        };
+
+        // NUOVO: Renderizza il banner del periodo amministrativo
+        const renderCurrentPeriodBanner = () => {
+            if (currentAdministrativePeriod) {
+                const startDate = currentAdministrativePeriod.startDate.toDate().toLocaleDateString('it-IT');
+                const endDate = currentAdministrativePeriod.endDate.toDate().toLocaleDateString('it-IT');
+                return `
+                <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--accent-color);">
+                    <p style="font-weight: 500; color: var(--secondary-text);">
+                        Periodo Amministrativo Corrente: <strong style="color: var(--primary-text);">${currentAdministrativePeriod.year}</strong> (dal ${startDate} al ${endDate})
+                    </p>
+                </div>`;
+            }
+            return '';
+        };
+
+        // NUOVO: Pagina di gestione dei periodi amministrativi
+        const renderPeriodiAmministrativi = () => `
+            ${renderHeader('Periodi Amministrativi')}
+            <main>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3 class="card-title">Crea Nuovo Periodo</h3>
+                    <div id="period-message" class="message-box"></div>
+                    <form id="create-period-form" class="space-y-4">
+                        <div class="form-group">
+                            <label for="period-year" class="form-label">Anno Amministrativo</label>
+                            <input type="text" id="period-year" class="form-input" required placeholder="Es. 2023-2024">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label for="period-start-date" class="form-label">Dal</label>
+                                <input type="date" id="period-start-date" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="period-end-date" class="form-label">Al</label>
+                                <input type="date" id="period-end-date" class="form-input" required>
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn btn-primary">Crea Periodo</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Periodi Esistenti</h3>
+                    <div id="periods-list-container" class="list-container">
+                        <p style="color:var(--secondary-text);">Caricamento periodi...</p>
+                    </div>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        // NUOVO: Handler per la pagina dei periodi
+        const setupPeriodiAmministrativiHandlers = () => {
+            const form = document.getElementById('create-period-form');
+            form?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageBox = document.getElementById('period-message');
+                messageBox.style.display = 'none';
+
+                const year = document.getElementById('period-year').value.trim();
+                const startDateStr = document.getElementById('period-start-date').value;
+                const endDateStr = document.getElementById('period-end-date').value;
+
+                if (!year || !startDateStr || !endDateStr) {
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = 'Tutti i campi sono obbligatori.';
+                    messageBox.style.display = 'block';
+                    return;
+                }
+
+                const startDate = new Date(startDateStr);
+                const endDate = new Date(endDateStr);
+
+                if (endDate < startDate) {
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = 'La data di fine non può essere precedente alla data di inizio.';
+                    messageBox.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    await addDoc(collection(db, "administrativePeriods"), {
+                        year: year,
+                        startDate: startDate,
+                        endDate: endDate,
+                        createdAt: serverTimestamp()
+                    });
+                    
+                    await logActivity("admin_period_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { year });
+                    messageBox.className = 'message-box success';
+                    messageBox.textContent = 'Periodo creato con successo!';
+                    messageBox.style.display = 'block';
+                    form.reset();
+                    await loadCurrentAdministrativePeriod(); // Ricarica il periodo corrente
+
+                } catch (error) {
+                    console.error("Errore creazione periodo:", error);
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.style.display = 'block';
+                }
+            });
+
+            const listContainer = document.getElementById('periods-list-container');
+            const q = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"));
+            onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun periodo amministrativo creato.</p>';
+                    return;
+                }
+                listContainer.innerHTML = snapshot.docs.map(docSnap => {
+                    const period = docSnap.data();
+                    const startDate = period.startDate.toDate().toLocaleDateString('it-IT');
+                    const endDate = period.endDate.toDate().toLocaleDateString('it-IT');
+                    const isCurrent = currentAdministrativePeriod && currentAdministrativePeriod.id === docSnap.id;
+                    return `
+                    <div class="list-item" style="background: var(--surface-color-light);">
+                        <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg></div>
+                        <div class="list-item-content">
+                            <div class="title">${period.year} ${isCurrent ? '<span class="badge status-chiusa" style="margin-left:8px;">In Corso</span>' : ''}</div>
+                            <div class="subtitle">Dal ${startDate} al ${endDate}</div>
+                        </div>
+                        <div class="list-item-action">
+                            <button onclick="deleteAdministrativePeriod('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            });
+        };
+
+        // NUOVO: Funzione per eliminare un periodo
+        const deleteAdministrativePeriod = async (periodId) => {
+            if (!confirm("Sei sicuro di voler eliminare questo periodo amministrativo? L'azione è irreversibile.")) {
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'administrativePeriods', periodId));
+                await logActivity("admin_period_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId });
+                await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
+            } catch (error) {
+                console.error("Errore eliminazione periodo:", error);
+                alert(`Errore: ${error.message}`);
+            }
+        };
 
         const navigateTo = (e) => {
             const userType = userProfile?.tipoUtente;
@@ -2217,6 +2393,7 @@
         const renderBachecaTutte = () => `
     ${renderHeader('Tutte le Comunicazioni')}
     <main>
+        ${renderCurrentPeriodBanner()}
         <div class="card" style="margin-bottom: 1rem;">
             <div class="form-group" style="margin-bottom: 0;">
                 <input type="text" id="communication-search" placeholder="Cerca per titolo o contenuto..." class="form-input">
@@ -2387,6 +2564,7 @@
         const renderSondaggiElenco = () => `
             ${renderHeader('Elenco Sondaggi')}
             <main>
+                ${renderCurrentPeriodBanner()}
                 <div class="card" style="margin-bottom: 1rem;">
                     <div style="margin-bottom: 1rem;">
                         <input type="text" id="poll-search" placeholder="Cerca sondaggi per parole chiave..." class="form-input w-full">
@@ -2517,33 +2695,43 @@
         };
 
         const renderSegnalazioniCrea = () => {
-            // Il campo destinatario è ora universale per tutti gli utenti che creano una segnalazione.
-            // --- MODIFICA SUPERVISORE/CONSIGLIERE: Dropdown destinatari condizionale ---
-            const isSupervisor = userProfile?.tipoUtente === 'supervisore';
-            const isConsigliere = userProfile?.tipoUtente === 'consigliere';
-            const formRecipientField = `
-    <div>
-        <label class="form-label">Destinatario</label>
-        <select id="report-recipient" required class="form-select">
-            <option value="">Seleziona a chi inviare...</option>
-            <option value="amministratore" id="admin-option">Amministratore</option>
-            <option value="custode" id="custode-option">Custode</option>
-            <option value="consigliere" id="consigliere-option">Consiglieri</option>
-            <option value="adm" id="adm-option">Sviluppatore</option>
-        </select>
-    </div>`;
-            // --- FINE MODIFICA ---
+            const isCustodian = userProfile?.tipoUtente === 'custode';
+
+        const recipientOptions = isCustodian
+            ? `
+                <option value="amministratore" id="admin-option">Amministratore</option>
+                <option value="condomini">Condomini</option>
+                <option value="consigliere" id="consigliere-option">Consiglieri</option>
+                <option value="adm" id="adm-option">Sviluppatore</option>
+              `
+            : `
+                <option value="amministratore" id="admin-option">Amministratore</option>
+                <option value="custode" id="custode-option">Custode</option>
+                <option value="consigliere" id="consigliere-option">Consiglieri</option>
+                <option value="adm" id="adm-option">Sviluppatore</option>
+              `;
+
+        const formRecipientField = `
+        <div>
+            <label class="form-label">Destinatario</label>
+            <select id="report-recipient" required class="form-select">
+                <option value="">Seleziona a chi inviare...</option>
+                ${recipientOptions}
+            </select>
+        </div>`;
 
             return `
                 ${renderHeader('Crea Segnalazione')}
                 <main>
+                    ${renderCurrentPeriodBanner()}
                     <div class="card" style="margin-bottom:2rem;">
                         <h3 class="card-title">Invia una Segnalazione</h3>
                         <form id="create-report-form" class="space-y-4">
                             <div><label class="form-label">Titolo</label><input type="text" id="report-title" required class="form-input" placeholder="es. Perdita d'acqua"></div>
                             <div><label class="form-label">Descrizione</label><textarea id="report-description" rows="4" required class="form-textarea" placeholder="Descrivi il problema..."></textarea></div>
-                            
-                            <!-- NUOVA SEZIONE PER UPLOAD ALLEGATI -->
+                        ${userProfile?.tipoUtente === 'condomino' ? `<p style="font-size: 0.85rem; color: var(--warning); margin-top: -0.5rem; margin-bottom: 1rem;">In caso di richieste d'intervento per danni alla propria U.I. indicare l'U.I. vicina che potrebbe aver creato la richiesta d'intervento</p>` : ''}
+                        
+                        <!-- NUOVA SEZIONE PER UPLOAD ALLEGATI -->
                             <div>
                                 <label class="form-label">Allegati (Foto/Video)</label>
                                 <div class="attachment-upload-container" onclick="document.getElementById('report-attachments').click()">
@@ -2554,6 +2742,8 @@
                                 <div id="attachment-previews-container" class="attachment-previews"></div>
                             </div>
                             <!-- FINE NUOVA SEZIONE -->
+
+                            ${formRecipientField}
                             
                             <div>
                                 <label for="report-interest-type" class="form-label">Tipo di Interesse</label>
@@ -2564,8 +2754,8 @@
                                 </select>
                             </div>
                             
-                            <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select"><option value="">...</option><option value="solo-segnalazione">Solo segnalazione</option><option value="richiesta-intervento-propria">Richiesta d'intervento nella propria UI</option><option value="richiesta-intervento-danno">Richiesta d'intervento per danno propria UI da altre parti</option><option value="altre-richieste">Altre richieste</option></select></div>
-                            <div><label class="form-label">Categoria</label><select id="report-category" required class="form-select"><option value="">...</option><option value="idraulico">Idraulico</option><option value="elettrico">Elettrico</option><option value="riscaldamento">Riscaldamento</option><option value="ascensore">Ascensore</option><option value="pulizie">Pulizie</option><option value="sicurezza">Sicurezza</option><option value="altro">Altro</option></select></div>
+                            <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select" disabled><option value="">Seleziona prima il destinatario...</option></select></div>
+                            <div><label class="form-label">Categoria</label><select id="report-category" required class="form-select"><option value="">...</option><option value="ascensore">Ascensore</option><option value="elettrico">Elettrico</option><option value="idraulico">Idraulico</option><option value="portierato">Portierato</option><option value="posta">Posta</option><option value="pulizie">Pulizie</option><option value="raccolta-rifiuti">Raccolta rifiuti</option><option value="riscaldamento">Riscaldamento</option><option value="sicurezza">Sicurezza</option><option value="tv">TV</option><option value="altro">Altro</option></select></div>
                             <div><label class="form-label">Ubicazione</label><input type="text" id="report-location" required class="form-input" placeholder="es. Scala A, Piano 2"></div>
                             
                             <!-- Campi condizionali per checkboxes comunicazione -->
@@ -2574,7 +2764,7 @@
                                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                         <input type="checkbox" id="communicate-owner-phone" style="margin: 0;">
-                                        <span>Comunicare n. telefono condomino</span>
+                                        <span>Comunicare  n. di telefono condomino al fornitore</span>
                                     </label>
                                     <label id="other-ui-phone-checkbox" class="hidden" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                         <input type="checkbox" id="communicate-other-ui-phone" style="margin: 0;">
@@ -2588,8 +2778,6 @@
                                 <label class="form-label">Indicazione proprietario altra U.I.</label>
                                 <input type="text" id="other-ui-owner" class="form-input" placeholder="Inserisci il nome del proprietario...">
                             </div>
-
-${formRecipientField}
 
                             <div class="flex justify-end pt-4"><button type="submit" id="submit-report-btn" class="btn btn-primary">Invia Segnalazione</button></div>
                         </form>
@@ -3303,6 +3491,12 @@ ${formRecipientField}
             ${renderHeader(userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore')}
             <main>
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+                    <div onclick="navigateTo('periodiAmministrativi')" class="dashboard-item">
+                        <div class="menu-list-item">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                            <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
+                        </div>
+                    </div>
                     <div onclick="navigateTo('userManagement')" class="dashboard-item">
                         <div class="menu-list-item">
                             <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4Z"/></svg>
@@ -4462,6 +4656,10 @@ ${formRecipientField}
                     if (['adm', 'amministratore'].includes(userProfile?.tipoUtente)) content = renderStatisticheCondomini();
                     else navigateTo('dashboard');
                     break;
+                case 'periodiAmministrativi': // NUOVO
+                    if (['supervisore', 'adm'].includes(userProfile?.tipoUtente)) content = renderPeriodiAmministrativi();
+                    else navigateTo('dashboard');
+                    break;
                 default: content = renderLoginPage();
             }
 
@@ -4566,6 +4764,7 @@ ${formRecipientField}
                 case 'cronologiaAttivita': if (userProfile?.tipoUtente === 'adm') { setupCronologiaAttivitaHandlers(); } break;
                 case 'puliziaDati': /* No specific handlers needed as logic is in onclick */ break;
                 case 'statisticheCondomini': setupStatisticheCondominiHandlers(); break;
+                case 'periodiAmministrativi': setupPeriodiAmministrativiHandlers(); break; // NUOVO
                 case 'archivio':
                 case 'gestione_archivio':
                     setupArchivioHandlers();
@@ -4617,25 +4816,41 @@ ${formRecipientField}
                 }
             };
 
-            const getAutomaticGroup = (interno) => {
-                if (!interno || localPartialCondosList.length === 0) return '';
-                const lowerInterno = interno.toLowerCase();
-                if (/\be\b|\be-/.test(lowerInterno)) {
-                    const boxCondo = localPartialCondosList.find(c => c.name.toLowerCase() === 'box');
-                    if (boxCondo) return boxCondo.name;
-                }
-                if (lowerInterno.includes('b11')) {
-                    const b11Condo = localPartialCondosList.find(c => c.name.toLowerCase().includes('bellini 11'));
-                    if (b11Condo) return b11Condo.name;
-                }
-                const sortedCondos = [...localPartialCondosList].sort((a, b) => b.name.length - a.name.length);
-                for (const condo of sortedCondos) {
-                    if (lowerInterno.includes(condo.name.toLowerCase())) return condo.name;
-                }
-                return '';
-            };
+            let activeRules = [];
+        let importedHeaders = [];
 
-            const loadPropertyDataForRegistration = async () => {
+        const getAutomaticGroupByRules = (propertyData) => {
+            if (!propertyData || activeRules.length === 0) return '';
+            
+            for (const rule of activeRules) {
+                if (rule.type === 'text_contains_classification' && rule.params) {
+                    const targetColumn = rule.params.targetColumn;
+                    const searchText = rule.params.searchText.toLowerCase();
+                    const propertyValue = (propertyData[targetColumn] || '').toString().toLowerCase();
+                    
+                    if (propertyValue.includes(searchText)) {
+                        return rule.params.classification; // Applica la prima regola che corrisponde
+                    }
+                }
+                // Nota: le regole 'row_range_classification' non sono applicabili in questo contesto.
+            }
+            
+            return ''; // Nessuna regola corrispondente
+        };
+
+        const loadActiveGroupRules = async () => {
+            if (activeRules.length > 0) return;
+            try {
+                const q = query(collection(db, "groupRules"), where("isActive", "==", true));
+                const snapshot = await getDocs(q);
+                activeRules = snapshot.docs.map(doc => doc.data());
+            } catch (error) {
+                console.error("Errore nel caricamento delle regole di gruppo:", error);
+                activeRules = [];
+            }
+        };
+
+        const loadPropertyDataForRegistration = async () => {
                 if (Object.keys(localGroupedProperties).length > 0) return;
                 try {
                     const q = query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1));
@@ -4659,7 +4874,7 @@ ${formRecipientField}
                         const nominativo = item[nominativoHeader];
                         if (!nominativo) return;
                         if (!localGroupedProperties[nominativo]) localGroupedProperties[nominativo] = [];
-                        localGroupedProperties[nominativo].push({ apartment: item[apartmentHeader], millesimi: item[millesimiHeader] });
+                        localGroupedProperties[nominativo].push(item);
                     });
                 } catch (error) { console.error("Errore nel caricamento dati per la registrazione:", error); }
             };
@@ -4694,24 +4909,28 @@ ${formRecipientField}
                 if (!properties) return;
 
                 await loadPartialCondosForRegistration();
-                const groupOptionsHtml = `<option value="">Nessun Gruppo</option>` + localPartialCondosList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                const groupOptionsHtml = `<option value="" disabled selected>Seleziona gruppo...</option>` + localPartialCondosList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
 
-                properties.forEach((prop, index) => {
-                    const autoGroup = getAutomaticGroup(prop.apartment);
-                    const isMultiProperty = properties.length > 1;
-                    const item = document.createElement('div');
-                    item.className = 'property-selection-item';
-                    item.dataset.apartment = prop.apartment;
-                    item.dataset.millesimi = prop.millesimi;
-                    item.innerHTML = `
-                        <label for="prop-${index}">
-                            ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
-                            <span>${prop.apartment} - ${prop.millesimi} ‰</span>
-                        </label>
-                        <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
-                    `;
-                    propertyItemsContainer.appendChild(item);
-                });
+                const headers = Object.keys(properties[0] || {});
+            const apartmentHeader = findHeader(headers, ['interno', 'appartamento', 'unita']);
+            const millesimiHeader = findHeader(headers, ['millesimi', 'quota']);
+
+            properties.forEach((prop, index) => {
+                const autoGroup = getAutomaticGroupByRules(prop);
+                const isMultiProperty = properties.length > 1;
+                const item = document.createElement('div');
+                item.className = 'property-selection-item';
+                item.dataset.apartment = prop[apartmentHeader];
+                item.dataset.millesimi = prop[millesimiHeader];
+                item.innerHTML = `
+                    <label for="prop-${index}">
+                        ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
+                        <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
+                    </label>
+                    <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
+                `;
+                propertyItemsContainer.appendChild(item);
+            });
 
                 propertySelectionWrapper.classList.remove('hidden');
                 propertyItemsContainer.addEventListener('change', updateSummary);
@@ -4770,8 +4989,11 @@ ${formRecipientField}
                 registerFields.classList.toggle("hidden", !isRegistering);
                 forgotPasswordBtn.classList.toggle("hidden", isRegistering);
                 if (isRegistering) {
-                    await loadPropertyDataForRegistration();
-                }
+                await Promise.all([
+                    loadPropertyDataForRegistration(),
+                    loadActiveGroupRules()
+                ]);
+            }
             });
 
             authForm?.addEventListener("submit", async t => {
@@ -4782,20 +5004,28 @@ ${formRecipientField}
                     if (isRegistering) {
                         const t = document.getElementById("confirm-password").value, i = document.getElementById("nome").value, s = document.getElementById("cognome").value, a = document.getElementById("tipo-utente").value, l = document.getElementById("telefono").value;
                         if (n !== t) throw new Error("Le password non coincidono");
-                        if (!i || !s || !a) throw new Error("Compila tutti i campi obbligatori.");
+                        if (!i || !s || !a || !l.trim()) throw new Error("Compila tutti i campi obbligatori");
 
                         const propertiesForUser = [];
-                        propertyItemsContainer.querySelectorAll('.property-selection-item').forEach(item => {
-                            const checkbox = item.querySelector('input[type="checkbox"]');
-                            if (checkbox && !checkbox.checked) return;
-                            propertiesForUser.push({
-                                interno: item.dataset.apartment,
-                                millesimi: parseFloat(item.dataset.millesimi) || 0,
-                                gruppo: item.querySelector('.group-select').value || ''
-                            });
-                        });
+                    let groupSelectionMissing = false;
+                    propertyItemsContainer.querySelectorAll('.property-selection-item').forEach(item => {
+                        const checkbox = item.querySelector('input[type="checkbox"]');
+                        if (checkbox && !checkbox.checked) return;
 
-                        if (propertiesForUser.length === 0) throw new Error("Seleziona almeno una unità immobiliare.");
+                        const selectedGroup = item.querySelector('.group-select').value;
+                        if (!selectedGroup) {
+                            groupSelectionMissing = true;
+                        }
+
+                        propertiesForUser.push({
+                            interno: item.dataset.apartment,
+                            millesimi: parseFloat(item.dataset.millesimi) || 0,
+                            gruppo: selectedGroup
+                        });
+                    });
+
+                    if (propertiesForUser.length === 0) throw new Error("Seleziona almeno una unità immobiliare.");
+                    if (groupSelectionMissing) throw new Error("È obbligatorio assegnare un gruppo a ogni unità immobiliare selezionata.");
 
                         const internosToRegister = propertiesForUser.map(p => p.interno);
                         const usersSnapshot = await getDocs(collection(db, "users"));
@@ -4935,6 +5165,57 @@ ${formRecipientField}
                         form.reset();
                         selectedCommunicationFiles = [];
                         renderCommunicationFilePreviews();
+
+                        // --- WEBHOOK TRIGGER: Call webhook after comunicazione creation ---
+                        (async () => {
+                            try {
+                                const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/e487fd84-2324-4508-9bff-769cce2e7c27";
+                                // Extract destinatari emails based on UI and rule classification
+                                let destinatariEmails = [];
+                                if (targetGroup && targetGroup !== 'Tutti') {
+                                    // Find users whose UI (proprieta.gruppo) matches the selected group
+                                    const usersQuery = query(collection(db, "users"), where("proprieta", ">", []));
+                                    const usersSnapshot = await getDocs(usersQuery);
+                                    usersSnapshot.forEach(docSnap => {
+                                        const user = docSnap.data();
+                                        if (Array.isArray(user.proprieta)) {
+                                            for (const prop of user.proprieta) {
+                                                if (prop.gruppo === targetGroup) {
+                                                    destinatariEmails.push(user.email);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    });
+                                } else if (targetGroup === 'Tutti') {
+                                    // All users with an email
+                                    const usersSnapshot = await getDocs(collection(db, "users"));
+                                    usersSnapshot.forEach(docSnap => {
+                                        const user = docSnap.data();
+                                        if (user.email) destinatariEmails.push(user.email);
+                                    });
+                                }
+
+                                const payload = {
+                                    event: "comunicazione.create",
+                                    communication: {
+                                        title,
+                                        content,
+                                        targetGroup,
+                                        createdBy: `${userProfile.nome} ${userProfile.cognome}`,
+                                        createdById: currentUser.uid
+                                    },
+                                    destinatariEmails
+                                };
+                                await fetch(WEBHOOK_URL, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload)
+                                });
+                            } catch (err) {
+                                console.error("Errore invio webhook comunicazione:", err);
+                            }
+                        })();
 
                     } catch (error) {
                         console.error("Errore:", error);
@@ -5215,12 +5496,13 @@ ${formRecipientField}
                     submitBtn.textContent = 'Salvataggio dati...';
 
                     // 3. Eseguiamo la transazione per creare il documento e aggiornare il contatore
+                    let reportData;
                     await runTransaction(db, async (transaction) => {
                         const counterDoc = await transaction.get(counterRef);
                         const newReportNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
                         finalReportNumber = newReportNumber;
 
-                        const reportData = {
+                        reportData = {
                             reportNumber: newReportNumber,
                             title: title,
                             description: description,
@@ -5249,6 +5531,52 @@ ${formRecipientField}
                         transaction.set(newReportDocRef, reportData);
                     });
 
+                    // --- WEBHOOK TRIGGER: Call webhook after segnalazione creation ---
+                    (async () => {
+                        try {
+                            // Use a different webhook URL for segnalazioni
+                            const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/6d501d53-5ec7-449e-b3e4-38316eefd92d";
+
+                            // Extract receiver email from Firestore based on recipient type
+                            let receiverEmail = null;
+                            let recipientQuery = null;
+                            if (recipient === "amministratore") {
+                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "amministratore"));
+                            } else if (recipient === "custode") {
+                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "custode"));
+                            } else if (recipient === "consigliere") {
+                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "consigliere"));
+                            } else if (recipient === "adm") {
+                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "adm"));
+                            }
+                            if (recipientQuery) {
+                                const snapshot = await getDocs(recipientQuery);
+                                if (!snapshot.empty) {
+                                    // If multiple, take the first
+                                    receiverEmail = snapshot.docs[0].data().email;
+                                }
+                            }
+
+                            const payload = {
+                                event: "segnalazioni.create",
+                                report: reportData,
+                                user: {
+                                    id: currentUser.uid,
+                                    name: `${userProfile.nome} ${userProfile.cognome}`,
+                                    email: currentUser.email
+                                },
+                                receiverEmail: receiverEmail
+                            };
+                            await fetch(WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                        } catch (err) {
+                            console.error("Errore invio webhook segnalazione:", err);
+                        }
+                    })();
+
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId: reportId, title: title, attachments: fileUrls.length });
 
                     form.reset();
@@ -5266,62 +5594,74 @@ ${formRecipientField}
                 }
             });
 
-            // Conditional logic for "Genere di intervento" field
-            const genereInterventoSelect = document.getElementById("report-priority");
-            const otherUiOwnerField = document.getElementById("other-ui-owner-field");
-            const phoneCommunicationCheckboxes = document.getElementById("phone-communication-checkboxes");
-            const otherUiPhoneCheckbox = document.getElementById("other-ui-phone-checkbox");
-            const recipientSelect = document.getElementById("report-recipient");
-            const adminOption = document.getElementById("admin-option");
-            const custodeOption = document.getElementById("custode-option");
-            const consigliereOption = document.getElementById("consigliere-option");
-            const admOption = document.getElementById("adm-option");
+            // --- NUOVA LOGICA DINAMICA: Il destinatario determina il genere di intervento ---
+        const recipientSelect = document.getElementById("report-recipient");
+        const prioritySelect = document.getElementById("report-priority");
 
-            genereInterventoSelect?.addEventListener("change", function () {
-                const selectedValue = this.value;
+        const updatePriorityOptions = (options) => {
+            prioritySelect.innerHTML = ''; // Pulisci opzioni esistenti
+            prioritySelect.add(new Option('Seleziona genere...', ''));
+            options.forEach(opt => prioritySelect.add(new Option(opt.text, opt.value)));
+            prioritySelect.disabled = false;
+        };
 
-                // Show/hide the "Indicazione proprietario altra U.I." field
+        recipientSelect?.addEventListener("change", function () {
+            const recipient = this.value;
+
+            if (!recipient) {
+                prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
+                prioritySelect.disabled = true;
+                return;
+            }
+
+            const allOptions = [
+                { value: 'solo-segnalazione', text: 'Segnalazione' },
+                { value: 'richiesta-intervento-propria', text: 'Richiesta d’intervento' }, // Valore tecnico di default per intervento
+                { value: 'altre-richieste', text: 'Altre richieste' }
+            ];
+            const limitedOptions = [
+                { value: 'solo-segnalazione', text: 'Segnalazione' }
+            ];
+
+            if (['amministratore', 'custode'].includes(recipient)) {
+                updatePriorityOptions(allOptions);
+            } else if (['consigliere', 'adm', 'condomini'].includes(recipient)) {
+                updatePriorityOptions(limitedOptions);
+            } else {
+                prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
+                prioritySelect.disabled = true;
+            }
+        });
+
+        // Conditional logic for other fields based on "Genere di intervento"
+        const otherUiOwnerField = document.getElementById("other-ui-owner-field");
+        const phoneCommunicationCheckboxes = document.getElementById("phone-communication-checkboxes");
+        const otherUiPhoneCheckbox = document.getElementById("other-ui-phone-checkbox");
+
+        prioritySelect?.addEventListener("change", function () {
+            const selectedValue = this.value;
+
+            // Show/hide the "Indicazione proprietario altra U.I." field
+            if (selectedValue === "richiesta-intervento-danno") {
+                otherUiOwnerField?.classList.remove("hidden");
+            } else {
+                otherUiOwnerField?.classList.add("hidden");
+            }
+
+            // Show/hide communication checkboxes based on selection
+            const interventionTypes = ["richiesta-intervento-propria", "richiesta-intervento-danno", "altre-richieste"];
+            if (interventionTypes.includes(selectedValue)) {
+                phoneCommunicationCheckboxes?.classList.remove("hidden");
                 if (selectedValue === "richiesta-intervento-danno") {
-                    otherUiOwnerField?.classList.remove("hidden");
-                } else {
-                    otherUiOwnerField?.classList.add("hidden");
-                }
-
-                // Show/hide communication checkboxes based on selection
-                if (selectedValue === "richiesta-intervento-propria") {
-                    // Show only "comunicare n. telefono condomino" checkbox
-                    phoneCommunicationCheckboxes?.classList.remove("hidden");
-                    otherUiPhoneCheckbox?.classList.add("hidden");
-                } else if (selectedValue === "richiesta-intervento-danno") {
-                    // Show both checkboxes
-                    phoneCommunicationCheckboxes?.classList.remove("hidden");
                     otherUiPhoneCheckbox?.classList.remove("hidden");
                 } else {
-                    // Hide all communication checkboxes
-                    phoneCommunicationCheckboxes?.classList.add("hidden");
                     otherUiPhoneCheckbox?.classList.add("hidden");
                 }
-
-                // Enable/disable recipient options based on selection
-                if (selectedValue === "richiesta-intervento-propria" || selectedValue === "richiesta-intervento-danno") {
-                    // Enable only administrator option
-                    adminOption.disabled = false;
-                    custodeOption.disabled = true;
-                    consigliereOption.disabled = true;
-                    admOption.disabled = true;
-
-                    // If current selection is not administrator, reset to empty
-                    if (recipientSelect.value !== "amministratore") {
-                        recipientSelect.value = "";
-                    }
-                } else {
-                    // Enable all options for other selections
-                    adminOption.disabled = false;
-                    custodeOption.disabled = false;
-                    consigliereOption.disabled = false;
-                    admOption.disabled = false;
-                }
-            });
+            } else {
+                phoneCommunicationCheckboxes?.classList.add("hidden");
+                otherUiPhoneCheckbox?.classList.add("hidden");
+            }
+        });
         };
         const setupProfileHandlers = () => {
             const form = document.getElementById("profile-form");
@@ -7876,7 +8216,14 @@ ${formRecipientField}
         };
 
         const renderReportCardHTML = (report, reportId, index = null) => {
+
             if (!report.createdAt) return "";
+
+            // Banner periodo amministrativo corrente (solo se disponibile)
+            let periodBannerHtml = '';
+            if (typeof renderCurrentPeriodBanner === 'function' && currentAdministrativePeriod) {
+                periodBannerHtml = renderCurrentPeriodBanner();
+            }
 
             const isManager = ["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm"].includes(userProfile?.tipoUtente);
             const isCreator = report.createdById === currentUser.uid;
@@ -7999,6 +8346,7 @@ ${formRecipientField}
 
             return `
             <div class="card" style="margin-bottom: 1rem; position: relative;">
+                ${periodBannerHtml}
                 ${index !== null ? `<div style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">${index}</div>` : ''}
                 <div class="list-item" style="padding:0; cursor:default;">
                     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
@@ -8491,6 +8839,7 @@ ${formRecipientField}
         const renderSegnalazioniUrgenti = () => `
             ${renderHeader('Solleciti ricevuti')}
             <main>
+                ${renderCurrentPeriodBanner()}
                 <div id="ticket-counters" class="grid grid-cols-3 gap-2" style="margin-bottom: 1rem;">
                     <div class="card" style="padding: 0.75rem; text-align: center;"><div class="page-title" style="font-size: 1.5rem; color: var(--danger);">0</div><div class="page-subtitle" style="text-transform: none;">Richieste aperte n.0</div></div>
                     <div class="card" style="padding: 0.75rem; text-align: center;"><div class="page-title" style="font-size: 1.5rem; color: var(--warning);">0</div><div class="page-subtitle" style="text-transform: none;">Richieste in corso n.0</div></div>
@@ -9513,11 +9862,12 @@ ${formRecipientField}
             if (!confirm("Vuoi inviare un sollecito per questa segnalazione?")) return;
             try {
                 const reportRef = doc(db, "reports", reportId);
+                let reportDocSnap;
                 await runTransaction(db, async (transaction) => {
-                    const reportDoc = await transaction.get(reportRef);
-                    if (!reportDoc.exists()) throw "Segnalazione non trovata.";
+                    reportDocSnap = await transaction.get(reportRef);
+                    if (!reportDocSnap.exists()) throw "Segnalazione non trovata.";
 
-                    const currentReminderCount = reportDoc.data().reminderCount || 0;
+                    const currentReminderCount = reportDocSnap.data().reminderCount || 0;
                     const newUpdate = {
                         text: "L'utente ha inviato un sollecito.",
                         by: "Sistema",
@@ -9531,6 +9881,52 @@ ${formRecipientField}
                         isUrgent: true // NUOVO: Marca il ticket come urgente
                     });
                 });
+
+                // --- WEBHOOK TRIGGER: Call webhook after sollecito creation ---
+                (async () => {
+                    try {
+                        const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/98dd3855-bcf5-4ef3-867b-2888ef3f801c";
+                        // Extract receiver email from Firestore based on report recipientType
+                        let receiverEmail = null;
+                        let recipientType = reportDocSnap.data().recipientType;
+                        let recipientQuery = null;
+                        if (recipientType === "amministratore") {
+                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "amministratore"));
+                        } else if (recipientType === "custode") {
+                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "custode"));
+                        } else if (recipientType === "consigliere") {
+                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "consigliere"));
+                        } else if (recipientType === "adm") {
+                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "adm"));
+                        }
+                        if (recipientQuery) {
+                            const snapshot = await getDocs(recipientQuery);
+                            if (!snapshot.empty) {
+                                receiverEmail = snapshot.docs[0].data().email;
+                            }
+                        }
+
+                        const payload = {
+                            event: "solleciti.create",
+                            reportId: reportId,
+                            report: reportDocSnap.data(),
+                            user: {
+                                id: currentUser.uid,
+                                name: `${userProfile.nome} ${userProfile.cognome}`,
+                                email: currentUser.email
+                            },
+                            receiverEmail: receiverEmail
+                        };
+                        await fetch(WEBHOOK_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } catch (err) {
+                        console.error("Errore invio webhook sollecito:", err);
+                    }
+                })();
+
                 await logActivity("report_reminder_sent", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId: reportId });
                 alert("Sollecito inviato.");
             } catch (error) {
@@ -10268,6 +10664,7 @@ ${formRecipientField}
         window.handleCleanupSelectionChange = handleCleanupSelectionChange;
         window.handleBulkDelete = handleBulkDelete;
         window.clearActivityHistory = clearActivityHistory;
+        window.deleteAdministrativePeriod = deleteAdministrativePeriod; // NUOVO
 
         const deletePoll = async (pollId) => {
             if (!confirm('Sei sicuro di voler eliminare questo sondaggio? L\'azione è irreversibile.')) {
@@ -10321,6 +10718,7 @@ ${formRecipientField}
                 currentUser = user;
                 await loadUserProfile(user);
                 await loadServicePermissions();
+                await loadCurrentAdministrativePeriod(); // NUOVO
 
                 const userType = userProfile?.tipoUtente;
                 let landingPage = 'dashboard';
