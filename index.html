@@ -467,11 +467,19 @@
             font-weight: 500;
         }
 
-        .property-selection-item .group-select {
-            flex-basis: 160px;
+        .property-selection-item .group-select,
+        .property-selection-item .plan-select {
             flex-shrink: 0;
             font-size: 0.9rem;
             padding: 0.6rem 0.8rem;
+        }
+
+        .property-selection-item .group-select {
+            flex-basis: 160px;
+        }
+
+        .property-selection-item .plan-select {
+            flex-basis: 120px;
         }
 
         /* --- MODIFICA FINE --- */
@@ -2843,7 +2851,7 @@
                             <label class="form-label">Le Tue Proprietà</label>
                             <div style="background: var(--surface-color-light); padding: 1rem; border-radius: var(--radius-sm);">
                                 ${userProfile?.proprieta && userProfile.proprieta.length > 0
-                ? `<ul>${userProfile.proprieta.map(p => `<li style="list-style-type: disc; margin-left: 20px;">${p.interno} (${(p.millesimi || 0).toFixed(2)} ‰) ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')}</ul>
+                ? `<ul>${userProfile.proprieta.map(p => `<li style="list-style-type: disc; margin-left: 20px;">${p.interno} (${(p.millesimi || 0).toFixed(2)} ‰) - Piano: ${p.piano ?? 'N/A'} ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')}</ul>
                                        <hr style="border-color: var(--surface-color); margin: 0.75rem 0;">
                                        <div style="display:flex; justify-content:space-between; font-weight:600;"><span>Millesimi Totali:</span><span>${(userProfile.millesimiTotali || 0).toFixed(2)} ‰</span></div>`
                 : '<p style="color:var(--secondary-text);">Nessuna proprietà associata.</p>'
@@ -3104,7 +3112,7 @@
                         usersSnapshot.docs.forEach(doc => {
                             const user = doc.data();
                             const propertiesHtml = user.proprieta && user.proprieta.length > 0
-                                ? user.proprieta.map(p => `<div>${p.interno} (${(p.millesimi || 0).toFixed(2)} ‰)</div>`).join('')
+                                ? user.proprieta.map(p => `<div>${p.interno} (Piano: ${p.piano ?? 'N/A'}, ${(p.millesimi || 0).toFixed(2)} ‰)</div>`).join('')
                                 : 'N/D';
                             html += `
                                 <tr>
@@ -3570,11 +3578,24 @@
             <main>
                 <div class="card" style="margin-bottom:2rem;">
                     <h3 class="card-title">Crea Gruppo Manualmente</h3>
-                    <form id="create-partial-condo-form" class="flex gap-4">
-                        <div class="form-group" style="flex-grow:1; margin-bottom:0;">
+                    <form id="create-partial-condo-form" class="space-y-4">
+                        <div class="form-group">
+                            <label for="partial-condo-name" class="form-label">Nome Gruppo</label>
                             <input type="text" id="partial-condo-name" required class="form-input" placeholder="Es. Scala Bellini 11, Box, Giardino...">
                         </div>
-                        <button type="submit" class="btn btn-primary">Crea Gruppo</button>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label for="partial-condo-start-plan" class="form-label">Piano Iniziale</label>
+                                <input type="number" id="partial-condo-start-plan" required class="form-input" placeholder="Es. -1">
+                            </div>
+                            <div class="form-group">
+                                <label for="partial-condo-end-plan" class="form-label">Piano Finale</label>
+                                <input type="number" id="partial-condo-end-plan" required class="form-input" placeholder="Es. 8">
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn btn-primary">Crea Gruppo</button>
+                        </div>
                     </form>
                 </div>
 
@@ -4909,28 +4930,59 @@
                 if (!properties) return;
 
                 await loadPartialCondosForRegistration();
-                const groupOptionsHtml = `<option value="" disabled selected>Seleziona gruppo...</option>` + localPartialCondosList.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                const groupOptionsHtml = `<option value="" disabled selected>Seleziona gruppo...</option>` + localPartialCondosList.map(c => `<option value="${c.name}" data-start="${c.startPlan}" data-end="${c.endPlan}">${c.name}</option>`).join('');
 
                 const headers = Object.keys(properties[0] || {});
-            const apartmentHeader = findHeader(headers, ['interno', 'appartamento', 'unita']);
-            const millesimiHeader = findHeader(headers, ['millesimi', 'quota']);
+                const apartmentHeader = findHeader(headers, ['interno', 'appartamento', 'unita']);
+                const millesimiHeader = findHeader(headers, ['millesimi', 'quota']);
 
-            properties.forEach((prop, index) => {
-                const autoGroup = getAutomaticGroupByRules(prop);
-                const isMultiProperty = properties.length > 1;
-                const item = document.createElement('div');
-                item.className = 'property-selection-item';
-                item.dataset.apartment = prop[apartmentHeader];
-                item.dataset.millesimi = prop[millesimiHeader];
-                item.innerHTML = `
-                    <label for="prop-${index}">
-                        ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
-                        <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
-                    </label>
-                    <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
-                `;
-                propertyItemsContainer.appendChild(item);
-            });
+                properties.forEach((prop, index) => {
+                    const autoGroup = getAutomaticGroupByRules(prop);
+                    const isMultiProperty = properties.length > 1;
+                    const item = document.createElement('div');
+                    item.className = 'property-selection-item';
+                    item.dataset.apartment = prop[apartmentHeader];
+                    item.dataset.millesimi = prop[millesimiHeader];
+                    item.innerHTML = `
+                        <label for="prop-${index}">
+                            ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
+                            <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
+                        </label>
+                        <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
+                        <select class="form-select plan-select" disabled><option>Seleziona gruppo</option></select>
+                    `;
+                    propertyItemsContainer.appendChild(item);
+                });
+
+                const updatePlanOptions = (itemElement) => {
+                    const groupSelect = itemElement.querySelector('.group-select');
+                    const planSelect = itemElement.querySelector('.plan-select');
+                    const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+                    
+                    if (!selectedOption || !selectedOption.dataset.start) {
+                        planSelect.innerHTML = '<option>Seleziona gruppo</option>';
+                        planSelect.disabled = true;
+                        return;
+                    }
+
+                    const start = parseInt(selectedOption.dataset.start, 10);
+                    const end = parseInt(selectedOption.dataset.end, 10);
+                    
+                    let planOptionsHtml = '<option value="" disabled selected>Piano...</option>';
+                    for (let i = start; i <= end; i++) {
+                        planOptionsHtml += `<option value="${i}">${i}</option>`;
+                    }
+                    planSelect.innerHTML = planOptionsHtml;
+                    planSelect.disabled = false;
+                };
+
+                propertyItemsContainer.querySelectorAll('.property-selection-item').forEach(item => {
+                    updatePlanOptions(item); // Initial population
+                    item.querySelector('.group-select').addEventListener('change', () => {
+                        updatePlanOptions(item);
+                        updateSummary();
+                    });
+                });
 
                 propertySelectionWrapper.classList.remove('hidden');
                 propertyItemsContainer.addEventListener('change', updateSummary);
@@ -4943,10 +4995,12 @@
                     const checkbox = item.querySelector('input[type="checkbox"]');
                     if (checkbox && !checkbox.checked) return;
                     const groupSelect = item.querySelector('.group-select');
+                    const planSelect = item.querySelector('.plan-select');
                     selectedProperties.push({
                         interno: item.dataset.apartment,
                         millesimi: parseFloat(item.dataset.millesimi) || 0,
-                        gruppo: groupSelect.value
+                        gruppo: groupSelect.value,
+                        piano: planSelect.value ? parseInt(planSelect.value, 10) : null
                     });
                 });
 
@@ -4958,7 +5012,7 @@
                 let totalMillesimi = selectedProperties.reduce((sum, prop) => sum + prop.millesimi, 0);
                 let summaryHtml = '<strong>Unità Selezionate:</strong><ul>';
                 selectedProperties.forEach(prop => {
-                    summaryHtml += `<li style="list-style-type: disc; margin-left: 20px;">${prop.interno} (${prop.millesimi.toFixed(2)} ‰) - <strong>Gruppo:</strong> ${prop.gruppo || 'N/A'}</li>`;
+                    summaryHtml += `<li style="list-style-type: disc; margin-left: 20px;">${prop.interno} (${prop.millesimi.toFixed(2)} ‰) - <strong>Piano:</strong> ${prop.piano ?? 'N/A'} - <strong>Gruppo:</strong> ${prop.gruppo || 'N/A'}</li>`;
                 });
                 summaryHtml += `</ul><hr style="border-color: var(--surface-color); margin: 0.5rem 0;"><strong style="display: flex; justify-content: space-between;"><span>Totale Millesimi:</span><span>${totalMillesimi.toFixed(2)} ‰</span></strong>`;
                 summaryEl.innerHTML = summaryHtml;
@@ -5025,7 +5079,28 @@
                     });
 
                     if (propertiesForUser.length === 0) throw new Error("Seleziona almeno una unità immobiliare.");
+                    let planSelectionMissing = false;
+                    propertyItemsContainer.querySelectorAll('.property-selection-item').forEach(item => {
+                        const checkbox = item.querySelector('input[type="checkbox"]');
+                        if (checkbox && !checkbox.checked) return;
+
+                        const selectedGroup = item.querySelector('.group-select').value;
+                        if (!selectedGroup) groupSelectionMissing = true;
+
+                        const selectedPlan = item.querySelector('.plan-select').value;
+                        if (!selectedPlan) planSelectionMissing = true;
+
+                        propertiesForUser.push({
+                            interno: item.dataset.apartment,
+                            millesimi: parseFloat(item.dataset.millesimi) || 0,
+                            gruppo: selectedGroup,
+                            piano: selectedPlan ? parseInt(selectedPlan, 10) : null
+                        });
+                    });
+
+                    if (propertiesForUser.length === 0) throw new Error("Seleziona almeno una unità immobiliare.");
                     if (groupSelectionMissing) throw new Error("È obbligatorio assegnare un gruppo a ogni unità immobiliare selezionata.");
+                    if (planSelectionMissing) throw new Error("È obbligatorio selezionare un piano per ogni unità immobiliare selezionata.");
 
                         const internosToRegister = propertiesForUser.map(p => p.interno);
                         const usersSnapshot = await getDocs(collection(db, "users"));
@@ -6512,16 +6587,32 @@
             form?.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const nameInput = document.getElementById('partial-condo-name');
+                const startPlanInput = document.getElementById('partial-condo-start-plan');
+                const endPlanInput = document.getElementById('partial-condo-end-plan');
+                
                 const name = nameInput.value.trim();
-                if (!name) return;
+                const startPlan = parseInt(startPlanInput.value, 10);
+                const endPlan = parseInt(endPlanInput.value, 10);
+
+                if (!name || isNaN(startPlan) || isNaN(endPlan)) {
+                    alert('Tutti i campi sono obbligatori.');
+                    return;
+                }
+                if (startPlan > endPlan) {
+                    alert('Il piano iniziale non può essere maggiore del piano finale.');
+                    return;
+                }
+
                 try {
                     await addDoc(collection(db, 'partialCondos'), {
                         name: name,
+                        startPlan: startPlan,
+                        endPlan: endPlan,
                         createdBy: currentUser.uid,
                         createdAt: serverTimestamp()
                     });
-                    await logActivity("partial_condo_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { name: name });
-                    nameInput.value = '';
+                    await logActivity("partial_condo_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { name: name, planRange: `${startPlan}-${endPlan}` });
+                    form.reset();
                 } catch (error) {
                     console.error("Errore nella creazione del condominio parziale:", error);
                     alert("Si è verificato un errore.");
@@ -6708,14 +6799,74 @@
                         <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M16 14h-2v2h2v-2m4-4h-2v2h2V10m0-4h-2v2h2V6M12 2L2 7v13h20V7L12 2z"/></svg></div>
                         <div class="list-item-content">
                             <div class="title">${condo.name}</div>
+                            <div class="subtitle">Piani: ${condo.startPlan ?? 'N/D'} a ${condo.endPlan ?? 'N/D'}</div>
                         </div>
-                        <div class="list-item-action">
+                        <div class="list-item-action flex gap-2">
+                            <button onclick="openGroupEditModal('${docSnap.id}', ${JSON.stringify(condo).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica Gruppo">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
                             <button onclick="deletePartialCondo('${docSnap.id}')" class="btn" style="background:var(--danger); color:white; padding: 0.4rem 0.8rem; font-size:0.8rem;">Elimina</button>
                         </div>
                     </div>
                     `;
                 }).join('');
             });
+        };
+
+        const openGroupEditModal = (groupId, currentData) => {
+            const modalContent = `
+                <form id="edit-group-form" class="space-y-4" onsubmit="updatePartialCondo(event, '${groupId}')">
+                    <div class="form-group">
+                        <label for="edit-group-name" class="form-label">Nome Gruppo</label>
+                        <input type="text" id="edit-group-name" required class="form-input" value="${currentData.name || ''}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label for="edit-group-start-plan" class="form-label">Piano Iniziale</label>
+                            <input type="number" id="edit-group-start-plan" required class="form-input" value="${currentData.startPlan ?? ''}">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-group-end-plan" class="form-label">Piano Finale</label>
+                            <input type="number" id="edit-group-end-plan" required class="form-input" value="${currentData.endPlan ?? ''}">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                    </div>
+                </form>
+            `;
+            showModal('Modifica Gruppo', modalContent);
+        };
+
+        const updatePartialCondo = async (event, groupId) => {
+            event.preventDefault();
+            const name = document.getElementById('edit-group-name').value.trim();
+            const startPlan = parseInt(document.getElementById('edit-group-start-plan').value, 10);
+            const endPlan = parseInt(document.getElementById('edit-group-end-plan').value, 10);
+
+            if (!name || isNaN(startPlan) || isNaN(endPlan)) {
+                alert('Tutti i campi sono obbligatori.');
+                return;
+            }
+            if (startPlan > endPlan) {
+                alert('Il piano iniziale non può essere maggiore del piano finale.');
+                return;
+            }
+
+            try {
+                const groupRef = doc(db, 'partialCondos', groupId);
+                await updateDoc(groupRef, {
+                    name: name,
+                    startPlan: startPlan,
+                    endPlan: endPlan
+                });
+                await logActivity("partial_condo_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { groupId: groupId, name: name });
+                hideModal();
+            } catch (error) {
+                console.error("Errore nell'aggiornamento del gruppo:", error);
+                alert("Si è verificato un errore durante l'aggiornamento.");
+            }
         };
 
         const deletePartialCondo = async (id) => {
@@ -9138,12 +9289,14 @@
                 propertyRows.forEach(row => {
                     const interno = row.querySelector('input[data-field="interno"]').value.trim();
                     const millesimi = parseFloat(row.querySelector('input[data-field="millesimi"]').value) || 0;
-                    const gruppo = row.querySelector('select[data-field="gruppo"]').value; // <-- MODIFICA QUI
+                    const gruppo = row.querySelector('select[data-field="gruppo"]').value;
+                        const pianoSelect = row.querySelector('select[data-field="piano"]');
+                        const piano = pianoSelect.value ? parseInt(pianoSelect.value, 10) : null;
 
-                    if (interno) {
-                        updatedProperties.push({ interno, millesimi, gruppo });
-                        totalMillesimi += millesimi;
-                    }
+                        if (interno) {
+                            updatedProperties.push({ interno, millesimi, gruppo, piano });
+                            totalMillesimi += millesimi;
+                        }
                 });
 
                 const updatedData = {
@@ -9194,19 +9347,26 @@
                 return `<option value="${role}" ${user.tipoUtente === role ? 'selected' : ''}>${capitalizedRole}</option>`
             }).join('');
 
-            const propertiesHtml = (user.proprieta || []).map((prop) => {
+            const isSupervisor = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+            const propertiesHtml = (user.proprieta || []).map((prop, index) => {
                 const groupOptionsHtml = availableGroups.map(group =>
-                    `<option value="${group.name}" ${prop.gruppo === group.name ? 'selected' : ''}>${group.name}</option>`
+                    `<option value="${group.name}" data-start="${group.startPlan}" data-end="${group.endPlan}" ${prop.gruppo === group.name ? 'selected' : ''}>${group.name}</option>`
                 ).join('');
 
+                let planOptionsHtml = '<option value="">Seleziona gruppo</option>';
+                const selectedGroup = availableGroups.find(g => g.name === prop.gruppo);
+                if (selectedGroup) {
+                    for (let i = selectedGroup.startPlan; i <= selectedGroup.endPlan; i++) {
+                        planOptionsHtml += `<option value="${i}" ${prop.piano === i ? 'selected' : ''}>${i}</option>`;
+                    }
+                }
+
                 return `
-                <div class="property-edit-row grid grid-cols-4 gap-2 items-center" style="margin-bottom: 0.5rem;">
+                <div class="property-edit-row grid grid-cols-5 gap-2 items-center" style="margin-bottom: 0.5rem;" data-row-index="${index}">
                     <input type="text" data-field="interno" value="${prop.interno || ''}" class="form-input" placeholder="ID Unità">
                     <input type="number" step="0.01" data-field="millesimi" value="${prop.millesimi || 0}" class="form-input" placeholder="Millesimi">
-                    <select data-field="gruppo" class="form-select">
-                        <option value="">Nessun Gruppo</option>
-                        ${groupOptionsHtml}
-                    </select>
+                    <select data-field="gruppo" class="form-select">${groupOptionsHtml}</select>
+                    <select data-field="piano" class="form-select" ${!isSupervisor ? 'disabled' : ''}>${planOptionsHtml}</select>
                     <button type="button" onclick="this.parentElement.remove()" class="btn-icon" style="background:var(--danger); color:white;">&times;</button>
                 </div>
                 `;
@@ -9239,6 +9399,29 @@
             `;
 
             showModal(`Modifica Utente: ${user.nome} ${user.cognome}`, modalContent);
+            
+            // Add event listeners for dynamic plan selects
+            document.querySelectorAll('.property-edit-row .form-select[data-field="gruppo"]').forEach(groupSelect => {
+                groupSelect.addEventListener('change', (e) => {
+                    const row = e.target.closest('.property-edit-row');
+                    const planSelect = row.querySelector('select[data-field="piano"]');
+                    const selectedOption = e.target.options[e.target.selectedIndex];
+
+                    if (!selectedOption || !selectedOption.dataset.start) {
+                        planSelect.innerHTML = '<option>Seleziona gruppo</option>';
+                        return;
+                    }
+
+                    const start = parseInt(selectedOption.dataset.start, 10);
+                    const end = parseInt(selectedOption.dataset.end, 10);
+                    
+                    let planOptionsHtml = '<option value="" disabled selected>Piano...</option>';
+                    for (let i = start; i <= end; i++) {
+                        planOptionsHtml += `<option value="${i}">${i}</option>`;
+                    }
+                    planSelect.innerHTML = planOptionsHtml;
+                });
+            });
         };
 
         const loadUsers = async () => {
@@ -9266,7 +9449,7 @@
                         const user = docSnap.data();
                         const userId = docSnap.id;
                         const propertiesHtml = user.proprieta && user.proprieta.length > 0
-                            ? user.proprieta.map(p => `<li>${p.interno}: ${(p.millesimi || 0).toFixed(2)} ‰ ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')
+                            ? user.proprieta.map(p => `<li>${p.interno}: Piano ${p.piano ?? 'N/A'}, ${(p.millesimi || 0).toFixed(2)} ‰ ${p.gruppo ? `- <strong>Gruppo:</strong> ${p.gruppo}` : ''}</li>`).join('')
                             : '<li>Nessuna proprietà</li>';
 
                         const userObjectString = JSON.stringify({ id: userId, ...user }).replace(/'/g, "&apos;");
@@ -9326,7 +9509,7 @@
                     return;
                 }
 
-                let tableHtml = `<table class="data-table"><thead><tr><th>Nome</th><th>Cognome</th><th>Proprietà</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
+                let tableHtml = `<table class="data-table"><thead><tr><th>Nome</th><th>Cognome</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
 
                 filteredUsers.forEach(docSnap => {
                     const user = docSnap.data();
@@ -9339,6 +9522,7 @@
                             tableHtml += `<tr>
                                 ${index === 0 ? `<td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td>` : ''}
                                 <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
+                                <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
                                 <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
                                 <td data-label="Millesimi">${createCell((prop.millesimi || 0).toFixed(2))}</td>
                             </tr>`;
@@ -9348,6 +9532,7 @@
                             <td data-label="Nome">${createCell(user.nome)}</td>
                             <td data-label="Cognome">${createCell(user.cognome)}</td>
                             <td data-label="Proprietà">${createCell('Nessuna')}</td>
+                            <td data-label="Piano">${createCell('N/A')}</td>
                             <td data-label="Raggruppamento">${createCell('N/D')}</td>
                             <td data-label="Millesimi">${createCell('0.00')}</td>
                         </tr>`;
@@ -10616,6 +10801,8 @@
         window.showCommunicationDetail = showCommunicationDetail;
         window.showPollVoters = showPollVoters;
         window.hideModal = hideModal;
+        window.openGroupEditModal = openGroupEditModal;
+        window.updatePartialCondo = updatePartialCondo;
         window.deletePartialCondo = deletePartialCondo;
         window.deleteUsefulNumber = deleteUsefulNumber;
         window.editUsefulNumber = editUsefulNumber;
