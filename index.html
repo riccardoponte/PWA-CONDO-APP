@@ -482,6 +482,22 @@
             flex-basis: 120px;
         }
 
+        /* Stili per il contenitore dei menu a tendina impilati */
+        .property-controls-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem; /* Spazio tra i due menu */
+            flex-shrink: 0;
+            width: 160px; /* Larghezza fissa per il contenitore, come il campo 'gruppo' originale */
+        }
+
+        /* Reset e override per i select all'interno del nuovo contenitore */
+        .property-controls-stack .group-select,
+        .property-controls-stack .plan-select {
+            flex-basis: auto; /* Annulla la base flessibile */
+            width: 100%;
+        }
+
         /* --- MODIFICA FINE --- */
 
         /* Messaggi di notifica */
@@ -4953,13 +4969,15 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                     item.dataset.apartment = prop[apartmentHeader];
                     item.dataset.millesimi = prop[millesimiHeader];
                     item.innerHTML = `
-                        <label for="prop-${index}">
-                            ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
-                            <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
-                        </label>
+                    <label for="prop-${index}">
+                        ${isMultiProperty ? `<input type="checkbox" id="prop-${index}" style="width: 20px; height: 20px; accent-color: var(--accent-color);">` : ''}
+                        <span>${prop[apartmentHeader]} - ${prop[millesimiHeader]} ‰</span>
+                    </label>
+                    <div class="property-controls-stack">
                         <select class="form-select group-select">${groupOptionsHtml.replace(`value="${autoGroup}"`, `value="${autoGroup}" selected`)}</select>
                         <select class="form-select plan-select" disabled><option>Seleziona gruppo</option></select>
-                    `;
+                    </div>
+                `;
                     propertyItemsContainer.appendChild(item);
                 });
 
