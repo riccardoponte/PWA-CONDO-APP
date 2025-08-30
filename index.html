@@ -2789,7 +2789,14 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                             
                             <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select" disabled><option value="">Seleziona prima il destinatario...</option></select></div>
                             <div><label class="form-label">Categoria</label><select id="report-category" required class="form-select"><option value="">...</option><option value="ascensore">Ascensore</option><option value="elettrico">Elettrico</option><option value="idraulico">Idraulico</option><option value="portierato">Portierato</option><option value="posta">Posta</option><option value="pulizie">Pulizie</option><option value="raccolta-rifiuti">Raccolta rifiuti</option><option value="riscaldamento">Riscaldamento</option><option value="sicurezza">Sicurezza</option><option value="tv">TV</option><option value="altro">Altro</option></select></div>
-                            <div><label class="form-label">Ubicazione</label><input type="text" id="report-location" required class="form-input" placeholder="es. Scala A, Piano 2"></div>
+                            <div class="form-group">
+    <label for="report-property-select" class="form-label">Unità Immobiliare (Ubicazione)</label>
+    <select id="report-property-select" required class="form-select">
+        <option value="" disabled>Seleziona la tua unità...</option>
+        <!-- Le opzioni verranno popolate dinamicamente via JS -->
+    </select>
+</div>
+<input type="hidden" id="report-location"> <!-- Mantenuto per compatibilità e logica interna -->
                             
                             <!-- Campi condizionali per checkboxes comunicazione -->
                             <div id="phone-communication-checkboxes" class="hidden">
@@ -5556,48 +5563,97 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
 
         const setupReportHandlers = () => {
             const form = document.getElementById("create-report-form");
+
+            // --- INIZIO BLOCCO MODIFICATO: Popolamento e gestione dropdown unità immobiliari ---
+            const propertySelect = document.getElementById("report-property-select");
+            const locationInput = document.getElementById("report-location"); // Campo nascosto
+
+            if (propertySelect && locationInput) {
+                if (userProfile?.proprieta && userProfile.proprieta.length > 0) {
+                    userProfile.proprieta.forEach(prop => {
+                        const option = new Option(
+                            `Interno: ${prop.interno} (Piano: ${prop.piano ?? 'N/D'})`,
+                            `${prop.interno}|${prop.piano ?? 'N/A'}`
+                        );
+                        propertySelect.add(option);
+                    });
+
+                    // Pre-compila se c'è una sola proprietà
+                    if (userProfile.proprieta.length === 1) {
+                        propertySelect.selectedIndex = 1; // Seleziona il primo elemento reale
+                        const [interno, piano] = propertySelect.value.split('|');
+                        locationInput.value = `Interno ${interno}, Piano ${piano}`;
+                    } else {
+                        // Aggiungi un placeholder se ci sono più proprietà
+                        propertySelect.selectedIndex = 0;
+                    }
+                } else {
+                    // Gestisce utenti senza proprietà (es. custode) che devono inserire manualmente
+                    const parentDiv = propertySelect.parentElement;
+                    parentDiv.innerHTML = `
+                        <label for="report-location-manual" class="form-label">Ubicazione</label>
+                        <input type="text" id="report-location-manual" required class="form-input" placeholder="es. Cortile, Ingresso Principale">
+                    `;
+                }
+            }
+            // --- FINE BLOCCO MODIFICATO ---
+
             form?.addEventListener("submit", async (event) => {
                 event.preventDefault();
                 const submitBtn = document.getElementById("submit-report-btn");
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Invio in corso...';
-
+                
+                // --- INIZIO BLOCCO MODIFICATO: Raccolta dati dal form ---
                 const title = document.getElementById("report-title").value;
                 const description = document.getElementById("report-description").value;
                 const category = document.getElementById("report-category").value;
                 const priority = document.getElementById("report-priority").value;
-                const location = document.getElementById("report-location").value;
                 const interestType = document.getElementById("report-interest-type").value;
                 const recipient = document.getElementById("report-recipient").value;
                 const otherUiOwner = document.getElementById("other-ui-owner").value;
                 const communicateOwnerPhone = document.getElementById("communicate-owner-phone").checked;
                 const communicateOtherUiPhone = document.getElementById("communicate-other-ui-phone").checked;
 
+                // Gestione dinamica dell'ubicazione
+                let location = '';
+                let propertyInfo = null;
+                const manualLocationInput = document.getElementById("report-location-manual");
+
+                if (manualLocationInput) {
+                    location = manualLocationInput.value;
+                } else {
+                    const selectedPropValue = propertySelect.value;
+                    if (selectedPropValue) {
+                        const [interno, piano] = selectedPropValue.split('|');
+                        location = `Interno ${interno}, Piano ${piano}`;
+                        propertyInfo = { interno, piano };
+                    }
+                }
+                
                 if (!title || !description || !category || !priority || !location || !recipient) {
-                    alert("Compila tutti i campi, incluso il destinatario.");
+                    alert("Compila tutti i campi obbligatori.");
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Invia Segnalazione';
                     return;
                 }
+                // --- FINE BLOCCO MODIFICATO ---
 
                 try {
                     const counterRef = doc(db, "counters", "reportsCounter");
                     let finalReportNumber;
                     let fileUrls = [];
 
-                    // 1. Creiamo un riferimento al documento per ottenere un ID univoco
                     const newReportDocRef = doc(collection(db, "reports"));
                     const reportId = newReportDocRef.id;
 
-                    // 2. Se ci sono file, li carichiamo
                     if (selectedReportFiles.length > 0) {
                         submitBtn.textContent = 'Caricamento allegati...';
                         fileUrls = await uploadReportFiles(reportId, selectedReportFiles);
                     }
 
                     submitBtn.textContent = 'Salvataggio dati...';
-
-                    // 3. Eseguiamo la transazione per creare il documento e aggiornare il contatore
+                    
                     let reportData;
                     await runTransaction(db, async (transaction) => {
                         const counterDoc = await transaction.get(counterRef);
@@ -5606,40 +5662,34 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
 
                         reportData = {
                             reportNumber: newReportNumber,
-                            title: title,
-                            description: description,
-                            category: category,
-                            priority: priority,
-                            location: location,
-                            interestType: interestType, // NUOVO CAMPO AGGIUNTO
+                            title, description, category, priority,
+                            location, // Ubicazione testuale per compatibilità
+                            propertyInfo, // Dati strutturati della proprietà
+                            interestType,
                             otherUiOwner: otherUiOwner || null,
-                            communicateOwnerPhone: communicateOwnerPhone,
-                            communicateOtherUiPhone: communicateOtherUiPhone,
-                            createdByPhone: userProfile.telefono || null, // Store creator's phone number
+                            communicateOwnerPhone,
+                            communicateOtherUiPhone,
+                            createdByPhone: userProfile.telefono || null,
                             status: "aperta",
                             createdBy: `${userProfile.nome} ${userProfile.cognome}`,
                             createdByUserType: userProfile.tipoUtente,
                             createdById: currentUser.uid,
                             createdAt: serverTimestamp(),
-                            updatedAt: serverTimestamp(), // Added for notification consistency
+                            updatedAt: serverTimestamp(),
                             recipientType: recipient,
                             updates: [],
                             lastReminderAt: null,
                             reminderCount: 0,
-                            fileUrls: fileUrls // Aggiungiamo gli URL dei file
+                            fileUrls
                         };
 
                         transaction.set(counterRef, { lastNumber: newReportNumber });
                         transaction.set(newReportDocRef, reportData);
                     });
 
-                    // --- WEBHOOK TRIGGER: Call webhook after segnalazione creation ---
                     (async () => {
                         try {
-                            // Use a different webhook URL for segnalazioni
                             const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/6d501d53-5ec7-449e-b3e4-38316eefd92d";
-
-                            // Extract receiver email from Firestore based on recipient type
                             let receiverEmail = null;
                             let recipientQuery = null;
                             if (recipient === "amministratore") {
@@ -5654,7 +5704,6 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                             if (recipientQuery) {
                                 const snapshot = await getDocs(recipientQuery);
                                 if (!snapshot.empty) {
-                                    // If multiple, take the first
                                     receiverEmail = snapshot.docs[0].data().email;
                                 }
                             }
@@ -5682,8 +5731,8 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId: reportId, title: title, attachments: fileUrls.length });
 
                     form.reset();
-                    selectedReportFiles = []; // Pulisce l'array dei file
-                    renderFilePreviews(); // Aggiorna l'UI
+                    selectedReportFiles = [];
+                    renderFilePreviews();
 
                     alert(`Segnalazione #${finalReportNumber} creata con successo!`);
 
@@ -5696,74 +5745,70 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                 }
             });
 
-            // --- NUOVA LOGICA DINAMICA: Il destinatario determina il genere di intervento ---
-        const recipientSelect = document.getElementById("report-recipient");
-        const prioritySelect = document.getElementById("report-priority");
+            const recipientSelect = document.getElementById("report-recipient");
+            const prioritySelect = document.getElementById("report-priority");
 
-        const updatePriorityOptions = (options) => {
-            prioritySelect.innerHTML = ''; // Pulisci opzioni esistenti
-            prioritySelect.add(new Option('Seleziona genere...', ''));
-            options.forEach(opt => prioritySelect.add(new Option(opt.text, opt.value)));
-            prioritySelect.disabled = false;
-        };
+            const updatePriorityOptions = (options) => {
+                prioritySelect.innerHTML = '';
+                prioritySelect.add(new Option('Seleziona genere...', ''));
+                options.forEach(opt => prioritySelect.add(new Option(opt.text, opt.value)));
+                prioritySelect.disabled = false;
+            };
 
-        recipientSelect?.addEventListener("change", function () {
-            const recipient = this.value;
+            recipientSelect?.addEventListener("change", function () {
+                const recipient = this.value;
 
-            if (!recipient) {
-                prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
-                prioritySelect.disabled = true;
-                return;
-            }
+                if (!recipient) {
+                    prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
+                    prioritySelect.disabled = true;
+                    return;
+                }
 
-            const allOptions = [
-                { value: 'solo-segnalazione', text: 'Segnalazione' },
-                { value: 'richiesta-intervento-propria', text: 'Richiesta d’intervento' }, // Valore tecnico di default per intervento
-                { value: 'altre-richieste', text: 'Altre richieste' }
-            ];
-            const limitedOptions = [
-                { value: 'solo-segnalazione', text: 'Segnalazione' }
-            ];
+                const allOptions = [
+                    { value: 'solo-segnalazione', text: 'Segnalazione' },
+                    { value: 'richiesta-intervento-propria', text: 'Richiesta d’intervento' },
+                    { value: 'altre-richieste', text: 'Altre richieste' }
+                ];
+                const limitedOptions = [
+                    { value: 'solo-segnalazione', text: 'Segnalazione' }
+                ];
 
-            if (['amministratore', 'custode'].includes(recipient)) {
-                updatePriorityOptions(allOptions);
-            } else if (['consigliere', 'adm', 'condomini'].includes(recipient)) {
-                updatePriorityOptions(limitedOptions);
-            } else {
-                prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
-                prioritySelect.disabled = true;
-            }
-        });
-
-        // Conditional logic for other fields based on "Genere di intervento"
-        const otherUiOwnerField = document.getElementById("other-ui-owner-field");
-        const phoneCommunicationCheckboxes = document.getElementById("phone-communication-checkboxes");
-        const otherUiPhoneCheckbox = document.getElementById("other-ui-phone-checkbox");
-
-        prioritySelect?.addEventListener("change", function () {
-            const selectedValue = this.value;
-
-            // Show/hide the "Indicazione proprietario altra U.I." field
-            if (selectedValue === "richiesta-intervento-danno") {
-                otherUiOwnerField?.classList.remove("hidden");
-            } else {
-                otherUiOwnerField?.classList.add("hidden");
-            }
-
-            // Show/hide communication checkboxes based on selection
-            const interventionTypes = ["richiesta-intervento-propria", "richiesta-intervento-danno", "altre-richieste"];
-            if (interventionTypes.includes(selectedValue)) {
-                phoneCommunicationCheckboxes?.classList.remove("hidden");
-                if (selectedValue === "richiesta-intervento-danno") {
-                    otherUiPhoneCheckbox?.classList.remove("hidden");
+                if (['amministratore', 'custode'].includes(recipient)) {
+                    updatePriorityOptions(allOptions);
+                } else if (['consigliere', 'adm', 'condomini'].includes(recipient)) {
+                    updatePriorityOptions(limitedOptions);
                 } else {
+                    prioritySelect.innerHTML = '<option value="">Seleziona prima il destinatario...</option>';
+                    prioritySelect.disabled = true;
+                }
+            });
+
+            const otherUiOwnerField = document.getElementById("other-ui-owner-field");
+            const phoneCommunicationCheckboxes = document.getElementById("phone-communication-checkboxes");
+            const otherUiPhoneCheckbox = document.getElementById("other-ui-phone-checkbox");
+
+            prioritySelect?.addEventListener("change", function () {
+                const selectedValue = this.value;
+
+                if (selectedValue === "richiesta-intervento-danno") {
+                    otherUiOwnerField?.classList.remove("hidden");
+                } else {
+                    otherUiOwnerField?.classList.add("hidden");
+                }
+
+                const interventionTypes = ["richiesta-intervento-propria", "richiesta-intervento-danno", "altre-richieste"];
+                if (interventionTypes.includes(selectedValue)) {
+                    phoneCommunicationCheckboxes?.classList.remove("hidden");
+                    if (selectedValue === "richiesta-intervento-danno") {
+                        otherUiPhoneCheckbox?.classList.remove("hidden");
+                    } else {
+                        otherUiPhoneCheckbox?.classList.add("hidden");
+                    }
+                } else {
+                    phoneCommunicationCheckboxes?.classList.add("hidden");
                     otherUiPhoneCheckbox?.classList.add("hidden");
                 }
-            } else {
-                phoneCommunicationCheckboxes?.classList.add("hidden");
-                otherUiPhoneCheckbox?.classList.add("hidden");
-            }
-        });
+            });
         };
         const setupProfileHandlers = () => {
             const form = document.getElementById("profile-form");
@@ -8561,6 +8606,11 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                 ` : ''}
                 
                 <p style="color: var(--secondary-text); margin-top: 0.5rem; padding-left: 64px;">${report.description}</p>
+
+                <div style="padding-left: 64px; margin-top: 0.75rem; font-size: 0.9rem;">
+                    <strong style="color: var(--primary-text);">UBICAZIONE (PIANO):</strong> 
+                    <span style="color: var(--secondary-text);">${report.propertyInfo ? `Interno ${report.propertyInfo.interno}, Piano ${report.propertyInfo.piano}` : report.location}</span>
+                </div>
                 
                 <!-- SEZIONE TIMESTAMP -->
                 <div style="padding-left: 64px; margin-top: 0.75rem; font-size: 0.85rem; color: var(--secondary-text);">
