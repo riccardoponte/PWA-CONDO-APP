@@ -27,10 +27,10 @@ messaging.onBackgroundMessage(function(payload) {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: '/Con-bridge/icons/icon-192x192.png' // Icona da mostrare nella notifica
+        icon: '/PWA-CONDO-APP/icons/icon-192x192.png' // Icona da mostrare nella notifica
     };
 
-    // Mostriamo la nostra notifica al sistema operativo
+    // Mostriamo la notifica al sistema operativo
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
@@ -39,8 +39,8 @@ messaging.onBackgroundMessage(function(payload) {
 
 const CACHE_NAME = 'condo-app-pwa-cache-v1';
 const URLS_TO_CACHE = [
-  '/Con-bridge/',
-  '/Con-bridge/index.html',
+  '/PWA-CONDO-APP/',
+  '/PWA-CONDO-APP/index.html',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
@@ -65,4 +65,3 @@ self.addEventListener('fetch', event => {
 });
 
 // --- FINE BLOCCO AGGIORNATO ---
-
