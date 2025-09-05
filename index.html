@@ -10936,49 +10936,50 @@
             }
         };
 
-                                const setupPushNotifications = async () => {
-            // Controlla se il browser supporta le notifiche e i service worker
+                                        const setupPushNotifications = async () => {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 console.warn("Notifiche Push non supportate da questo browser.");
-                return; // Esce senza causare errori
+                return;
             }
 
             try {
-                // Chiediamo il permesso all'utente
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    console.log('Permesso per le notifiche accordato.');
-                    
-                    // Otteniamo il token. La libreria di Firebase gestirà
-                    // la registrazione del service worker se non è presente.
-                    const currentToken = await getToken(messaging, { 
-                        vapidKey: 'LA_TUA_CHIAVE_VAPID_CORRETTA' // <-- METTI LA TUA VERA CHIAVE QUI
-                    });
+                // Registriamo il nostro Service Worker specificando lo scope corretto
+                const registration = await navigator.serviceWorker.register('/PWA-CONDO-APP/firebase-messaging-sw.js', {
+                    scope: '/PWA-CONDO-APP/'
+                });
 
-                    if (currentToken) {
-                        await saveFCMToken(currentToken);
-                    } else {
-                        console.log('Nessun token di registrazione disponibile. Potrebbe essere necessario ricaricare la pagina.');
-                    }
-                } else {
+                console.log('Service Worker registrato con successo:', registration);
+
+                // Ora che siamo sicuri che sia registrato, chiediamo il permesso
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
                     console.log('Permesso per le notifiche negato.');
+                    return;
+                }
+
+                console.log('Permesso per le notifiche accordato.');
+
+                // E infine, otteniamo il token usando la registrazione che abbiamo appena creato
+                const currentToken = await getToken(messaging, {
+                    vapidKey: 'LA_TUA_CHIAVE_VAPID_CORRETTA', // <-- INSERISCI LA TUA VERA CHIAVE QUI
+                    serviceWorkerRegistration: registration,
+                });
+
+                if (currentToken) {
+                    await saveFCMToken(currentToken);
+                } else {
+                    console.log('Nessun token di registrazione disponibile.');
                 }
             } catch (error) {
                 console.error('Si è verificato un errore durante la configurazione delle notifiche push.', error);
-                // Non blocchiamo l'app se le notifiche falliscono, mostriamo solo un errore in console.
             }
 
-            // Gestisce le notifiche quando l'app è in primo piano (in-app)
             onMessage(messaging, (payload) => {
                 console.log('Messaggio ricevuto in primo piano: ', payload);
-                // Potremmo mostrare una notifica più carina, ma per ora un alert va bene
-                const notification = new Notification(payload.notification.title, {
+                new Notification(payload.notification.title, {
                     body: payload.notification.body,
                     icon: payload.notification.icon
                 });
-                notification.onclick = () => {
-                    window.open(payload.fcmOptions.link);
-                };
             });
         };
 
