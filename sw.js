@@ -1,6 +1,9 @@
 // sw.js
 
-// Importa gli script di Firebase (necessario per le notifiche)
+// Importa lo script dedicato a Firebase Messaging per la registrazione
+importScripts('/PWA-CONDO-APP/firebase-messaging-sw.js');
+
+// Importa gli script di Firebase (necessario per le notifiche in background)
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js");
 
@@ -11,12 +14,13 @@ const CACHE_NAME = 'condo-app-pwa-cache-v1';
 const URLS_TO_CACHE = [
   '/PWA-CONDO-APP/',
   '/PWA-CONDO-APP/index.html',
+  // Aggiungiamo anche il nuovo file alla cache per il funzionamento offline
+  '/PWA-CONDO-APP/firebase-messaging-sw.js', 
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
 
-// Inizializza l'app Firebase nel Service Worker
-// IMPORTANTE: Usa la configurazione "compat" per gli script importati
+// Inizializzazione di Firebase (già presente in firebase-messaging-sw.js, ma innocua se ripetuta)
 const firebaseConfig = {
     apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
     authDomain: "condo-app-49255.firebaseapp.com",
@@ -28,18 +32,18 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 
-// Recupera un'istanza di Firebase Messaging per gestire le notifiche in background
 const messaging = firebase.messaging();
 
+// Gestione delle notifiche in background
 messaging.onBackgroundMessage((payload) => {
   console.log('[sw.js] Ricevuta notifica in background: ', payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/PWA-CONDO-APP/icons/icon-192x192.png', // Usa il percorso corretto
+    icon: '/PWA-CONDO-APP/icons/icon-192x192.png',
     data: {
-        url: payload.fcmOptions.link // L'URL da aprire al click
+        url: payload.fcmOptions.link
     }
   };
 
@@ -48,7 +52,7 @@ messaging.onBackgroundMessage((payload) => {
 
 // Gestione del click sulla notifica
 self.addEventListener('notificationclick', (event) => {
-    event.notification.close(); // Chiude la notifica
+    event.notification.close();
     const urlToOpen = event.notification.data.url;
     
     event.waitUntil(
@@ -56,8 +60,7 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-
-// Quando il service worker viene installato, apriamo la cache e salviamo i file
+// Installazione del Service Worker e caching dei file
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -68,7 +71,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Quando l'app richiede un file, intercettiamo la richiesta
+// Intercettazione delle richieste di rete
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
