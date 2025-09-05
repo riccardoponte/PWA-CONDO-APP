@@ -10936,26 +10936,22 @@
             }
         };
 
-        const setupPushNotifications = async () => {
+                const setupPushNotifications = async () => {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Permesso per le notifiche accordato.');
                     
-                    // Ottieni il token. Assicurati che il tuo VAPID key sia configurato nel progetto Firebase.
-                    // La VAPID key si genera automaticamente quando abiliti l'API di FCM.
-                    // Prima recuperiamo la registrazione del nostro service worker
-const swRegistration = await navigator.serviceWorker.ready;
-
-const currentToken = await getToken(messaging, { 
-    vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc',
-    serviceWorkerRegistration: swRegistration // <-- AGGIUNTA CHIAVE
-});
+                    // Ottieni il token. Firebase gestirà la registrazione del
+                    // service worker predefinito ('/firebase-messaging-sw.js')
+                    const currentToken = await getToken(messaging, { 
+                        vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc' // <-- ASSICURATI DI USARE LA TUA VERA CHIAVE QUI
+                    });
 
                     if (currentToken) {
                         await saveFCMToken(currentToken);
                     } else {
-                        console.log('Nessun token di registrazione disponibile. Richiedi il permesso per generarlo.');
+                        console.log('Nessun token di registrazione disponibile.');
                     }
                 } else {
                     console.log('Permesso per le notifiche negato.');
@@ -10967,7 +10963,6 @@ const currentToken = await getToken(messaging, {
             // Gestisce le notifiche quando l'app è in primo piano
             onMessage(messaging, (payload) => {
                 console.log('Messaggio ricevuto in primo piano: ', payload);
-                // Puoi mostrare una notifica personalizzata qui se vuoi
                 alert(`Nuova notifica: ${payload.notification.title}`);
             });
         };
@@ -11076,24 +11071,6 @@ const currentToken = await getToken(messaging, {
         });
     </script>
 
-    <!-- Registrazione del Service Worker per la PWA -->
-    <script>
-        // Controlliamo se il browser supporta i service worker
-        if ('serviceWorker' in navigator) {
-            // Aspettiamo che la pagina sia completamente caricata per non rallentare l'avvio
-            window.addEventListener('load', () => {
-                // Registriamo il nostro file sw.js
-                // Il percorso è fondamentale per GitHub Pages!
-                navigator.serviceWorker.register('/PWA-CONDO-APP/firebase-messaging-sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registrato con successo:', registration);
-                    })
-                    .catch(error => {
-                        console.log('Registrazione Service Worker fallita:', error);
-                    });
-            });
-        }
-    </script>
 </body>
 
 </html>
