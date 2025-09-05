@@ -10936,16 +10936,21 @@
             }
         };
 
-                const setupPushNotifications = async () => {
+                        const setupPushNotifications = async () => {
             try {
+                // PRIMA ci assicuriamo che ci sia un Service Worker attivo
+                const registration = await navigator.serviceWorker.ready;
+                console.log("Service Worker pronto:", registration);
+                
+                // POI chiediamo il permesso
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Permesso per le notifiche accordato.');
                     
-                    // Ottieni il token. Firebase gestirà la registrazione del
-                    // service worker predefinito ('/firebase-messaging-sw.js')
+                    // INFINE, chiediamo il token, passando la registrazione che abbiamo trovato
                     const currentToken = await getToken(messaging, { 
-                        vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc' // <-- ASSICURATI DI USARE LA TUA VERA CHIAVE QUI
+                        vapidKey: 'LA_TUA_CHIAVE_VAPID_CORRETTA', // <-- ASSICURATI DI USARE LA TUA VERA CHIAVE QUI
+                        serviceWorkerRegistration: registration,
                     });
 
                     if (currentToken) {
