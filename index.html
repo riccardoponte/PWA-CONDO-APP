@@ -1259,7 +1259,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+        import { getMessaging, getToken, onMessage, onTokenRefresh } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
@@ -11063,6 +11063,7 @@
                             body: payload.notification.body || '',
                             icon: payload.notification.icon || '/PWA-CONDO-APP/icons/icon-192x192.png',
                             badge: '/PWA-CONDO-APP/icons/icon-192x192.png',
+                            vibrate: [200, 100, 200],
                             tag: 'condo-app-notification',
                             requireInteraction: true,
                             data: {
@@ -11088,7 +11089,7 @@
                 });
 
                 // Listener per gestire il refresh dei token quando necessario
-                messaging.onTokenRefresh(() => {
+                onTokenRefresh(messaging, () => {
                     console.log('Token FCM in scadenza, aggiornamento in corso...');
                     refreshFCMToken();
                 });

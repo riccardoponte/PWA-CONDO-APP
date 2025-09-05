@@ -43,6 +43,7 @@ messaging.onBackgroundMessage((payload) => {
       body: notificationBody,
       icon: notificationIcon,
       badge: '/PWA-CONDO-APP/icons/icon-192x192.png',
+      vibrate: [200, 100, 200],
       tag: 'condo-app-notification',
       requireInteraction: true,
       data: { 
