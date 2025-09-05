@@ -30,7 +30,7 @@ messaging.onBackgroundMessage(function(payload) {
         icon: '/Con-bridge/icons/icon-192x192.png' // Icona da mostrare nella notifica
     };
 
-    // Mostriamo la notifica al sistema operativo
+    // Mostriamo la nostra notifica al sistema operativo
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
@@ -65,3 +65,4 @@ self.addEventListener('fetch', event => {
 });
 
 // --- FINE BLOCCO AGGIORNATO ---
+
