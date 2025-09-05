@@ -10926,17 +10926,93 @@
                 // --- FUNZIONI PER NOTIFICHE PUSH ---
 
         const saveFCMToken = async (token) => {
-            if (!currentUser) return;
+            if (!currentUser) {
+                console.warn("Nessun utente loggato, impossibile salvare il token FCM");
+                return;
+            }
+            
+            if (!token) {
+                console.warn("Token FCM vuoto, impossibile salvare");
+                return;
+            }
+
             try {
                 const tokenRef = doc(db, "fcmTokens", currentUser.uid);
-                await setDoc(tokenRef, { token: token, uid: currentUser.uid, updatedAt: serverTimestamp() });
+                await setDoc(tokenRef, { 
+                    token: token, 
+                    uid: currentUser.uid, 
+                    updatedAt: serverTimestamp(),
+                    createdAt: serverTimestamp()
+                }, { merge: true });
                 console.log("Token FCM salvato con successo per l'utente:", currentUser.uid);
             } catch (error) {
                 console.error("Errore nel salvataggio del token FCM:", error);
+                
+                // Gestione specifica degli errori
+                if (error.code === 'permission-denied') {
+                    console.error("Permessi insufficienti per salvare il token FCM");
+                } else if (error.code === 'unavailable') {
+                    console.error("Servizio non disponibile, riprova più tardi");
+                }
             }
         };
 
-                                        const setupPushNotifications = async () => {
+        // Funzione per gestire il refresh dei token FCM
+        const refreshFCMToken = async () => {
+            if (!currentUser) return;
+            
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const newToken = await getToken(messaging, {
+                    vapidKey: 'BDPDGN4JimuLKUnAylC80BHwI81uKdqL3W3ZsfWF1beUompkIO7PMHKIKyq6sFnOCUiLwmmP8IpYtKd77nJz4nk',
+                    serviceWorkerRegistration: registration,
+                });
+                
+                if (newToken) {
+                    await saveFCMToken(newToken);
+                    console.log("Token FCM aggiornato:", newToken);
+                }
+            } catch (error) {
+                console.error("Errore nell'aggiornamento del token FCM:", error);
+            }
+        };
+
+        // Funzione per testare le notifiche (solo per debug)
+        const testNotification = async () => {
+            if (!currentUser) {
+                console.warn("Nessun utente loggato");
+                return;
+            }
+
+            try {
+                // Mostra una notifica di test
+                if (Notification.permission === 'granted') {
+                    const notification = new Notification('Test Notifica', {
+                        body: 'Questa è una notifica di test per verificare il funzionamento',
+                        icon: '/PWA-CONDO-APP/icons/icon-192x192.png',
+                        badge: '/PWA-CONDO-APP/icons/icon-192x192.png',
+                        tag: 'test-notification'
+                    });
+                    
+                    notification.onclick = function() {
+                        console.log('Notifica di test cliccata');
+                        notification.close();
+                    };
+                    
+                    console.log('Notifica di test mostrata');
+                } else {
+                    console.warn('Permessi per le notifiche non concessi');
+                }
+            } catch (error) {
+                console.error('Errore nel test delle notifiche:', error);
+            }
+        };
+
+        // Esponi le funzioni globalmente per debug
+        window.testNotification = testNotification;
+        window.refreshFCMToken = refreshFCMToken;
+
+        const setupPushNotifications = async () => {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 console.warn("Notifiche Push non supportate da questo browser.");
                 return;
@@ -10950,6 +11026,10 @@
 
                 console.log('Service Worker registrato con successo:', registration);
 
+                // Aspettiamo che il service worker sia attivo
+                await navigator.serviceWorker.ready;
+                console.log('Service Worker pronto');
+
                 // Ora che siamo sicuri che sia registrato, chiediamo il permesso
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
@@ -10961,26 +11041,70 @@
 
                 // E infine, otteniamo il token usando la registrazione che abbiamo appena creato
                 const currentToken = await getToken(messaging, {
-    vapidKey: 'BDPDGN4JimuLKUnAylC80BHwI81uKdqL3W3ZsfWF1beUompkIO7PMHKIKyq6sFnOCUiLwmmP8IpYtKd77nJz4nk', // <-- CHIAVE CORRETTA
-    serviceWorkerRegistration: registration,
-});
+                    vapidKey: 'BDPDGN4JimuLKUnAylC80BHwI81uKdqL3W3ZsfWF1beUompkIO7PMHKIKyq6sFnOCUiLwmmP8IpYtKd77nJz4nk',
+                    serviceWorkerRegistration: registration,
+                });
 
                 if (currentToken) {
                     await saveFCMToken(currentToken);
+                    console.log('Token FCM ottenuto e salvato:', currentToken);
                 } else {
-                    console.log('Nessun token di registrazione disponibile.');
+                    console.log('Nessun token FCM disponibile.');
                 }
-            } catch (error) {
-                console.error('Si è verificato un errore durante la configurazione delle notifiche push.', error);
-            }
 
-            onMessage(messaging, (payload) => {
-                console.log('Messaggio ricevuto in primo piano: ', payload);
-                new Notification(payload.notification.title, {
-                    body: payload.notification.body,
-                    icon: payload.notification.icon
+                // Configuriamo il listener per i messaggi in primo piano
+                onMessage(messaging, (payload) => {
+                    console.log('Messaggio ricevuto in primo piano: ', payload);
+                    
+                    // Mostra una notifica personalizzata
+                    if (payload.notification) {
+                        const notificationTitle = payload.notification.title || 'Nuova notifica';
+                        const notificationOptions = {
+                            body: payload.notification.body || '',
+                            icon: payload.notification.icon || '/PWA-CONDO-APP/icons/icon-192x192.png',
+                            badge: '/PWA-CONDO-APP/icons/icon-192x192.png',
+                            tag: 'condo-app-notification',
+                            requireInteraction: true,
+                            data: {
+                                url: payload.fcmOptions?.link || window.location.href
+                            }
+                        };
+                        
+                        // Mostra la notifica
+                        if (Notification.permission === 'granted') {
+                            const notification = new Notification(notificationTitle, notificationOptions);
+                            
+                            // Gestisci il click sulla notifica
+                            notification.onclick = function(event) {
+                                event.preventDefault();
+                                window.focus();
+                                if (payload.fcmOptions?.link) {
+                                    window.location.href = payload.fcmOptions.link;
+                                }
+                                notification.close();
+                            };
+                        }
+                    }
                 });
-            });
+
+                // Listener per gestire il refresh dei token quando necessario
+                messaging.onTokenRefresh(() => {
+                    console.log('Token FCM in scadenza, aggiornamento in corso...');
+                    refreshFCMToken();
+                });
+
+            } catch (error) {
+                console.error('Si è verificato un errore durante la configurazione delle notifiche push:', error);
+                
+                // Gestione specifica degli errori
+                if (error.code === 'messaging/failed-service-worker-registration') {
+                    console.error('Errore nella registrazione del service worker:', error.message);
+                } else if (error.code === 'messaging/registration-token-not-supported') {
+                    console.error('Token di registrazione non supportato:', error.message);
+                } else if (error.code === 'messaging/invalid-vapid-key') {
+                    console.error('Chiave VAPID non valida:', error.message);
+                }
+            }
         };
 
         const deletePoll = async (pollId) => {
