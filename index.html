@@ -1259,7 +1259,6 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
@@ -1271,13 +1270,6 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
             measurementId: "G-2SM3DH41EZ"
         };
         const app = initializeApp(firebaseConfig);
-
-        // --- INIZIO BLOCCO AGGIUNTO ---
-        const appCheck = initializeAppCheck(app, {
-            provider: new ReCaptchaV3Provider('6Lcj77UrAAAAAI6t5HOCyQC81U_tcKJzQ39SBlvN'),
-            isTokenAutoRefreshEnabled: true
-        });
-        // --- FINE BLOCCO AGGIUNTO ---
 
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -11041,7 +11033,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
             window.addEventListener('load', () => {
                 // Registriamo il nostro file sw.js
                 // Il percorso è fondamentale per GitHub Pages!
-                navigator.serviceWorker.register('/Con-bridge/sw.js')
+                navigator.serviceWorker.register('/PWA-CONDO-APP/sw.js')
                     .then(registration => {
                         console.log('Service Worker registrato con successo:', registration);
                     })
