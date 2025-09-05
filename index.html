@@ -10944,9 +10944,13 @@
                     
                     // Ottieni il token. Assicurati che il tuo VAPID key sia configurato nel progetto Firebase.
                     // La VAPID key si genera automaticamente quando abiliti l'API di FCM.
-                    const currentToken = await getToken(messaging, { 
-                        vapidKey: 'BFP9u4U3y69M7tP5-0v4v8_b7U8Xq4D1fH3A0dE2iR6gY1hJ5nO9oP7sC6zT5rL4kXw9mZ3vC1gY2I' // <--- INSERISCI QUI LA TUA VAPID KEY
-                    });
+                    // Prima recuperiamo la registrazione del nostro service worker
+const swRegistration = await navigator.serviceWorker.ready;
+
+const currentToken = await getToken(messaging, { 
+    vapidKey: 'BFP9u4U3y69M7tP5-0v4v8_b7U8Xq4D1fH3A0dE2iR6gY1hJ5nO9oP7sC6zT5rL4kXw9mZ3vC1gY2I',
+    serviceWorkerRegistration: swRegistration // <-- AGGIUNTA CHIAVE
+});
 
                     if (currentToken) {
                         await saveFCMToken(currentToken);
