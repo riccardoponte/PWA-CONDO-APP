@@ -10961,9 +10961,9 @@
 
                 // E infine, otteniamo il token usando la registrazione che abbiamo appena creato
                 const currentToken = await getToken(messaging, {
-                    vapidKey: 'BDPDGN4JimuLKUnAylC80BHwI81uKdqL3W3ZsfWF1beUompkIO7PMHKIKyq6sFnOCUiLwmmP8IpYtKd77nJz4nk', // <-- INSERISCI LA TUA VERA CHIAVE QUI
-                    serviceWorkerRegistration: registration,
-                });
+    vapidKey: 'BDPDGN4JimuLKUnAylC80BHwI81uKdqL3W3ZsfWF1beUompkIO7PMHKIKyq6sFnOCUiLwmmP8IpYtKd77nJz4nk', // <-- CHIAVE CORRETTA
+    serviceWorkerRegistration: registration,
+});
 
                 if (currentToken) {
                     await saveFCMToken(currentToken);
