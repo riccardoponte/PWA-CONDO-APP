@@ -1,0 +1,21 @@
+{
+  "name": "Con-bridge Gestione Condominiale",
+  "short_name": "Con-bridge",
+  "description": "App per la gestione delle attività condominiali.",
+  "start_url": "/Con-bridge/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#1DB954",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
