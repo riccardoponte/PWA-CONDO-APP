@@ -10985,8 +10985,11 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                     console.log('Permesso per le notifiche concesso.');
 
                     // Ottieni il token FCM usando la tua VAPID key
+                    // e specificando il percorso corretto del nostro Service Worker
+                    const swRegistration = await navigator.serviceWorker.register('/Con-bridge/sw.js');
                     const fcmToken = await getToken(messaging, {
-                        vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc'
+                        vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc',
+                        serviceWorkerRegistration: swRegistration
                     });
 
                     if (fcmToken) {
