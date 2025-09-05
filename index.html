@@ -1259,6 +1259,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js'; // <-- NUOVA RIGA
 import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js';
 
         const firebaseConfig = {
@@ -1282,6 +1283,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
+        const messaging = getMessaging(app); // <-- NUOVA RIGA
 
         let currentUser = null;
         let userProfile = null;
@@ -10972,6 +10974,54 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
         };
         window.addPropertyRow = addPropertyRow;
 
+        // --- INIZIO BLOCCO NOTIFICHE PUSH ---
+
+        const setupPushNotifications = async () => {
+            if (!currentUser || !userProfile) return;
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Permesso per le notifiche concesso.');
+
+                    // Ottieni il token FCM usando la tua VAPID key
+                    const fcmToken = await getToken(messaging, {
+                        vapidKey: 'BLLDj8MfiNra25iqQmELYgzop33i9qprsSszpv3kO-AzKb67Lq1jwuAckE18H4E78ve9plIK4kGHyT9KVaC4wfc'
+                    });
+
+                    if (fcmToken) {
+                        // Controlla se il token è già salvato per evitare scritture inutili
+                        const userTokens = userProfile.fcmTokens || [];
+                        if (!userTokens.includes(fcmToken)) {
+                            console.log('Nuovo token FCM, lo salvo nel profilo utente:', fcmToken);
+                            // Salva il token nel documento dell'utente usando arrayUnion per non sovrascrivere altri token
+                            await updateDoc(doc(db, "users", currentUser.uid), {
+                                fcmTokens: arrayUnion(fcmToken)
+                            });
+                        } else {
+                            console.log('Token FCM già presente nel profilo utente.');
+                        }
+                    } else {
+                        console.log('Nessun token di registrazione disponibile. Richiedi il permesso per le notifiche.');
+                    }
+                } else {
+                    console.log('Permesso per le notifiche negato.');
+                }
+            } catch (error) {
+                console.error('Errore durante la configurazione delle notifiche push:', error);
+            }
+        };
+
+        // Gestore per i messaggi ricevuti quando l'app è in primo piano (attiva e visibile)
+        onMessage(messaging, (payload) => {
+            console.log('Messaggio ricevuto in primo piano: ', payload);
+            // Mostra un semplice alert o una notifica custom nell'app
+            alert(`Nuova Notifica:\n${payload.notification.title}\n\n${payload.notification.body}`);
+            // Potresti anche implementare una UI più elegante qui
+        });
+
+        // --- FINE BLOCCO NOTIFICHE PUSH ---
+
         // Initialize theme immediately on page load
         initializeTheme();
 
@@ -10983,6 +11033,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com
                 await loadUserProfile(user);
                 await loadServicePermissions();
                 await loadCurrentAdministrativePeriod(); // NUOVO
+                setupPushNotifications(); // <-- NUOVA RIGA: Attiva le notifiche push
 
                 const userType = userProfile?.tipoUtente;
                 let landingPage = 'dashboard';
