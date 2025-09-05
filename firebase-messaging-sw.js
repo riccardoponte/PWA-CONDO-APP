@@ -32,20 +32,61 @@ const messaging = firebase.messaging();
 // Gestione delle notifiche in background
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Ricevuta notifica in background: ', payload);
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/PWA-CONDO-APP/icons/icon-192x192.png',
-    data: { url: payload.fcmOptions.link }
-  };
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  
+  try {
+    const notificationTitle = payload.notification?.title || 'Nuova notifica';
+    const notificationBody = payload.notification?.body || '';
+    const notificationIcon = payload.notification?.icon || '/PWA-CONDO-APP/icons/icon-192x192.png';
+    const notificationUrl = payload.fcmOptions?.link || 'https://riccardoponte.github.io/PWA-CONDO-APP/';
+    
+    const notificationOptions = {
+      body: notificationBody,
+      icon: notificationIcon,
+      badge: '/PWA-CONDO-APP/icons/icon-192x192.png',
+      tag: 'condo-app-notification',
+      requireInteraction: true,
+      data: { 
+        url: notificationUrl,
+        payload: payload
+      }
+    };
+    
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  } catch (error) {
+    console.error('[firebase-messaging-sw.js] Errore nella gestione della notifica:', error);
+  }
 });
 
 // Gestione del click sulla notifica
 self.addEventListener('notificationclick', (event) => {
+    console.log('[firebase-messaging-sw.js] Click sulla notifica:', event);
+    
     event.notification.close();
-    const urlToOpen = event.notification.data.url;
-    event.waitUntil(clients.openWindow(urlToOpen));
+    
+    const urlToOpen = event.notification.data?.url || 'https://riccardoponte.github.io/PWA-CONDO-APP/';
+    
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((clientList) => {
+                // Se c'è già una finestra aperta, portala in primo piano
+                for (const client of clientList) {
+                    if (client.url.includes('PWA-CONDO-APP') && 'focus' in client) {
+                        return client.focus().then(() => {
+                            if (urlToOpen !== client.url) {
+                                return client.navigate(urlToOpen);
+                            }
+                        });
+                    }
+                }
+                // Altrimenti apri una nuova finestra
+                if (clients.openWindow) {
+                    return clients.openWindow(urlToOpen);
+                }
+            })
+            .catch((error) => {
+                console.error('[firebase-messaging-sw.js] Errore nel gestire il click sulla notifica:', error);
+            })
+    );
 });
 
 // Installazione del Service Worker e caching dei file

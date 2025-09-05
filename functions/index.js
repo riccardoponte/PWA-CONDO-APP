@@ -39,7 +39,24 @@ exports.sendNewPollNotification = onDocumentCreated("polls/{pollId}", async (eve
 
   const tokens = tokensSnapshot.docs.map((doc) => doc.data().token);
   console.log(`Invio notifica a ${tokens.length} dispositivi.`);
-  return messaging.sendToDevice(tokens, payload);
+  
+  if (tokens.length === 0) {
+    console.log("Nessun token disponibile per l'invio");
+    return null;
+  }
+
+  try {
+    const response = await messaging.sendMulticast({
+      tokens: tokens,
+      notification: payload.notification,
+      webpush: payload.webpush
+    });
+    console.log(`Notifiche inviate con successo: ${response.successCount}/${tokens.length}`);
+    return response;
+  } catch (error) {
+    console.error("Errore nell'invio delle notifiche:", error);
+    throw error;
+  }
 });
 
 /**
@@ -81,7 +98,24 @@ exports.sendNewReportNotification = onDocumentCreated("reports/{reportId}", asyn
   };
 
   console.log(`Invio notifica a ${tokens.length} dispositivi per il ruolo ${recipientRole}.`);
-  return messaging.sendToDevice(tokens, payload);
+  
+  if (tokens.length === 0) {
+    console.log("Nessun token disponibile per l'invio");
+    return null;
+  }
+
+  try {
+    const response = await messaging.sendMulticast({
+      tokens: tokens,
+      notification: payload.notification,
+      webpush: payload.webpush
+    });
+    console.log(`Notifiche inviate con successo: ${response.successCount}/${tokens.length}`);
+    return response;
+  } catch (error) {
+    console.error("Errore nell'invio delle notifiche:", error);
+    throw error;
+  }
 });
 
 /**
@@ -120,7 +154,76 @@ exports.sendReminderNotification = onDocumentUpdated("reports/{reportId}", async
     };
 
     console.log(`Invio sollecito a ${tokens.length} dispositivi per il ruolo ${recipientRole}.`);
-    return messaging.sendToDevice(tokens, payload);
+    
+    if (tokens.length === 0) {
+      console.log("Nessun token disponibile per l'invio");
+      return null;
+    }
+
+    try {
+      const response = await messaging.sendMulticast({
+        tokens: tokens,
+        notification: payload.notification,
+        webpush: payload.webpush
+      });
+      console.log(`Notifiche inviate con successo: ${response.successCount}/${tokens.length}`);
+      return response;
+    } catch (error) {
+      console.error("Errore nell'invio delle notifiche:", error);
+      throw error;
+    }
   }
   return null;
+});
+
+/**
+ * Funzione per pulire i token FCM invalidi
+ * Questa funzione può essere chiamata periodicamente per rimuovere token scaduti
+ */
+exports.cleanupInvalidTokens = onDocumentCreated("cleanup/{cleanupId}", async (event) => {
+  console.log("Avvio pulizia token FCM invalidi");
+  
+  try {
+    const tokensSnapshot = await db.collection("fcmTokens").get();
+    const invalidTokens = [];
+    
+    for (const tokenDoc of tokensSnapshot.docs) {
+      const tokenData = tokenDoc.data();
+      const token = tokenData.token;
+      
+      try {
+        // Prova a inviare un messaggio di test per verificare se il token è valido
+        await messaging.send({
+          token: token,
+          notification: {
+            title: "Test",
+            body: "Test di validità token"
+          }
+        }, true); // dry run
+      } catch (error) {
+        if (error.code === 'messaging/invalid-registration-token' || 
+            error.code === 'messaging/registration-token-not-registered') {
+          invalidTokens.push(tokenDoc.id);
+          console.log(`Token invalido trovato: ${tokenDoc.id}`);
+        }
+      }
+    }
+    
+    // Rimuovi i token invalidi
+    if (invalidTokens.length > 0) {
+      const batch = db.batch();
+      invalidTokens.forEach(tokenId => {
+        batch.delete(db.collection("fcmTokens").doc(tokenId));
+      });
+      await batch.commit();
+      console.log(`Rimossi ${invalidTokens.length} token invalidi`);
+    } else {
+      console.log("Nessun token invalido trovato");
+    }
+    
+    return { cleanedTokens: invalidTokens.length };
+  } catch (error) {
+    console.error("Errore durante la pulizia dei token:", error);
+    throw error;
+  }
 });
