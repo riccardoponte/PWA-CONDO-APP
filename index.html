@@ -1259,6 +1259,7 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
@@ -1274,6 +1275,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
+        const messaging = getMessaging(app);
 
         let currentUser = null;
         let userProfile = null;
@@ -10921,6 +10923,50 @@
         window.handleBulkDelete = handleBulkDelete;
         window.clearActivityHistory = clearActivityHistory;
         window.deleteAdministrativePeriod = deleteAdministrativePeriod; // NUOVO
+                // --- FUNZIONI PER NOTIFICHE PUSH ---
+
+        const saveFCMToken = async (token) => {
+            if (!currentUser) return;
+            try {
+                const tokenRef = doc(db, "fcmTokens", currentUser.uid);
+                await setDoc(tokenRef, { token: token, uid: currentUser.uid, updatedAt: serverTimestamp() });
+                console.log("Token FCM salvato con successo per l'utente:", currentUser.uid);
+            } catch (error) {
+                console.error("Errore nel salvataggio del token FCM:", error);
+            }
+        };
+
+        const setupPushNotifications = async () => {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Permesso per le notifiche accordato.');
+                    
+                    // Ottieni il token. Assicurati che il tuo VAPID key sia configurato nel progetto Firebase.
+                    // La VAPID key si genera automaticamente quando abiliti l'API di FCM.
+                    const currentToken = await getToken(messaging, { 
+                        vapidKey: 'BFP9u4U3y69M7tP5-0v4v8_b7U8Xq4D1fH3A0dE2iR6gY1hJ5nO9oP7sC6zT5rL4kXw9mZ3vC1gY2I' // <--- INSERISCI QUI LA TUA VAPID KEY
+                    });
+
+                    if (currentToken) {
+                        await saveFCMToken(currentToken);
+                    } else {
+                        console.log('Nessun token di registrazione disponibile. Richiedi il permesso per generarlo.');
+                    }
+                } else {
+                    console.log('Permesso per le notifiche negato.');
+                }
+            } catch (error) {
+                console.error('Si è verificato un errore durante la configurazione delle notifiche push.', error);
+            }
+
+            // Gestisce le notifiche quando l'app è in primo piano
+            onMessage(messaging, (payload) => {
+                console.log('Messaggio ricevuto in primo piano: ', payload);
+                // Puoi mostrare una notifica personalizzata qui se vuoi
+                alert(`Nuova notifica: ${payload.notification.title}`);
+            });
+        };
 
         const deletePoll = async (pollId) => {
             if (!confirm('Sei sicuro di voler eliminare questo sondaggio? L\'azione è irreversibile.')) {
@@ -10975,6 +11021,7 @@
                 await loadUserProfile(user);
                 await loadServicePermissions();
                 await loadCurrentAdministrativePeriod(); // NUOVO
+                await setupPushNotifications();
 
                 const userType = userProfile?.tipoUtente;
                 let landingPage = 'dashboard';
