@@ -4,8 +4,8 @@ const CACHE_NAME = 'condo-app-pwa-cache-v1';
 // Elenco dei file fondamentali da salvare per il funzionamento offline
 // IMPORTANTE: Percorso aggiornato con il nome della tua nuova repo.
 const URLS_TO_CACHE = [
-  '/Con-bridge/',
-  '/Con-bridge/index.html',
+  '/PWA-CONDO-APP/',
+  '/PWA-CONDO-APP/index.html',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
