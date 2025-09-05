@@ -1272,13 +1272,6 @@
         };
         const app = initializeApp(firebaseConfig);
 
-        // --- INIZIO BLOCCO AGGIUNTO ---
-        const appCheck = initializeAppCheck(app, {
-            provider: new ReCaptchaV3Provider('6Lcj77UrAAAAAI6t5HOCyQC81U_tcKJzQ39SBlvN'),
-            isTokenAutoRefreshEnabled: true
-        });
-        // --- FINE BLOCCO AGGIUNTO ---
-
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app, "gs://condo-app-49255.firebasestorage.app");
