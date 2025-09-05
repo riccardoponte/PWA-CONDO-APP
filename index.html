@@ -1260,6 +1260,10 @@
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
     
+        // --- MODIFICA PUSH: INSERISCI QUI I TUOI DATI ---
+        const VAPID_PUBLIC_KEY = "BEmFFn0kcrdOYr2UebRcSwqpTmkI9KjUrzFn2Anjm7FroFDq0giDHIZjJZn9FFzKsvGiCeYC4oRrxIx-ToiW5RI"; // <-- SOSTITUISCI CON LA TUA CHIAVE PUBBLICA VAPID
+        const VERCEL_BACKEND_URL = "https://pwa-push-backend.vercel.app/"; // <-- SOSTITUISCI CON L'URL DEL TUO BACKEND VERCEL
+    
         const firebaseConfig = {
             apiKey: "AIzaSyCrLAomryfk-0s5Inm2XOsBrJusgmMI87E",
             authDomain: "condo-app-49255.firebaseapp.com",
@@ -1269,6 +1273,80 @@
             appId: "1:485319278595:web:2997689b234fbba4dece36",
             measurementId: "G-2SM3DH41EZ"
         };
+
+        // --- MODIFICA PUSH: Funzione per convertire la chiave VAPID ---
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // --- MODIFICA PUSH: Funzione per inizializzare le notifiche ---
+        async function initializePushNotifications() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                console.warn('Push messaging is not supported');
+                return;
+            }
+
+            try {
+                const swRegistration = await navigator.serviceWorker.ready;
+                let subscription = await swRegistration.pushManager.getSubscription();
+
+                if (subscription === null) {
+                    console.log('Not subscribed to push service!');
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        console.log('Permission for notifications was denied');
+                        return;
+                    }
+
+                    console.log('Subscribing to push service...');
+                    subscription = await swRegistration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    });
+
+                    console.log('New subscription:', subscription);
+                    // Invia la nuova sottoscrizione al nostro backend Vercel
+                    await fetch(`${VERCEL_BACKEND_URL}/api/save-subscription`, {
+                        method: 'POST',
+                        body: JSON.stringify(subscription),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                } else {
+                    console.log('User is already subscribed.');
+                }
+            } catch (error) {
+                console.error('Failed to subscribe the user: ', error);
+            }
+        }
+        
+        // --- MODIFICA PUSH: Funzione per inviare una notifica tramite il backend ---
+        async function sendNotification(title, body) {
+            try {
+                await fetch(`${VERCEL_BACKEND_URL}/api/send-notification`, {
+                    method: 'POST',
+                    body: JSON.stringify({ title, body }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                console.log('Notification request sent to backend.');
+            } catch (error) {
+                console.error('Error sending notification request:', error);
+            }
+        }
         const app = initializeApp(firebaseConfig);
 
         const auth = getAuth(app);
@@ -5172,11 +5250,9 @@
                     const querySnapshot = await getDocs(q);
                     querySnapshot.forEach(doc => {
                         const group = doc.data();
-                        // --- MODIFICA INIZIO: Nasconde l'opzione "Portineria" ---
                         if (group.name.toLowerCase() === 'portineria') {
-                            return; // Salta l'aggiunta di questa opzione
+                            return; 
                         }
-                        // --- MODIFICA FINE ---
                         const option = document.createElement('option');
                         option.value = group.name;
                         option.textContent = group.name;
@@ -5207,14 +5283,12 @@
                     publishBtn.textContent = "Pubblicazione...";
 
                     try {
-                        // 1. Create communication document reference to get ID first
                         const newCommRef = doc(collection(db, "communications"));
                         const commId = newCommRef.id;
                         const counterRef = doc(db, "counters", "communicationsCounter");
                         let finalCommNumber;
                         let fileUrls = [];
 
-                        // 2. Upload files if they exist
                         if (selectedCommunicationFiles.length > 0) {
                             publishBtn.textContent = 'Caricamento allegati...';
                             const uploadPromises = selectedCommunicationFiles.map(file => {
@@ -5225,35 +5299,31 @@
                             fileUrls = await Promise.all(uploadPromises);
                         }
 
-                        // 3. Use transaction to get communication number and set document data
                         await runTransaction(db, async (transaction) => {
                             const counterDoc = await transaction.get(counterRef);
                             const newCommNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
                             finalCommNumber = newCommNumber;
-
-                            // --- MODIFICATION START ---
-                            // Get the state of the new checkbox. It defaults to false if not present.
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
-
                             const commData = {
                                 communicationNumber: newCommNumber,
                                 title: title,
                                 content: content,
                                 targetGroup: targetGroup,
-                                forwardToCustode: forwardToCustode, // Save the checkbox state
+                                forwardToCustode: forwardToCustode,
                                 fileUrls: fileUrls,
                                 createdBy: `${userProfile.nome} ${userProfile.cognome}`,
                                 createdById: currentUser.uid,
                                 createdAt: serverTimestamp()
                             };
-                            // --- MODIFICATION END ---
-
                             transaction.set(counterRef, { lastNumber: newCommNumber });
                             transaction.set(newCommRef, commData);
                         });
 
+                        // --- MODIFICA PUSH: INVIA NOTIFICA DOPO AVER CREATO LA COMUNICAZIONE ---
+                        await sendNotification('Nuova Comunicazione in Bacheca', title);
+                        
                         await logActivity("communication_posted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { title: title, targetGroup: targetGroup, attachments: fileUrls.length });
-
+                        
                         const messageBox = document.getElementById('comm-creation-message');
                         if (messageBox) {
                             messageBox.className = 'message-box success';
@@ -5261,62 +5331,10 @@
                             messageBox.style.display = 'block';
                             setTimeout(() => { messageBox.style.display = 'none'; }, 4000);
                         }
-
-                        // Reset form and file state
+                        
                         form.reset();
                         selectedCommunicationFiles = [];
                         renderCommunicationFilePreviews();
-
-                        // --- WEBHOOK TRIGGER: Call webhook after comunicazione creation ---
-                        (async () => {
-                            try {
-                                const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/e487fd84-2324-4508-9bff-769cce2e7c27";
-                                // Extract destinatari emails based on UI and rule classification
-                                let destinatariEmails = [];
-                                if (targetGroup && targetGroup !== 'Tutti') {
-                                    // Find users whose UI (proprieta.gruppo) matches the selected group
-                                    const usersQuery = query(collection(db, "users"), where("proprieta", ">", []));
-                                    const usersSnapshot = await getDocs(usersQuery);
-                                    usersSnapshot.forEach(docSnap => {
-                                        const user = docSnap.data();
-                                        if (Array.isArray(user.proprieta)) {
-                                            for (const prop of user.proprieta) {
-                                                if (prop.gruppo === targetGroup) {
-                                                    destinatariEmails.push(user.email);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    });
-                                } else if (targetGroup === 'Tutti') {
-                                    // All users with an email
-                                    const usersSnapshot = await getDocs(collection(db, "users"));
-                                    usersSnapshot.forEach(docSnap => {
-                                        const user = docSnap.data();
-                                        if (user.email) destinatariEmails.push(user.email);
-                                    });
-                                }
-
-                                const payload = {
-                                    event: "comunicazione.create",
-                                    communication: {
-                                        title,
-                                        content,
-                                        targetGroup,
-                                        createdBy: `${userProfile.nome} ${userProfile.cognome}`,
-                                        createdById: currentUser.uid
-                                    },
-                                    destinatariEmails
-                                };
-                                await fetch(WEBHOOK_URL, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(payload)
-                                });
-                            } catch (err) {
-                                console.error("Errore invio webhook comunicazione:", err);
-                            }
-                        })();
 
                     } catch (error) {
                         console.error("Errore:", error);
@@ -5333,8 +5351,6 @@
             if (!form) return;
             const optionsList = document.getElementById("poll-options-list");
             const addOptionBtn = document.getElementById("add-poll-option");
-
-            // I gestori per la ricerca e il filtro dei sondaggi sono stati spostati nella logica della pagina 'sondaggi_elenco'.
 
             function addOptionInput(value = "") {
                 const div = document.createElement("div");
@@ -5355,50 +5371,6 @@
             addOptionBtn.onclick = e => {
                 e.preventDefault();
                 addOptionInput();
-            };
-
-            const triggerMakeWebhookForNewPoll = async (pollData) => {
-                // --- SECURITY BEST PRACTICE ---
-                // This URL should be stored in a secure backend or environment variable,
-                // not exposed in client-side code.
-                const MAKE_WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/daf02a0d-306e-49c6-9f79-210a88f81de0";
-
-                try {
-                    // 1. Fetch all registered user emails from Firestore.
-                    const usersSnapshot = await getDocs(collection(db, "users"));
-                    const recipientEmails = usersSnapshot.docs
-                        .map(doc => doc.data().email)
-                        .filter(Boolean); // Filter out any null/undefined emails
-
-                    // 2. Prepare the payload for Make.com.
-                    //    The recipientEmails are formatted as a proper JSON array.
-                    //    Date objects are automatically converted to ISO strings by JSON.stringify.
-                    const payload = {
-                        surveyDetails: pollData,
-                        recipientEmails: recipientEmails
-                    };
-
-                    // 3. Send the data to the Make.com webhook endpoint.
-                    const response = await fetch(MAKE_WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Webhook request failed with status: ${response.status}`);
-                    }
-
-                    console.log("Make.com webhook for new survey triggered successfully.");
-                    await logActivity("webhook_sent_poll", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { pollTitle: pollData.title, status: 'success' });
-
-                } catch (error) {
-                    console.error("Error triggering Make.com webhook:", error);
-                    // Log the failure but do not block the user interface.
-                    await logActivity("webhook_sent_poll_failed", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { pollTitle: pollData.title, error: error.message });
-                }
             };
 
             form.addEventListener("submit", async (event) => {
@@ -5444,9 +5416,8 @@
 
                     await addDoc(collection(db, "polls"), pollData);
 
-                    // WEBHOOK TRIGGER: Call the new function after successfully creating the poll.
-                    // This is a non-blocking "fire-and-forget" call to avoid delaying the UI.
-                    triggerMakeWebhookForNewPoll(pollData);
+                    // --- MODIFICA PUSH: INVIA NOTIFICA DOPO AVER CREATO IL SONDAGGIO ---
+                    await sendNotification('Nuovo Sondaggio Disponibile', title);
 
                     await logActivity("poll_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { title: title });
 
@@ -10120,66 +10091,23 @@
                 await runTransaction(db, async (transaction) => {
                     reportDocSnap = await transaction.get(reportRef);
                     if (!reportDocSnap.exists()) throw "Segnalazione non trovata.";
-
                     const currentReminderCount = reportDocSnap.data().reminderCount || 0;
                     const newUpdate = {
                         text: "L'utente ha inviato un sollecito.",
                         by: "Sistema",
                         at: new Date()
                     };
-
                     transaction.update(reportRef, {
                         lastReminderAt: serverTimestamp(),
                         reminderCount: currentReminderCount + 1,
                         updates: arrayUnion(newUpdate),
-                        isUrgent: true // NUOVO: Marca il ticket come urgente
+                        isUrgent: true
                     });
                 });
 
-                // --- WEBHOOK TRIGGER: Call webhook after sollecito creation ---
-                (async () => {
-                    try {
-                        const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/98dd3855-bcf5-4ef3-867b-2888ef3f801c";
-                        // Extract receiver email from Firestore based on report recipientType
-                        let receiverEmail = null;
-                        let recipientType = reportDocSnap.data().recipientType;
-                        let recipientQuery = null;
-                        if (recipientType === "amministratore") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "amministratore"));
-                        } else if (recipientType === "custode") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "custode"));
-                        } else if (recipientType === "consigliere") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "consigliere"));
-                        } else if (recipientType === "adm") {
-                            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", "adm"));
-                        }
-                        if (recipientQuery) {
-                            const snapshot = await getDocs(recipientQuery);
-                            if (!snapshot.empty) {
-                                receiverEmail = snapshot.docs[0].data().email;
-                            }
-                        }
-
-                        const payload = {
-                            event: "solleciti.create",
-                            reportId: reportId,
-                            report: reportDocSnap.data(),
-                            user: {
-                                id: currentUser.uid,
-                                name: `${userProfile.nome} ${userProfile.cognome}`,
-                                email: currentUser.email
-                            },
-                            receiverEmail: receiverEmail
-                        };
-                        await fetch(WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                    } catch (err) {
-                        console.error("Errore invio webhook sollecito:", err);
-                    }
-                })();
+                // --- MODIFICA PUSH: INVIA NOTIFICA DOPO AVER INVIATO IL SOLLECITO ---
+                const reportData = reportDocSnap.data();
+                await sendNotification('Nuovo Sollecito Ricevuto', `Un sollecito è stato inviato per: "${reportData.title}"`);
 
                 await logActivity("report_reminder_sent", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId: reportId });
                 alert("Sollecito inviato.");
@@ -10970,17 +10898,17 @@
         // --- FUNZIONE onAuthStateChanged CORRETTA E ROBUSTA ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // L'utente è loggato o si è appena loggato
                 currentUser = user;
                 await loadUserProfile(user);
                 await loadServicePermissions();
-                await loadCurrentAdministrativePeriod(); // NUOVO
+                await loadCurrentAdministrativePeriod();
+
+                // --- MODIFICA PUSH: CHIEDI IL PERMESSO PER LE NOTIFICHE DOPO IL LOGIN ---
+                initializePushNotifications();
 
                 const userType = userProfile?.tipoUtente;
                 let landingPage = 'dashboard';
 
-                // Se l'utente si trova sulla pagina di login, lo reindirizziamo alla sua home.
-                // Altrimenti (se ha ricaricato la pagina), gli mostriamo la pagina su cui si trovava.
                 if (currentPage === 'login' || !currentPage) {
                     navigateTo(landingPage);
                 } else {
@@ -10988,27 +10916,24 @@
                 }
 
             } else {
-                // L'utente non è loggato o ha appena fatto logout
                 if (communicationsListener) {
                     communicationsListener();
                     communicationsListener = null;
                 }
-                if (pollsListener) { // NUOVO BLOCCO
+                if (pollsListener) {
                     pollsListener();
                     pollsListener = null;
                 }
-                if (reportsListener) { // NUOVO BLOCCO
+                if (reportsListener) {
                     reportsListener();
                     reportsListener = null;
                 }
                 currentUser = null;
                 userProfile = null;
-                navigationHistory = []; // Resetta la cronologia al logout
-                // Resetta lo stato specifico della registrazione per evitare dati "sporchi"
+                navigationHistory = [];
                 groupedProperties = {};
                 partialCondosList = [];
 
-                // Naviga alla pagina di login in modo pulito
                 navigateTo('login');
             }
         });
