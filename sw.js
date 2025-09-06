@@ -1,4 +1,4 @@
-// Definiamo un nome per la cache
+// Definiamo un nome per la nostra cache
 const CACHE_NAME = 'condo-app-pwa-cache-v1';
 
 // Elenco dei file fondamentali da salvare per il funzionamento offline
@@ -34,3 +34,4 @@ self.addEventListener('fetch', event => {
   );
 
 });
+
