@@ -1282,7 +1282,7 @@
         let pollsListener = null; // NUOVA RIGA
         let reportsListener = null; // NUOVA RIGA
         let sollecitisListener = null; // NUOVA RIGA
-        // let navigationHistory = []; // Rimosso per la navigazione basata su URL
+        let navigationHistory = [];
         let servicePermissions = null;
         let currentStoragePath = '';
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
@@ -1709,77 +1709,63 @@
             }
         };
 
-        const navigateTo = (page) => {
-            window.location.hash = page;
-        };
-
-        const navigateBack = () => {
-            window.history.back();
-        };
-
-                const handleRouting = () => {
-            // Ottiene il nome della pagina dall'hash, con 'login' come default
-            const pageName = window.location.hash.substring(1) || 'login';
-
-            // Se l'utente non è loggato e non è sulla pagina di login, lo forza al login
-            if (!currentUser && pageName !== 'login') {
-                window.location.hash = 'login';
-                return; // L'evento hashchange si attiverà di nuovo, gestendo il rendering
-            }
-
-            // Se l'utente è loggato ma si trova sulla pagina di login, lo reindirizza alla dashboard
-            if (currentUser && pageName === 'login') {
-                window.location.hash = 'dashboard';
-                return; // L'evento hashchange si attiverà di nuovo
-            }
-
-            // Centralizzazione della logica di controllo permessi (precedentemente in navigateTo)
+        const navigateTo = (e) => {
             const userType = userProfile?.tipoUtente;
 
-            // Controllo permessi basato sui servizi
+            // Service permission check
             const serviceMap = {
-                'bacheca': 'bacheca', 'bacheca_tutte': 'bacheca', 'bacheca_crea': 'bacheca',
-                'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni', 'segnalazioni_urgenti': 'segnalazioni',
+                'bacheca': 'bacheca',
+                'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni',
                 'sondaggi': 'sondaggi', 'sondaggi_crea': 'sondaggi', 'sondaggi_elenco': 'sondaggi', 'sondaggi_attivi': 'sondaggi', 'sondaggi_conclusi': 'sondaggi',
                 'infoUtili': 'numeri_utili', 'numeriUtiliImportati': 'numeri_utili', 'numeriUtiliManuali': 'numeri_utili', 'numeriUtiliRubrica': 'numeri_utili', 'numeriUtiliCustode': 'numeri_utili', 'infoUtili_amministratore': 'numeri_utili',
                 'reportPage': 'report', 'elencoCondomini': 'report'
             };
-            const requiredService = serviceMap[pageName];
+            const requiredService = serviceMap[e];
             if (requiredService && !isServiceEnabledForCurrentUser(requiredService)) {
-                console.log(`Accesso alla pagina '${pageName}' negato dai permessi di servizio.`);
-                window.location.hash = 'dashboard'; // Reindirizza a una pagina sicura
+                console.log(`Access to page '${e}' denied by service permissions.`);
+                navigateTo('dashboard'); // Redirect to a safe page
                 return;
             }
 
-            // Controllo permessi basato sui ruoli
+            // --- NUOVA LOGICA DI AUTORIZZAZIONE ROBUSTA ---
             const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'orariCustode'];
             const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita'];
 
-            if (admOnlyPages.includes(pageName) && userType !== 'adm') {
-                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${pageName}'. Reindirizzamento.`);
-                window.location.hash = 'dashboard';
+            // Se la pagina è riservata solo all'ADM, ma l'utente non è ADM, blocca e reindirizza.
+            if (admOnlyPages.includes(e) && userType !== 'adm') {
+                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
+                navigateTo('dashboard'); // Reindirizza a una pagina sicura
                 return;
             }
 
-            if (supervisorePages.includes(pageName) && !['supervisore', 'adm'].includes(userType)) {
-                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${pageName}'. Reindirizzamento.`);
-                window.location.hash = 'dashboard';
+            // Se la pagina è per Supervisore/ADM, ma l'utente non ha nessuno dei due ruoli, blocca e reindirizza.
+            if (supervisorePages.includes(e) && !['supervisore', 'adm'].includes(userType)) {
+                console.warn(`Accesso negato per il ruolo '${userType}' alla pagina '${e}'. Reindirizzamento.`);
+                navigateTo('dashboard'); // Reindirizza a una pagina sicura
                 return;
             }
-            
-            // Regola specifica per il custode
-            if (userType === "custode" && ["sondaggi", "sondaggi_crea", "sondaggi_elenco", "sondaggi_attivi", "sondaggi_conclusi"].includes(pageName)) {
-                 window.location.hash = 'segnalazioni';
-                 return;
+            // --- FINE NUOVA LOGICA ---
+
+            if (navigationHistory[navigationHistory.length - 1] !== e) {
+                navigationHistory.push(e);
             }
 
-            // Se tutti i controlli passano, aggiorna la pagina corrente e renderizza
-            currentPage = pageName;
-            renderCurrentPage();
+            if (userType === "custode" && ["sondaggi", "sondaggi_crea", "sondaggi_elenco", "sondaggi_attivi", "sondaggi_conclusi"].includes(e)) {
+                navigateTo("segnalazioni");
+            } else {
+                currentPage = e, renderCurrentPage();
+            }
         };
 
-        // Aggiunge l'ascoltatore per i cambiamenti dell'hash
-        window.addEventListener('hashchange', handleRouting);
+        const navigateBack = () => {
+            if (navigationHistory.length > 1) {
+                navigationHistory.pop(); // Rimuove la pagina corrente dalla cronologia
+                currentPage = navigationHistory[navigationHistory.length - 1]; // La pagina precedente diventa quella corrente
+                renderCurrentPage();
+            }
+            // Non fa nulla se non c'è una pagina precedente
+        };
+
         const refreshApplication = async () => {
             const refreshBtn = document.querySelector('button[onclick="refreshApplication()"]');
             if (refreshBtn) {
@@ -1905,8 +1891,8 @@
             const userInitial = userProfile?.nome ? userProfile.nome.charAt(0).toUpperCase() : 'U';
             const userType = userProfile?.tipoUtente || '';
 
-            const backButtonHtml = !['login', 'dashboard'].includes(currentPage) ? `
-                <button onclick="window.history.back()" style="background:none; border:none; color:var(--primary-text); cursor:pointer; padding:0;">
+            const backButtonHtml = navigationHistory.length > 1 ? `
+                <button onclick="navigateBack()" style="background:none; border:none; color:var(--primary-text); cursor:pointer; padding:0;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                 </button>
             ` : '';
@@ -10984,30 +10970,46 @@
         // --- FUNZIONE onAuthStateChanged CORRETTA E ROBUSTA ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // L'utente è autenticato
+                // L'utente è loggato o si è appena loggato
                 currentUser = user;
                 await loadUserProfile(user);
                 await loadServicePermissions();
-                await loadCurrentAdministrativePeriod();
-                
-                // Il routing handler gestisce la pagina iniziale e i reindirizzamenti
-                handleRouting();
+                await loadCurrentAdministrativePeriod(); // NUOVO
+
+                const userType = userProfile?.tipoUtente;
+                let landingPage = 'dashboard';
+
+                // Se l'utente si trova sulla pagina di login, lo reindirizziamo alla sua home.
+                // Altrimenti (se ha ricaricato la pagina), gli mostriamo la pagina su cui si trovava.
+                if (currentPage === 'login' || !currentPage) {
+                    navigateTo(landingPage);
+                } else {
+                    await renderCurrentPage();
+                }
+
             } else {
-                // L'utente non è autenticato
-                if (communicationsListener) { communicationsListener(); communicationsListener = null; }
-                if (pollsListener) { pollsListener(); pollsListener = null; }
-                if (reportsListener) { reportsListener(); reportsListener = null; }
-                if (sollecitisListener) { sollecitisListener(); sollecitisListener = null; }
-                
+                // L'utente non è loggato o ha appena fatto logout
+                if (communicationsListener) {
+                    communicationsListener();
+                    communicationsListener = null;
+                }
+                if (pollsListener) { // NUOVO BLOCCO
+                    pollsListener();
+                    pollsListener = null;
+                }
+                if (reportsListener) { // NUOVO BLOCCO
+                    reportsListener();
+                    reportsListener = null;
+                }
                 currentUser = null;
                 userProfile = null;
-                // Resetta lo stato specifico della registrazione
+                navigationHistory = []; // Resetta la cronologia al logout
+                // Resetta lo stato specifico della registrazione per evitare dati "sporchi"
                 groupedProperties = {};
                 partialCondosList = [];
 
-                // Forziamo il ritorno alla pagina di login tramite hash
-                window.location.hash = 'login';
-                handleRouting(); // Renderizza la pagina di login
+                // Naviga alla pagina di login in modo pulito
+                navigateTo('login');
             }
         });
 
