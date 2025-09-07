@@ -1282,7 +1282,6 @@
         let pollsListener = null; // NUOVA RIGA
         let reportsListener = null; // NUOVA RIGA
         let sollecitisListener = null; // NUOVA RIGA
-        let navigationHistory = [];
         let servicePermissions = null;
         let currentStoragePath = '';
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
@@ -1709,7 +1708,10 @@
             }
         };
 
-        const navigateTo = (e) => {
+        const navigateTo = (e, event) => {
+            if (event) {
+                event.preventDefault();
+            }
             const userType = userProfile?.tipoUtente;
 
             // Service permission check
@@ -1746,24 +1748,13 @@
             }
             // --- FINE NUOVA LOGICA ---
 
-            if (navigationHistory[navigationHistory.length - 1] !== e) {
-                navigationHistory.push(e);
-            }
+            history.pushState({ page: e }, '', `#${e}`);
 
             if (userType === "custode" && ["sondaggi", "sondaggi_crea", "sondaggi_elenco", "sondaggi_attivi", "sondaggi_conclusi"].includes(e)) {
                 navigateTo("segnalazioni");
             } else {
                 currentPage = e, renderCurrentPage();
             }
-        };
-
-        const navigateBack = () => {
-            if (navigationHistory.length > 1) {
-                navigationHistory.pop(); // Rimuove la pagina corrente dalla cronologia
-                currentPage = navigationHistory[navigationHistory.length - 1]; // La pagina precedente diventa quella corrente
-                renderCurrentPage();
-            }
-            // Non fa nulla se non c'è una pagina precedente
         };
 
         const refreshApplication = async () => {
@@ -1891,8 +1882,8 @@
             const userInitial = userProfile?.nome ? userProfile.nome.charAt(0).toUpperCase() : 'U';
             const userType = userProfile?.tipoUtente || '';
 
-            const backButtonHtml = navigationHistory.length > 1 ? `
-                <button onclick="navigateBack()" style="background:none; border:none; color:var(--primary-text); cursor:pointer; padding:0;">
+            const backButtonHtml = title !== 'Home' ? `
+                <button onclick="history.back()" style="background:none; border:none; color:var(--primary-text); cursor:pointer; padding:0;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
                 </button>
             ` : '';
@@ -2013,49 +2004,49 @@
 
             const navItems = isCustodian
                 ? `
-        <a href="#" onclick="navigateTo('dashboard')" class="nav-item ${currentPage === 'dashboard' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></a>
-        <a href="#" onclick="navigateTo('segnalazioni')" class="nav-item ${currentPage === 'segnalazioni' ? 'active' : ''}">
+        <a href="#" onclick="navigateTo('dashboard', event)" class="nav-item ${currentPage === 'dashboard' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></a>
+        <a href="#" onclick="navigateTo('segnalazioni', event)" class="nav-item ${currentPage === 'segnalazioni' ? 'active' : ''}">
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
             <span>Segnala</span>
         </a>
-        <a href="#" onclick="navigateTo('bacheca')" id="nav-item-bacheca" class="nav-item ${currentPage === 'bacheca' ? 'active' : ''}">
+        <a href="#" onclick="navigateTo('bacheca', event)" id="nav-item-bacheca" class="nav-item ${currentPage === 'bacheca' ? 'active' : ''}">
             <span id="bacheca-notification-badge" class="notification-badge hidden"></span>
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
             <span>Bacheca</span>
         </a>
-        <a href="#" onclick="navigateTo('infoUtili')" class="nav-item ${currentPage === 'infoUtili' ? 'active' : ''}">
+        <a href="#" onclick="navigateTo('infoUtili', event)" class="nav-item ${currentPage === 'infoUtili' ? 'active' : ''}">
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z" /></svg>
             <span>Orari</span>
         </a>
-        <a href="#" onclick="navigateTo('profilo')" class="nav-item ${currentPage === 'profilo' ? 'active' : ''}">
+        <a href="#" onclick="navigateTo('profilo', event)" class="nav-item ${currentPage === 'profilo' ? 'active' : ''}">
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
             <span>Profilo</span>
         </a>
     `
                 // --- SOSTITUISCI CON QUESTO BLOCCO ---
                 : `
-    <a href="#" onclick="navigateTo('dashboard')" class="nav-item ${currentPage === 'dashboard' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></a>
-    ${isServiceEnabledForCurrentUser('bacheca') ? `<a href="#" onclick="navigateTo('bacheca')" id="nav-item-bacheca" class="nav-item ${currentPage === 'bacheca' ? 'active' : ''}">
+    <a href="#" onclick="navigateTo('dashboard', event)" class="nav-item ${currentPage === 'dashboard' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></a>
+    ${isServiceEnabledForCurrentUser('bacheca') ? `<a href="#" onclick="navigateTo('bacheca', event)" id="nav-item-bacheca" class="nav-item ${currentPage === 'bacheca' ? 'active' : ''}">
         <span id="bacheca-notification-badge" class="notification-badge hidden"></span>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
         <span>Bacheca</span>
     </a>` : ''}
-    ${isServiceEnabledForCurrentUser('segnalazioni') ? `<a href="#" onclick="navigateTo('segnalazioni')" class="nav-item ${['segnalazioni', 'segnalazioni_crea', 'segnalazioni_ricevute', 'segnalazioni_utente'].includes(currentPage) ? 'active' : ''}">
+    ${isServiceEnabledForCurrentUser('segnalazioni') ? `<a href="#" onclick="navigateTo('segnalazioni', event)" class="nav-item ${['segnalazioni', 'segnalazioni_crea', 'segnalazioni_ricevute', 'segnalazioni_utente'].includes(currentPage) ? 'active' : ''}">
     <span id="segnalazioni-notification-badge" class="notification-badge hidden"></span>
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
     <span>Segnala</span>
 </a>` : ''}
-    ${['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('segnalazioni_urgenti')" class="nav-item ${currentPage === 'segnalazioni_urgenti' ? 'active' : ''}">
+    ${['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('segnalazioni_urgenti', event)" class="nav-item ${currentPage === 'segnalazioni_urgenti' ? 'active' : ''}">
     <span id="solleciti-notification-badge" class="notification-badge hidden"></span>
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
     <span>Solleciti</span>
 </a>` : ''}
-    ${isServiceEnabledForCurrentUser('sondaggi') ? `<a href="#" onclick="navigateTo('sondaggi')" class="nav-item ${['sondaggi', 'sondaggi_crea', 'sondaggi_elenco', 'sondaggi_attivi', 'sondaggi_conclusi'].includes(currentPage) ? 'active' : ''}">
+    ${isServiceEnabledForCurrentUser('sondaggi') ? `<a href="#" onclick="navigateTo('sondaggi', event)" class="nav-item ${['sondaggi', 'sondaggi_crea', 'sondaggi_elenco', 'sondaggi_attivi', 'sondaggi_conclusi'].includes(currentPage) ? 'active' : ''}">
         <span id="sondaggi-notification-badge" class="notification-badge hidden"></span>
         <svg fill="currentColor" viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg>
         <span>Sondaggi</span>
     </a>` : ''}
-    <a href="#" onclick="navigateTo('profilo')" class="nav-item ${currentPage === 'profilo' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg><span>Profilo</span></a>
+    <a href="#" onclick="navigateTo('profilo', event)" class="nav-item ${currentPage === 'profilo' ? 'active' : ''}"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg><span>Profilo</span></a>
 `;
             return `<nav class="bottom-nav">${navItems}</nav>`;
         };
@@ -10854,7 +10845,6 @@
         };
 
         window.navigateTo = navigateTo;
-        window.navigateBack = navigateBack;
         window.logout = logout;
         window.toggleTheme = toggleTheme;
         window.refreshApplication = refreshApplication;
@@ -10967,6 +10957,29 @@
         // Initialize theme immediately on page load
         initializeTheme();
 
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.page) {
+                const newPage = event.state.page;
+                // Evita di renderizzare la login page se l'utente è ancora loggato
+                if (newPage === 'login' && currentUser) {
+                    // Potresti voler reindirizzare alla dashboard o gestire diversamente
+                    history.replaceState({ page: 'dashboard' }, '', '#dashboard');
+                    currentPage = 'dashboard';
+                } else {
+                    currentPage = newPage;
+                }
+                renderCurrentPage();
+            } else {
+                 // Se lo stato è nullo, potrebbe essere la prima pagina caricata.
+                 // Controlla l'hash per un fallback.
+                 const hash = window.location.hash.substring(1);
+                 if (hash && hash !== currentPage) {
+                     currentPage = hash;
+                     renderCurrentPage();
+                 }
+            }
+        });
+
         // --- FUNZIONE onAuthStateChanged CORRETTA E ROBUSTA ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -10976,16 +10989,18 @@
                 await loadServicePermissions();
                 await loadCurrentAdministrativePeriod(); // NUOVO
 
-                const userType = userProfile?.tipoUtente;
-                let landingPage = 'dashboard';
+                const hash = window.location.hash.substring(1);
 
-                // Se l'utente si trova sulla pagina di login, lo reindirizziamo alla sua home.
-                // Altrimenti (se ha ricaricato la pagina), gli mostriamo la pagina su cui si trovava.
-                if (currentPage === 'login' || !currentPage) {
-                    navigateTo(landingPage);
+                // Determina la pagina iniziale
+                if (hash && hash !== 'login') {
+                    currentPage = hash;
                 } else {
-                    await renderCurrentPage();
+                    currentPage = 'dashboard';
                 }
+
+                // Imposta lo stato iniziale senza creare una nuova voce di cronologia
+                history.replaceState({ page: currentPage }, '', `#${currentPage}`);
+                await renderCurrentPage();
 
             } else {
                 // L'utente non è loggato o ha appena fatto logout
@@ -10993,23 +11008,30 @@
                     communicationsListener();
                     communicationsListener = null;
                 }
-                if (pollsListener) { // NUOVO BLOCCO
+                if (pollsListener) {
                     pollsListener();
                     pollsListener = null;
                 }
-                if (reportsListener) { // NUOVO BLOCCO
+                if (reportsListener) {
                     reportsListener();
                     reportsListener = null;
                 }
+                if (sollecitisListener) {
+                    sollecitisListener();
+                    sollecitisListener = null;
+                }
+
                 currentUser = null;
                 userProfile = null;
-                navigationHistory = []; // Resetta la cronologia al logout
+
                 // Resetta lo stato specifico della registrazione per evitare dati "sporchi"
                 groupedProperties = {};
                 partialCondosList = [];
 
-                // Naviga alla pagina di login in modo pulito
-                navigateTo('login');
+                // Naviga alla pagina di login in modo pulito, rimpiazzando la cronologia
+                currentPage = 'login';
+                history.replaceState({ page: 'login' }, '', '#login');
+                renderCurrentPage();
             }
         });
 
