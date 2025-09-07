@@ -2,7 +2,7 @@
   "name": "Con-bridge Gestione Condominiale",
   "short_name": "Con-bridge",
   "description": "App per la gestione delle attività condominiali.",
-  "start_url": "/Con-bridge/",
+  "start_url": "/PWA-CONDO-APP/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#1DB954",
@@ -19,3 +19,4 @@
     }
   ]
 }
+
