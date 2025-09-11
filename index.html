@@ -3361,7 +3361,7 @@ ${renderBottomNavigation()}
         };
 
         const renderReportPage = () => {
-            const isAdmin = userProfile?.tipoUtente === 'amministratore';
+            const canManageFiles = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
             return `
             ${renderHeader('Report')}
@@ -3371,7 +3371,7 @@ ${renderBottomNavigation()}
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v13h20V7L12 2z"/></svg></div>
                         <p>Elenco Condomini</p>
                     </div>
-                    ${isAdmin ? `
+                    ${canManageFiles ? `
                     <div onclick="openUploadModal()" class="dashboard-item">
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg></div>
                         <p>Carica File</p>
@@ -3380,7 +3380,7 @@ ${renderBottomNavigation()}
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5 7h-2v2h-2v-2H9v-2h2V9h2v2h2v2z"/></svg></div>
                         <p>Crea Cartella</p>
                     </div>
-                    ` : ['condomino', 'consigliere', 'supervisore', 'adm'].includes(userProfile?.tipoUtente) ? '' : `
+                    ` : ['condomino', 'consigliere', 'supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente) ? '' : `
                     <div onclick="navigateTo('bacheca')" class="dashboard-item">
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
                         <p>Bacheca</p>
@@ -10262,7 +10262,7 @@ ${renderBottomNavigation()}
                     return;
                 }
 
-                let tableHtml = `<table class="data-table"><thead><tr><th>Nome</th><th>Cognome</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
+                let tableHtml = `<table class="data-table"><thead><tr><th>Nome</th><th>Cognome</th><th>Email</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
 
                 filteredUsers.forEach(docSnap => {
                     const user = docSnap.data();
@@ -10273,7 +10273,7 @@ ${renderBottomNavigation()}
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach((prop, index) => {
                             tableHtml += `<tr>
-                                ${index === 0 ? `<td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td>` : ''}
+                                ${index === 0 ? `<td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td><td data-label="Email" rowspan="${user.proprieta.length}">${createCell(user.email)}</td>` : ''}
                                 <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
                                 <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
                                 <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
@@ -10284,6 +10284,7 @@ ${renderBottomNavigation()}
                         tableHtml += `<tr>
                             <td data-label="Nome">${createCell(user.nome)}</td>
                             <td data-label="Cognome">${createCell(user.cognome)}</td>
+                            <td data-label="Email">${createCell(user.email)}</td>
                             <td data-label="Proprietà">${createCell('Nessuna')}</td>
                             <td data-label="Piano">${createCell('N/A')}</td>
                             <td data-label="Raggruppamento">${createCell('N/D')}</td>
