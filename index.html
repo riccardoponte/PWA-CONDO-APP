@@ -2095,7 +2095,7 @@
 
             const buttonsContainer = showButtons ? `
                 <div class="header-buttons" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
-                    <span style="font-size: 0.8rem; color: var(--secondary-text); font-weight: 500; margin-right: 0.5rem;">V. 1.0</span>
+                    <span style="font-size: 0.8rem; color: var(--secondary-text); font-weight: 500; margin-right: 0.5rem;">V. 1.1</span>
                     ${themeToggleButtonHtml}
                     ${refreshButtonHtml}
                 </div>
@@ -3361,8 +3361,7 @@ ${renderBottomNavigation()}
         };
 
         const renderReportPage = () => {
-            const canManageFiles = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
-
+            // Rimuoviamo la variabile 'canManageFiles' e la logica condizionale dei pulsanti
             return `
             ${renderHeader('Report')}
             <main>
@@ -3371,29 +3370,6 @@ ${renderBottomNavigation()}
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v13h20V7L12 2z"/></svg></div>
                         <p>Elenco Condomini</p>
                     </div>
-                    ${canManageFiles ? `
-                    <div onclick="openUploadModal()" class="dashboard-item">
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg></div>
-                        <p>Carica File</p>
-                    </div>
-                    <div onclick="handleCreateFolder()" class="dashboard-item">
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5 7h-2v2h-2v-2H9v-2h2V9h2v2h2v2z"/></svg></div>
-                        <p>Crea Cartella</p>
-                    </div>
-                    ` : ['condomino', 'consigliere', 'supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente) ? '' : `
-                    <div onclick="navigateTo('bacheca')" class="dashboard-item">
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
-                        <p>Bacheca</p>
-                    </div>
-                    <div onclick="navigateTo('sondaggi')" class="dashboard-item">
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg></div>
-                        <p>Sondaggi</p>
-                    </div>
-                    <div onclick="navigateTo('infoUtili')" class="dashboard-item">
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></div>
-                        <p>Numeri utili</p>
-                    </div>
-                    `}
                 </div>
             </main>
             ${renderBottomNavigation()}
