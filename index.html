@@ -6454,9 +6454,9 @@ ${renderBottomNavigation()}
                 manualForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
 
-                    // Controllo accesso: solo supervisore può aggiungere contatti
-                    if (userProfile?.tipoUtente !== 'supervisore') {
-                        alert('Non hai i permessi per aggiungere contatti. Solo i supervisori possono eseguire questa operazione.');
+                    // Controllo accesso: solo supervisore o adm possono aggiungere contatti
+                    if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+                        alert('Non hai i permessi per aggiungere contatti. Solo i ruoli autorizzati possono eseguire questa operazione.');
                         return;
                     }
 
@@ -6489,9 +6489,9 @@ ${renderBottomNavigation()}
                     const file = event.target.files[0];
                     if (!file) return;
 
-                    // Controllo accesso: solo supervisore può importare file
-                    if (userProfile?.tipoUtente !== 'supervisore') {
-                        alert('Non hai i permessi per importare file. Solo i supervisori possono eseguire questa operazione.');
+                    // Controllo accesso: solo supervisore o adm possono importare file
+                    if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+                        alert('Non hai i permessi per importare file. Solo i ruoli autorizzati possono eseguire questa operazione.');
                         fileInput.value = '';
                         return;
                     }
@@ -7761,7 +7761,7 @@ ${renderBottomNavigation()}
 
         const deleteUsefulNumber = async (id) => {
             // Controllo accesso: solo supervisore può eliminare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -7780,7 +7780,7 @@ ${renderBottomNavigation()}
 
         const editUsefulNumber = async (id, currentData) => {
             // Controllo accesso: solo supervisore può modificare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per modificare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -7830,7 +7830,7 @@ ${renderBottomNavigation()}
 
         const deleteMultipleUsefulNumbers = async (ids) => {
             // Controllo accesso: solo supervisore può eliminare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -7954,7 +7954,7 @@ ${renderBottomNavigation()}
 
         const editImportedContact = async (index, currentData) => {
             // Controllo accesso: solo supervisore può modificare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per modificare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8020,7 +8020,7 @@ ${renderBottomNavigation()}
 
         const deleteImportedContact = async (index) => {
             // Controllo accesso: solo supervisore può eliminare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8054,7 +8054,7 @@ ${renderBottomNavigation()}
 
         const deleteMultipleImportedContacts = async (indices) => {
             // Controllo accesso: solo supervisore può eliminare contatti
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8087,7 +8087,7 @@ ${renderBottomNavigation()}
         };
 
         const editImportedScheduleEntry = async (index, currentData) => {
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per modificare questa voce.');
                 return;
             }
@@ -8129,7 +8129,7 @@ ${renderBottomNavigation()}
         };
 
         const deleteImportedScheduleEntry = async (index) => {
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare questa voce.');
                 return;
             }
@@ -8502,7 +8502,7 @@ ${renderBottomNavigation()}
         };
 
         const editCustodeScheduleEntry = async (docId, index, currentData) => {
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per modificare gli orari.');
                 return;
             }
@@ -8558,7 +8558,7 @@ ${renderBottomNavigation()}
         };
 
         const deleteCustodeScheduleEntry = async (docId, index) => {
-            if (userProfile?.tipoUtente !== 'supervisore') {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
                 alert('Non hai i permessi per eliminare orari.');
                 return;
             }
