@@ -5377,7 +5377,7 @@ ${renderBottomNavigation()}
                 case 'infoUtili': /* No handlers needed for the menu page */ break;
                 case 'numeriUtiliImportati':
                 case 'numeriUtiliManuali':
-                    if (userType === 'supervisore') {
+                    if (['supervisore', 'adm'].includes(userType)) {
                         loadUsefulNumbers();
                         setupInfoUtiliHandlers();
                     }
