@@ -3262,7 +3262,7 @@ ${renderBottomNavigation()}
         };
 
         const renderNumeriUtiliImportati = () => {
-            const canImport = userProfile?.tipoUtente === 'supervisore';
+            const canImport = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
             if (!canImport) {
                 return `
@@ -3310,7 +3310,7 @@ ${renderBottomNavigation()}
         };
 
         const renderNumeriUtiliManuali = () => {
-            const canManage = userProfile?.tipoUtente === 'supervisore';
+            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
             if (!canManage) {
                 return `
@@ -5198,11 +5198,11 @@ ${renderBottomNavigation()}
                 case 'profilo': content = renderProfilo(); break;
                 case 'infoUtili': content = renderInfoUtili(); break;
                 case 'numeriUtiliImportati':
-                    if (userType === 'supervisore') content = renderNumeriUtiliImportati();
+                    if (['supervisore', 'adm'].includes(userType)) content = renderNumeriUtiliImportati();
                     else navigateTo('dashboard');
                     break;
                 case 'numeriUtiliManuali':
-                    if (userType === 'supervisore') content = renderNumeriUtiliManuali();
+                    if (['supervisore', 'adm'].includes(userType)) content = renderNumeriUtiliManuali();
                     else navigateTo('dashboard');
                     break;
                 case 'numeriUtiliRubrica': content = renderNumeriUtiliRubrica(); break;
@@ -8279,7 +8279,7 @@ ${renderBottomNavigation()}
                     const headers = Object.keys(data[0]);
                     const { headers: orderedHeaders, data: orderedData } = reorderColumns(data, headers);
 
-                    const canManage = userProfile?.tipoUtente === 'supervisore';
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
                     // Aggiungi header per checkbox e azioni se l'utente può gestire
                     const headerRow = canManage ?
@@ -8341,7 +8341,7 @@ ${renderBottomNavigation()}
                         return;
                     }
 
-                    const canManage = userProfile?.tipoUtente === 'supervisore';
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
                     // Aggiungi header per checkbox e azioni se l'utente può gestire
                     const headerRow = canManage ?
@@ -8449,7 +8449,7 @@ ${renderBottomNavigation()}
                 const scheduleData = snapshot.docs[0].data();
                 if (scheduleData.tableData && scheduleData.tableData.length > 0) {
                     const originalHeaders = Object.keys(scheduleData.tableData[0]);
-                    const canManage = userProfile?.tipoUtente === 'supervisore';
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
                     // --- LOGICA DI ORDINAMENTO UNIFICATA E ROBUSTA ---
                     const desiredOrderKeywords = ['nominativo', 'lun - ven', 'sabato', 'ruolo', 'telefono'];
@@ -10329,7 +10329,7 @@ ${renderBottomNavigation()}
         const loadUsefulNumbers = () => {
             const manualTableBody = document.getElementById('useful-numbers-table-body');
             const importedTableContainer = document.getElementById('imported-numbers-table-container');
-            const canManage = userProfile?.tipoUtente === 'supervisore';
+            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
 
             if (manualTableBody) {
                 const qManual = query(collection(db, "usefulNumbers"), orderBy("createdAt", "desc"));
