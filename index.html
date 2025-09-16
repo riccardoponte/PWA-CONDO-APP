@@ -1307,6 +1307,7 @@
         let selectedReportFiles = []; // Array per i file della segnalazione
         let selectedCommunicationFiles = []; // Array per i file della comunicazione
         let currentAdministrativePeriod = null; // NUOVO: Oggetto per il periodo amministrativo corrente
+        let custodianPermissions = null; // NUOVO: Oggetto per i permessi del custode
 
         // Stato per la registrazione, reso globale a livello di modulo per un reset corretto
         let groupedProperties = {};
@@ -1586,6 +1587,65 @@
                 await deleteApp(secondaryApp);
             }
         };
+                const renderAbilitaCustode = () => `
+            ${renderHeader('Abilita Funzioni Custode')}
+            <main>
+                <div class="card">
+                    <h3 class="card-title">Permessi Segnalazioni Custode</h3>
+                    <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                        Usa questa opzione per consentire o negare al custode la possibilità di inviare segnalazioni direttamente ai fornitori.
+                    </p>
+                    <div id="custodian-permissions-message" class="message-box"></div>
+                    <form id="custodian-permissions-form">
+                        <div class="permission-item flex items-center justify-between">
+                            <label for="allowCustodeContactFornitore" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">Consenti al custode di inviare segnalazioni ai fornitori</label>
+                            <input type="checkbox" id="allowCustodeContactFornitore" name="allowCustodeContactFornitore" class="form-check-input">
+                        </div>
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="btn btn-primary">Salva Impostazioni</button>
+                        </div>
+                    </form>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const setupAbilitaCustodeHandlers = async () => {
+            const form = document.getElementById('custodian-permissions-form');
+            if (!form) return;
+
+            const checkbox = document.getElementById('allowCustodeContactFornitore');
+            const messageBox = document.getElementById('custodian-permissions-message');
+            const settingsRef = doc(db, "settings", "custodianPermissions");
+
+            // Carica l'impostazione corrente
+            try {
+                const docSnap = await getDoc(settingsRef);
+                if (docSnap.exists() && docSnap.data().canContactFornitore) {
+                    checkbox.checked = true;
+                }
+            } catch (error) {
+                console.error("Errore nel caricamento dei permessi del custode:", error);
+            }
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const canContact = checkbox.checked;
+                try {
+                    await setDoc(settingsRef, { canContactFornitore: canContact });
+                    await logActivity("custodian_permissions_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { canContactFornitore: canContact });
+                    
+                    messageBox.className = 'message-box success';
+                    messageBox.textContent = 'Impostazioni salvate con successo!';
+                    messageBox.style.display = 'block';
+                    setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
+                } catch (error) {
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = `Errore nel salvataggio: ${error.message}`;
+                    messageBox.style.display = 'block';
+                }
+            });
+        };
 
         const renderFunzioniAmministratoreMenu = () => `
             ${renderHeader('Funzioni Amministratore')}
@@ -1596,6 +1656,12 @@
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M15,12C17.21,12 19,10.21 19,8C19,5.79 17.21,4 15,4C12.79,4 11,5.79 11,8C11,10.21 12.79,12 15,12M6,10V7H4V10H1V12H4V15H6V12H9V10H6M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14Z"/></svg>
                         </div>
                         <p>Crea Nuovo Fornitore</p>
+                    </div>
+                    <div onclick="navigateTo('abilitaCustode')" class="dashboard-item">
+                        <div class="dashboard-card">
+                           <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,12C13.66,12 15,10.66 15,9C15,7.34 13.66,6 12,6C10.34,6 9,7.34 9,9C9,10.66 10.34,12 12,12M18,20H6V18.6C6,16.6 10,15.5 12,15.5C14,15.5 18,16.6 18,18.6V20Z"/></svg>
+                        </div>
+                        <p>Abilita Custode</p>
                     </div>
                 </div>
             </main>
@@ -1909,7 +1975,7 @@
             // --- NUOVA LOGICA DI AUTORIZZAZIONE ROBUSTA ---
             const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'orariCustode', 'periodiAmministrativi'];
             const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore'];
-            const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore'];
+            const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore', 'abilitaCustode'];
 
             // Se la pagina è per l'amministratore, ma l'utente non lo è, blocca.
             if (amministratoreOnlyPages.includes(e) && userType !== 'amministratore') {
@@ -2344,20 +2410,37 @@
                     `);
                 }
 
-                if (['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions) {
+                // Blocco 1: Pulsante "Funzioni Supervisore" per utenti 'supervisore' o con permesso speciale
+                if (userProfile?.tipoUtente === 'supervisore' || userProfile?.canAccessSupervisorFunctions) {
+                    const rolesRequiringWarning = ['consigliere', 'amministratore', 'adm'];
+                    const shouldShowWarning = rolesRequiringWarning.includes(userProfile?.tipoUtente);
+                    const supervisorFunctionOnclick = shouldShowWarning ? "showSupervisorWarningForConsigliere()" : "navigateTo('gestioneGruppi')";
+                    
+                    dashboardItemsHtml.push(`
+                        <div onclick="${supervisorFunctionOnclick}" class="dashboard-item">
+                            <div class="dashboard-card">
+                                <svg fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11.03L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11.03L19.5,12L19.43,12.97L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z"/>
+                                </svg>
+                            </div>
+                            <p>Funzioni Supervisore</p>
+                        </div>
+                    `);
+                }
+
+                // Blocco 2: Pulsanti esclusivi per l'utente 'adm'
+                if (userProfile?.tipoUtente === 'adm') {
+                    // Pulsante "Funzioni Admin" (invariato, senza popup)
                     dashboardItemsHtml.push(`
                         <div onclick="navigateTo('gestioneGruppi')" class="dashboard-item">
-                        <div class="dashboard-card">
-                            <svg fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11.03L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11.03L19.5,12L19.43,12.97L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z"/>
-                            </svg>
+                            <div class="dashboard-card">
+                               <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
+                            </div>
+                            <p>Funzioni Admin</p>
                         </div>
-                        <p>${userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore'}</p>
-                    </div>
-                `);
+                    `);
 
-                // Aggiungi il pulsante Cronologia solo per l'utente 'adm'
-                if (userProfile?.tipoUtente === 'adm') {
+                    // Pulsante "Cronologia Attività"
                     dashboardItemsHtml.push(`
                         <div onclick="navigateTo('cronologiaAttivita')" class="dashboard-item">
                             <div class="dashboard-card">
@@ -2367,7 +2450,6 @@
                         </div>
                     `);
                 }
-            }
 
             return `
             ${renderHeader('Home')}
@@ -2941,10 +3023,16 @@
                     <option value="consigliere">Consiglieri</option>
                 `;
             } else if (userRole === 'custode') {
+                let fornitoreOption = '';
+                // Aggiungi l'opzione "fornitore" solo se l'impostazione è abilitata
+                if (custodianPermissions?.canContactFornitore === true) {
+                    fornitoreOption = `<option value="fornitore">Singolo Fornitore</option>`;
+                }
                 recipientOptions = `
                     <option value="amministratore">Amministratore</option>
                     <option value="condomini">Condomini</option>
                     <option value="consigliere">Consiglieri</option>
+                    ${fornitoreOption}
                     <option value="adm">Sviluppatore</option>
                 `;
             } else if (userRole === 'consigliere') {
@@ -3020,17 +3108,18 @@
                             ${formRecipientField}
                             
                             <div>
-                                <label for="report-interest-type" class="form-label">Tipo di Interesse</label>
-                                <select id="report-interest-type" required class="form-select">
-                                    <option value="">Seleziona...</option>
-                                    ${['amministratore', 'adm'].includes(userProfile?.tipoUtente) ? `
-                                    <option value="personale">Segnazione di interesse di un singolo condomino</option>
-                                    ` : `
-                                    <option value="personale">Segnalazione di interesse personale</option>
-                                    `}
-                                    <option value="condominiale">Segnalazione di interesse condominiale</option>
-                                </select>
-                            </div>
+    <label for="report-interest-type" class="form-label">Tipo di Interesse</label>
+    <select id="report-interest-type" required class="form-select">
+        <option value="">Seleziona...</option>
+        ${['amministratore', 'adm'].includes(userProfile?.tipoUtente)
+            ? `<option value="personale">Segnazione di interesse di un singolo condomino</option>`
+            : userProfile?.tipoUtente === 'fornitore'
+                ? `<option value="personale">Segnalazione singolo condomino</option>`
+                : `<option value="personale">Segnalazione di interesse personale</option>`
+        }
+        <option value="condominiale">Segnalazione di interesse condominiale</option>
+    </select>
+</div>
                             
                             <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select" disabled><option value="">Seleziona prima il destinatario...</option></select></div>
                             <div><label class="form-label">Categoria</label><select id="report-category" required class="form-select"><option value="">...</option><option value="ascensore">Ascensore</option><option value="elettrico">Elettrico</option><option value="idraulico">Idraulico</option><option value="portierato">Portierato</option><option value="posta">Posta</option><option value="pulizie">Pulizie</option><option value="raccolta-rifiuti">Raccolta rifiuti</option><option value="riscaldamento">Riscaldamento</option><option value="sicurezza">Sicurezza</option><option value="tv">TV</option><option value="altro">Altro</option></select></div>
@@ -3047,10 +3136,10 @@
                             <div id="phone-communication-checkboxes" class="hidden">
                                 <label class="form-label">Opzioni di comunicazione</label>
                                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                        <input type="checkbox" id="communicate-owner-phone" style="margin: 0;">
-                                        <span>Comunicare  n. di telefono condomino al fornitore</span>
-                                    </label>
+                                    <label id="owner-phone-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+    <input type="checkbox" id="communicate-owner-phone" style="margin: 0;">
+    <span>Comunicare  n. di telefono condomino al fornitore</span>
+</label>
                                     <label id="other-ui-phone-checkbox" class="hidden" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                                         <input type="checkbox" id="communicate-other-ui-phone" style="margin: 0;">
                                         <span>N. telefono altra U.I.</span>
@@ -3999,12 +4088,6 @@ ${renderBottomNavigation()}
             ${renderHeader(userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore')}
             <main>
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    <div onclick="navigateTo('periodiAmministrativi')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
-                        </div>
-                    </div>
                     ${userProfile?.tipoUtente === 'adm' ? `
                     <div onclick="navigateTo('gestoreFunzioniSupervisore')" class="dashboard-item">
                         <div class="menu-list-item">
@@ -4013,6 +4096,12 @@ ${renderBottomNavigation()}
                         </div>
                     </div>
                     ` : ''}
+                    <div onclick="navigateTo('periodiAmministrativi')" class="dashboard-item">
+                        <div class="menu-list-item">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                            <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
+                        </div>
+                    </div>
                     <div onclick="navigateTo('userManagement')" class="dashboard-item">
                         <div class="menu-list-item">
                             <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4Z"/></svg>
@@ -4594,14 +4683,14 @@ ${renderBottomNavigation()}
             ${renderBottomNavigation()}
         `;
 
-        const setupGestoreFunzioniSupervisoreHandlers = async () => {
+const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const listContainer = document.getElementById('supervisor-permissions-list');
             const form = document.getElementById('supervisor-permissions-form');
             if (!listContainer || !form) return;
 
             try {
-                // Fetch only users with the 'amministratore' role to display in this section.
-                const allUsersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "==", "amministratore")));
+                // MODIFICA: La query ora cerca utenti che sono 'amministratore', 'consigliere' o 'adm'.
+                const allUsersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "in", ["amministratore", "consigliere", "adm"])));
 
                 const usersDocs = allUsersSnapshot.docs
                     .sort((a, b) => {
@@ -5319,6 +5408,10 @@ ${renderBottomNavigation()}
                     if (userProfile?.tipoUtente === 'amministratore') content = renderCreaFornitore();
                     else navigateTo('dashboard');
                     break;
+                                    case 'abilitaCustode':
+                    if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
+                    else navigateTo('dashboard');
+                    break;
                 default: content = renderLoginPage();
             }
 
@@ -5427,6 +5520,7 @@ ${renderBottomNavigation()}
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
                 case 'funzioniAmministratore': /* Nessun handler specifico per la pagina menu */ break;
                 case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
+                                case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
                 case 'archivio':
                 case 'gestione_archivio':
                     setupArchivioHandlers();
@@ -6236,9 +6330,22 @@ ${renderBottomNavigation()}
                 specificRecipientContainer.innerHTML = '';
 
                 // Mostra/nascondi opzioni di comunicazione in base al destinatario
+                const ownerPhoneLabel = document.getElementById("owner-phone-label");
                 phoneCommunicationCheckboxes?.classList.toggle("hidden", recipient !== 'fornitore');
-                if (recipient !== 'fornitore') {
-                    // Assicurati che le checkbox interne siano deselezionate quando il blocco è nascosto
+                
+                if (recipient === 'fornitore') {
+                    // Se l'utente è un amministratore e seleziona "fornitore", nasconde l'opzione del telefono del condomino
+                    if (userProfile?.tipoUtente === 'amministratore' && ownerPhoneLabel) {
+                        ownerPhoneLabel.classList.add('hidden');
+                    } else if (ownerPhoneLabel) {
+                        // Per altri utenti che potrebbero vedere questo, assicurati che sia visibile
+                        ownerPhoneLabel.classList.remove('hidden');
+                    }
+                } else {
+                    // Se il destinatario non è fornitore, l'intero blocco è nascosto, ma resettiamo per sicurezza
+                    if (ownerPhoneLabel) {
+                        ownerPhoneLabel.classList.remove('hidden');
+                    }
                     document.getElementById("communicate-owner-phone").checked = false;
                     document.getElementById("communicate-other-ui-phone").checked = false;
                 }
@@ -11582,6 +11689,27 @@ ${renderBottomNavigation()}
         window.clearActivityHistory = clearActivityHistory;
         window.deleteAdministrativePeriod = deleteAdministrativePeriod; // NUOVO
 
+        const showSupervisorWarningForConsigliere = () => {
+            const modalContent = `
+                <div style="text-align: center;">
+                    <svg fill="currentColor" viewBox="0 0 24 24" class="access-denied-icon" style="color: var(--warning);">
+                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2V7h2v4z"/>
+                    </svg>
+                    <p style="color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.6; text-align: center;">
+                        Stai per accedere a un'area con funzionalità avanzate normalmente riservate al Supervisore. 
+                        Le azioni eseguite in questa sezione possono avere un impatto significativo sulla configurazione e sui dati dell'applicazione.
+                        <br><br>
+                        <strong>Procedi con la massima cautela.</strong>
+                    </p>
+                    <div class="flex justify-center gap-4">
+                        <button onclick="hideModal()" class="btn btn-secondary">Annulla</button>
+                        <button onclick="navigateTo('gestioneGruppi'); hideModal();" class="btn btn-primary">Procedi</button>
+                    </div>
+                </div>
+            `;
+            showModal('Attenzione: Accesso a Funzioni Sensibili', modalContent);
+        };
+
         const deletePoll = async (pollId) => {
             if (!confirm('Sei sicuro di voler eliminare questo sondaggio? L\'azione è irreversibile.')) {
                 return;
@@ -11597,6 +11725,7 @@ ${renderBottomNavigation()}
 
         window.updateUser = updateUser;
         window.deletePoll = deletePoll;
+        window.showSupervisorWarningForConsigliere = showSupervisorWarningForConsigliere;
 
         let availableGroups = []; // Variabile globale per contenere i gruppi
 
@@ -11651,6 +11780,21 @@ ${renderBottomNavigation()}
         });
 
         // --- FUNZIONE onAuthStateChanged CORRETTA E ROBUSTA ---
+        const loadCustodianPermissions = async () => {
+            try {
+                const settingsRef = doc(db, "settings", "custodianPermissions");
+                const docSnap = await getDoc(settingsRef);
+                if (docSnap.exists()) {
+                    custodianPermissions = docSnap.data();
+                } else {
+                    custodianPermissions = { canContactFornitore: false }; // Default a disabilitato
+                }
+            } catch (error) {
+                console.error("Errore nel caricamento dei permessi del custode:", error);
+                custodianPermissions = { canContactFornitore: false }; // Fallback
+            }
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 // L'utente è loggato o si è appena loggato
@@ -11658,6 +11802,7 @@ ${renderBottomNavigation()}
                 await loadUserProfile(user);
                 await loadServicePermissions();
                 await loadCurrentAdministrativePeriod(); // NUOVO
+                await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
 
                 const hash = window.location.hash.substring(1);
 
