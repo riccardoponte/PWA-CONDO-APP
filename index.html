@@ -3256,7 +3256,7 @@
         `;
 
         const renderInfoUtili = () => {
-            const isSupervisoreOrAdm = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+            const isSupervisoreOrAdm = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
             if (isSupervisoreOrAdm) {
                 // Vista per Supervisore e ADM
@@ -3351,7 +3351,7 @@ ${renderBottomNavigation()}
         };
 
         const renderNumeriUtiliImportati = () => {
-            const canImport = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+            const canImport = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
             if (!canImport) {
                 return `
@@ -3399,7 +3399,7 @@ ${renderBottomNavigation()}
         };
 
         const renderNumeriUtiliManuali = () => {
-            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
             if (!canManage) {
                 return `
@@ -4367,7 +4367,7 @@ ${renderBottomNavigation()}
         `;
 
         const renderArchivio = () => {
-            const canManage = ['supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente);
+            const canManage = ['supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
             const managementButtons = canManage ? `
                 <div class="flex gap-4">
                     <button onclick="openUploadModal()" class="btn btn-primary" style="flex:1;">
@@ -5287,11 +5287,11 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 case 'profilo': content = renderProfilo(); break;
                 case 'infoUtili': content = renderInfoUtili(); break;
                 case 'numeriUtiliImportati':
-                    if (['supervisore', 'adm'].includes(userType)) content = renderNumeriUtiliImportati();
+                    if (['supervisore', 'adm'].includes(userType) || userProfile?.canAccessSupervisorFunctions === true) content = renderNumeriUtiliImportati();
                     else navigateTo('dashboard');
                     break;
                 case 'numeriUtiliManuali':
-                    if (['supervisore', 'adm'].includes(userType)) content = renderNumeriUtiliManuali();
+                    if (['supervisore', 'adm'].includes(userType) || userProfile?.canAccessSupervisorFunctions === true) content = renderNumeriUtiliManuali();
                     else navigateTo('dashboard');
                     break;
                 case 'numeriUtiliRubrica': content = renderNumeriUtiliRubrica(); break;
@@ -5369,7 +5369,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     content = renderElencoCondomini();
                     break;
                 case 'impostazioniSondaggi':
-                    if (['supervisore', 'adm'].includes(userType)) content = renderImpostazioniSondaggi();
+                    if (['supervisore', 'adm'].includes(userType) || userProfile?.canAccessSupervisorFunctions === true) content = renderImpostazioniSondaggi();
                     else navigateTo('dashboard');
                     break;
                 case 'archivio':
@@ -5385,7 +5385,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     else navigateTo('dashboard');
                     break;
                 case 'puliziaDati':
-                    if (['supervisore', 'adm'].includes(userProfile?.tipoUtente)) content = renderPuliziaDati();
+                    if (['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true) content = renderPuliziaDati();
                     else navigateTo('dashboard');
                     break;
                 case 'statisticheCondomini':
@@ -5470,7 +5470,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 case 'infoUtili': /* No handlers needed for the menu page */ break;
                 case 'numeriUtiliImportati':
                 case 'numeriUtiliManuali':
-                    if (['supervisore', 'adm'].includes(userType)) {
+                    if (['supervisore', 'adm'].includes(userType) || userProfile?.canAccessSupervisorFunctions === true) {
                         loadUsefulNumbers();
                         setupInfoUtiliHandlers();
                     }
@@ -5486,32 +5486,32 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     break;
 
                 case 'userManagement': /* No handlers needed for the menu page */ break;
-                case 'userManagement_create': if (['supervisore', 'adm'].includes(userType)) { setupAdminUserCreationHandler(); } break;
+                case 'userManagement_create': if (hasSupervisorAccess) { setupAdminUserCreationHandler(); } break;
                 case 'userManagement_list':
-                    if (['supervisore', 'adm'].includes(userType)) {
+                    if (hasSupervisorAccess) {
                         loadUserListTable();
                         document.getElementById('user-list-search')?.addEventListener('input', loadUserListTable);
                     }
                     break;
                 case 'userManagement_edit':
-                    if (['supervisore', 'adm'].includes(userType)) {
+                    if (hasSupervisorAccess) {
                         loadUsers();
                         document.getElementById('user-edit-search')?.addEventListener('input', loadUsers);
                     }
                     break;
                 case 'gestioneGruppi': /* No handlers needed for the menu page */ break;
-                case 'gestioneGruppi_lista': if (['supervisore', 'adm'].includes(userType)) { loadPartialCondos(); setupUserManagementHandlers(); } break;
-                case 'gestioneGruppi_regole': if (['supervisore', 'adm'].includes(userType)) { loadGroupRules(); setupGestioneGruppiHandlers(); } break;
-                case 'importazione': if (userType === 'supervisore') { setupImportazioneHandlers(); } break;
+                case 'gestioneGruppi_lista': if (hasSupervisorAccess) { loadPartialCondos(); setupUserManagementHandlers(); } break;
+                case 'gestioneGruppi_regole': if (hasSupervisorAccess) { loadGroupRules(); setupGestioneGruppiHandlers(); } break;
+                case 'importazione': if (hasSupervisorAccess) { setupImportazioneHandlers(); } break;
                 case 'orariCustode': /* No handlers needed for the menu page */ break;
-                case 'orariCustode_manuale': if (['supervisore', 'adm'].includes(userType)) { setupOrariCustodeManualeHandlers(); } break;
-                case 'orariCustode_import': if (['supervisore', 'adm'].includes(userType)) { setupOrariCustodeImportHandlers(); } break;
-                case 'orariCustode_visualizza': if (['supervisore', 'adm'].includes(userType)) { setupOrariCustodeVisualizzaHandlers(); } break;
+                case 'orariCustode_manuale': if (hasSupervisorAccess) { setupOrariCustodeManualeHandlers(); } break;
+                case 'orariCustode_import': if (hasSupervisorAccess) { setupOrariCustodeImportHandlers(); } break;
+                case 'orariCustode_visualizza': if (hasSupervisorAccess) { setupOrariCustodeVisualizzaHandlers(); } break;
                 case 'datiAmministratore': /* No handlers needed for the menu page */ break;
-                case 'datiAmministratore_manuale': if (['supervisore', 'adm'].includes(userType)) { setupDatiAmministratoreManualeHandlers(); } break;
-                case 'datiAmministratore_import': if (['supervisore', 'adm'].includes(userType)) { setupDatiAmministratoreImportHandlers(); } break;
-                case 'datiAmministratore_visualizza': if (['supervisore', 'adm'].includes(userType)) { setupDatiAmministratoreVisualizzaHandlers(); } break;
-                case 'impostazioniSondaggi': if (['supervisore', 'adm'].includes(userType)) { setupImpostazioniSondaggiHandlers(); } break;
+                case 'datiAmministratore_manuale': if (hasSupervisorAccess) { setupDatiAmministratoreManualeHandlers(); } break;
+                case 'datiAmministratore_import': if (hasSupervisorAccess) { setupDatiAmministratoreImportHandlers(); } break;
+                case 'datiAmministratore_visualizza': if (hasSupervisorAccess) { setupDatiAmministratoreVisualizzaHandlers(); } break;
+                case 'impostazioniSondaggi': if (hasSupervisorAccess) { setupImpostazioniSondaggiHandlers(); } break;
                 case 'abilitaServizi': if (userProfile?.tipoUtente === 'adm') { setupAbilitaServiziHandlers(); } break;
                 case 'cronologiaAttivita': if (userProfile?.tipoUtente === 'adm') { setupCronologiaAttivitaHandlers(); } break;
                 case 'puliziaDati': /* No specific handlers needed as logic is in onclick */ break;
@@ -8060,8 +8060,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const editImportedContact = async (index, currentData) => {
-            // Controllo accesso: solo supervisore può modificare contatti
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            // Controllo accesso: supervisore, adm o utenti con permessi speciali possono modificare contatti
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per modificare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8126,8 +8127,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const deleteImportedContact = async (index) => {
-            // Controllo accesso: solo supervisore può eliminare contatti
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            // Controllo accesso: supervisore, adm o utenti con permessi speciali possono eliminare contatti
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8160,8 +8162,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const deleteMultipleImportedContacts = async (indices) => {
-            // Controllo accesso: solo supervisore può eliminare contatti
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            // Controllo accesso: supervisore, adm o utenti con permessi speciali possono eliminare contatti
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per eliminare contatti. Solo i supervisori possono eseguire questa operazione.');
                 return;
             }
@@ -8194,7 +8197,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const editImportedScheduleEntry = async (index, currentData) => {
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per modificare questa voce.');
                 return;
             }
@@ -8236,7 +8240,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const deleteImportedScheduleEntry = async (index) => {
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per eliminare questa voce.');
                 return;
             }
@@ -8259,7 +8264,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const editImportedAdminEntry = async (index, currentData) => {
-            if (userProfile?.tipoUtente !== 'supervisore') return;
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) return;
             const formFields = Object.keys(currentData).map(key => {
                 const value = currentData[key] || '';
                 return `<div><label class="form-label">${key}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
@@ -8289,7 +8295,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const deleteImportedAdminEntry = async (index) => {
-            if (userProfile?.tipoUtente !== 'supervisore' || !confirm('Sei sicuro di voler eliminare questa voce?')) return;
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess || !confirm('Sei sicuro di voler eliminare questa voce?')) return;
             try {
                 const q = query(collection(db, "importedAdminData"), orderBy("uploadedAt", "desc"), limit(1));
                 const snapshot = await getDocs(q);
@@ -8386,7 +8393,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const headers = Object.keys(data[0]);
                     const { headers: orderedHeaders, data: orderedData } = reorderColumns(data, headers);
 
-                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
                     // Aggiungi header per checkbox e azioni se l'utente può gestire
                     const headerRow = canManage ?
@@ -8448,7 +8455,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         return;
                     }
 
-                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
                     // Aggiungi header per checkbox e azioni se l'utente può gestire
                     const headerRow = canManage ?
@@ -8556,7 +8563,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 const scheduleData = snapshot.docs[0].data();
                 if (scheduleData.tableData && scheduleData.tableData.length > 0) {
                     const originalHeaders = Object.keys(scheduleData.tableData[0]);
-                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+                    const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
                     // --- LOGICA DI ORDINAMENTO UNIFICATA E ROBUSTA ---
                     const desiredOrderKeywords = ['nominativo', 'lun - ven', 'sabato', 'ruolo', 'telefono'];
@@ -8609,7 +8616,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const editCustodeScheduleEntry = async (docId, index, currentData) => {
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per modificare gli orari.');
                 return;
             }
@@ -8665,7 +8673,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const deleteCustodeScheduleEntry = async (docId, index) => {
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            if (!hasSupervisorAccess) {
                 alert('Non hai i permessi per eliminare orari.');
                 return;
             }
@@ -10263,7 +10272,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         const loadUsers = async () => {
             const container = document.getElementById('user-list-container');
             if (!container) return;
-            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente)) {
+            if (!['supervisore', 'adm'].includes(userProfile?.tipoUtente) && userProfile?.canAccessSupervisorFunctions !== true) {
                 container.innerHTML = '<p>Accesso non autorizzato.</p>';
                 return;
             }
@@ -10436,7 +10445,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         const loadUsefulNumbers = () => {
             const manualTableBody = document.getElementById('useful-numbers-table-body');
             const importedTableContainer = document.getElementById('imported-numbers-table-container');
-            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente);
+            const canManage = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
 
             if (manualTableBody) {
                 const qManual = query(collection(db, "usefulNumbers"), orderBy("createdAt", "desc"));
