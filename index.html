@@ -1915,37 +1915,105 @@
                     const startDate = period.startDate.toDate().toLocaleDateString('it-IT');
                     const endDate = period.endDate.toDate().toLocaleDateString('it-IT');
                     const isCurrent = currentAdministrativePeriod && currentAdministrativePeriod.id === docSnap.id;
-                    return `
-                    <div class="list-item" style="background: var(--surface-color-light);">
-                        <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg></div>
-                        <div class="list-item-content">
-                            <div class="title">${period.year} ${isCurrent ? '<span class="badge status-chiusa" style="margin-left:8px;">In Corso</span>' : ''}</div>
-                            <div class="subtitle">Dal ${startDate} al ${endDate}</div>
-                        </div>
-                        <div class="list-item-action">
-                            <button onclick="deleteAdministrativePeriod('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        </div>
-                    </div>`;
+                    const periodObjectString = JSON.stringify({
+                    year: period.year,
+                    startDate: period.startDate.toDate().toISOString().split('T')[0], // Formato YYYY-MM-DD
+                    endDate: period.endDate.toDate().toISOString().split('T')[0] // Formato YYYY-MM-DD
+                }).replace(/"/g, '&quot;');
+
+                return `
+                <div class="list-item" style="background: var(--surface-color-light);">
+                    <div class="list-item-content" style="flex-grow: 1;">
+                        <div class="title">${period.year} ${isCurrent ? '<span class="badge status-chiusa" style="margin-left:8px;">In Corso</span>' : ''}</div>
+                        <div class="subtitle">Dal ${startDate} al ${endDate}</div>
+                    </div>
+                    <div class="list-item-action flex gap-2">
+                         <button onclick="openPeriodEditModal('${docSnap.id}', ${periodObjectString})" class="btn-icon" title="Modifica Periodo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </button>
+                        <button onclick="deleteAdministrativePeriod('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>`;
                 }).join('');
             });
         };
 
         // NUOVO: Funzione per eliminare un periodo
         const deleteAdministrativePeriod = async (periodId) => {
-            if (!confirm("Sei sicuro di voler eliminare questo periodo amministrativo? L'azione è irreversibile.")) {
-                return;
-            }
-            try {
-                await deleteDoc(doc(db, 'administrativePeriods', periodId));
-                await logActivity("admin_period_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId });
-                await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
-            } catch (error) {
-                console.error("Errore eliminazione periodo:", error);
-                alert(`Errore: ${error.message}`);
-            }
-        };
+        if (!confirm("Sei sicuro di voler eliminare questo periodo amministrativo? L'azione è irreversibile.")) {
+            return;
+        }
+        try {
+            await deleteDoc(doc(db, 'administrativePeriods', periodId));
+            await logActivity("admin_period_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId });
+            await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
+        } catch (error) {
+            console.error("Errore eliminazione periodo:", error);
+            alert(`Errore: ${error.message}`);
+        }
+    };
+
+    const openPeriodEditModal = (periodId, currentData) => {
+        const modalContent = `
+            <form id="edit-period-form" class="space-y-4" onsubmit="updateAdministrativePeriod(event, '${periodId}')">
+                <div class="form-group">
+                    <label for="edit-period-year" class="form-label">Anno Amministrativo</label>
+                    <input type="text" id="edit-period-year" required class="form-input" value="${currentData.year}">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="edit-period-start-date" class="form-label">Dal</label>
+                        <input type="date" id="edit-period-start-date" required class="form-input" value="${currentData.startDate}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-period-end-date" class="form-label">Al</label>
+                        <input type="date" id="edit-period-end-date" required class="form-input" value="${currentData.endDate}">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 pt-2">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                </div>
+            </form>
+        `;
+        showModal('Modifica Periodo Amministrativo', modalContent);
+    };
+
+    const updateAdministrativePeriod = async (event, periodId) => {
+        event.preventDefault();
+        const year = document.getElementById('edit-period-year').value.trim();
+        const startDateStr = document.getElementById('edit-period-start-date').value;
+        const endDateStr = document.getElementById('edit-period-end-date').value;
+
+        if (!year || !startDateStr || !endDateStr) {
+            alert('Tutti i campi sono obbligatori.');
+            return;
+        }
+
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+
+        if (endDate < startDate) {
+            alert('La data di fine non può essere precedente alla data di inizio.');
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, "administrativePeriods", periodId), {
+                year: year,
+                startDate: startDate,
+                endDate: endDate
+            });
+            await logActivity("admin_period_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId, year });
+            hideModal();
+            await loadCurrentAdministrativePeriod(); // Ricarica il periodo corrente per riflettere le modifiche
+        } catch (error) {
+            console.error("Errore nell'aggiornamento del periodo:", error);
+            alert(`Errore: ${error.message}`);
+        }
+    };
 
         const navigateTo = (e, event) => {
             if (event) {
@@ -2864,6 +2932,18 @@
                                 <span class="font-medium">Abilita Risposta Multipla</span>
                             </label>
                         </div>
+
+                        ${/* NUOVA SEZIONE PER LA VISIBILITÀ DELL'AMMINISTRATORE */ ''}
+                        ${userProfile?.tipoUtente !== 'amministratore' ? `
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label class="flex items-center gap-3 p-3 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
+                                <input type="checkbox" id="poll-visible-to-admin" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
+                                <span class="font-medium">Rendi visibile all'Amministratore</span>
+                            </label>
+                            <small style="display: block; color: var(--secondary-text); margin-top: 0.5rem; padding-left: 0.5rem;">Di default, l'amministratore non può vedere i sondaggi creati da te.</small>
+                        </div>
+                        ` : ''}
+
                         <div class="flex justify-end gap-4 pt-4"><button type="reset" class="btn btn-secondary">Annulla</button><button type="submit" class="btn btn-primary">Crea</button></div>
                     </form>
                 </div>
@@ -3972,58 +4052,52 @@ ${renderBottomNavigation()}
         `;
 
         const renderDatiAmministratoreManuale = () => `
-            ${renderHeader('Gestione Manuale Amministratore')}
-            <main>
-                <div class="card" style="margin-bottom: 2rem;">
-                    <h3 class="card-title">Aggiungi Nuova Voce</h3>
-                    <div id="add-admin-data-message" class="message-box"></div>
-                    <form id="add-admin-data-form" class="space-y-4">
-                        <div class="form-group">
-                            <label for="admin-data-nominativo" class="form-label">Nominativo</label>
-                            <input type="text" id="admin-data-nominativo" required class="form-input" placeholder="Es. Studio Amministrazioni S.r.l.">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="form-group">
-                                <label for="admin-data-referente" class="form-label">Referente</label>
-                                <input type="text" id="admin-data-referente" class="form-input" placeholder="Es. Dott. Rossi">
-                            </div>
-                            <div class="form-group">
-                                <label for="admin-data-telefono" class="form-label">Telefono</label>
-                                <input type="tel" id="admin-data-telefono" class="form-input" placeholder="Numero di telefono">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-data-email" class="form-label">Email</label>
-                            <input type="email" id="admin-data-email" class="form-input" placeholder="Indirizzo email">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="form-group">
-                                <label for="admin-data-orari" class="form-label">Orari</label>
-                                <input type="text" id="admin-data-orari" class="form-input" placeholder="Es. 9:00-18:00">
-                            </div>
-                            <div class="form-group">
-                                <label for="admin-data-giorni-lavorativi" class="form-label">Giorni Lavorativi</label>
-                                <input type="text" id="admin-data-giorni-lavorativi" class="form-input" placeholder="Es. Lun-Ven">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-data-ruolo" class="form-label">Ruolo</label>
-                            <input type="text" id="admin-data-ruolo" class="form-input" placeholder="Es. Amministratore di condominio">
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="submit" class="btn btn-primary">Aggiungi Voce</button>
-                        </div>
-                    </form>
+    ${renderHeader('Gestione Manuale Amministratore')}
+    <main>
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3 class="card-title">Aggiungi Nuova Voce</h3>
+            <div id="add-admin-data-message" class="message-box"></div>
+            <form id="add-admin-data-form" class="space-y-4">
+                <div class="form-group">
+                    <label for="admin-data-ruolo" class="form-label">Ruolo</label>
+                    <input type="text" id="admin-data-ruolo" class="form-input" value="amministratore" readonly>
                 </div>
-                <div class="card">
-                    <h3 class="card-title">Dati Attuali</h3>
-                    <div id="table-container-admin-data" class="data-table-container">
-                        <p style="color:var(--secondary-text);">Nessun dato presente.</p>
+                <div class="form-group">
+                    <label for="admin-data-nominativo" class="form-label">Nominativo</label>
+                    <input type="text" id="admin-data-nominativo" required class="form-input" placeholder="Es. Studio Amministrazioni S.r.l.">
+                </div>
+                <div class="form-group">
+                    <label for="admin-data-telefono" class="form-label">Telefono</label>
+                    <input type="tel" id="admin-data-telefono" class="form-input" placeholder="Numero di telefono">
+                </div>
+                <div class="form-group">
+                    <label for="admin-data-email" class="form-label">Email</label>
+                    <input type="email" id="admin-data-email" class="form-input" placeholder="Indirizzo email">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="admin-data-giorni-lavorativi" class="form-label">Giorni Lavorativi</label>
+                        <input type="text" id="admin-data-giorni-lavorativi" class="form-input" placeholder="Es. Lun-Ven">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-data-orari" class="form-label">Orari</label>
+                        <input type="text" id="admin-data-orari" class="form-input" placeholder="Es. 9:00-18:00">
                     </div>
                 </div>
-            </main>
-            ${renderBottomNavigation()}
-        `;
+                <div class="flex justify-end">
+                    <button type="submit" class="btn btn-primary">Aggiungi Voce</button>
+                </div>
+            </form>
+        </div>
+        <div class="card">
+            <h3 class="card-title">Dati Attuali</h3>
+            <div id="table-container-admin-data" class="data-table-container">
+                <p style="color:var(--secondary-text);">Nessun dato presente.</p>
+            </div>
+        </div>
+    </main>
+    ${renderBottomNavigation()}
+`;
 
         const renderDatiAmministratoreImport = () => `
             ${renderHeader('Importazione Dati Amministratore')}
@@ -4085,90 +4159,90 @@ ${renderBottomNavigation()}
         `;
 
         const renderGestioneGruppiMenu = () => `
-            ${renderHeader(userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore')}
-            <main>
-                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    ${userProfile?.tipoUtente === 'adm' ? `
-                    <div onclick="navigateTo('gestoreFunzioniSupervisore')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,12C13.66,12 15,10.66 15,9C15,7.34 13.66,6 12,6C10.34,6 9,7.34 9,9C9,10.66 10.34,12 12,12M18,20H6V18.6C6,16.6 10,15.5 12,15.5C14,15.5 18,16.6 18,18.6V20Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Gestore Funzioni Supervisore</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    <div onclick="navigateTo('periodiAmministrativi')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('userManagement')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Gestione Utenti</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('gestioneGruppi_lista')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10 4v4h4V4h-4m6 12v4h4v-4h-4m-6 0v4h4v-4h-4m6-6v4h4v-4h-4m-6 0v4h4v-4h-4m-6-6v4h4V4H4m6 6v4h4v-4h-4M4 16v4h4v-4H4m14-2h2v-4h-2v4m0 6h2v-4h-2v4m-12-2h2v-4H6v4m0 6h2v-4H6v4M2 2v20h20V2H2z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Crea e Visualizza Gruppi</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('gestioneGruppi_regole')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24-.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Gestione Regole</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('importazione')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Importa Dati Millesimi</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('gestione_archivio')" class="dashboard-item" style="position: relative;">
-                        <span id="dashboard-gestione-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Gestione Archivio</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('impostazioniSondaggi')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,15H7V17H5V15M3,13H9V19H3V13Z" /></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Gestione Sondaggi</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('orariCustode')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Importa Dati Custode</p>
-                        </div>
-                    </div>
-                    <div onclick="navigateTo('datiAmministratore')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Importa Dati Amministratore</p>
-                        </div>
-                    </div>
-                    ${userProfile?.tipoUtente === 'adm' ? `
-                    <div onclick="navigateTo('abilitaServizi')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,1L3,5V11C3,16.55,6.84,21.74,12,23C17.16,21.74,21,16.55,21,11V5L12,1M12,6.19L13.41,7.59L12,9L10.59,7.59L12,6.19M16.5,11H7.5V10C7.5,8.62,8.62,7.5,10,7.5H14C15.38,7.5,16.5,8.62,16.5,10V11M14.12,15.88L15.5,14.5L12,11L8.5,14.5L9.88,15.88L12,13.75L14.12,15.88Z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Abilita Servizi</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    <div onclick="navigateTo('puliziaDati')" class="dashboard-item">
-                        <div class="menu-list-item">
-                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 16h4v2h-4v-2zm0-8h7v2h-7V8zm0 4h6v2h-6v-2zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12V5z"/></svg>
-                            <p style="text-align: left; font-size: 1.1rem;">Pulizia Dati</p>
-                        </div>
+        ${renderHeader(userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore')}
+        <main>
+            <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+                <div onclick="navigateTo('datiAmministratore')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Importa Dati Amministratore</p>
                     </div>
                 </div>
-            </main>
-            ${renderBottomNavigation()}
-        `;
+                <div onclick="navigateTo('orariCustode')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Importa Dati Custode</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('gestioneGruppi_lista')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10 4v4h4V4h-4m6 12v4h4v-4h-4m-6 0v4h4v-4h-4m6-6v4h4v-4h-4m-6 0v4h4v-4h-4m-6-6v4h4V4H4m6 6v4h4v-4h-4M4 16v4h4v-4H4m14-2h2v-4h-2v4m0 6h2v-4h-2v4m-12-2h2v-4H6v4m0 6h2v-4H6v4M2 2v20h20V2H2z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Crea e Visualizza Gruppi</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('gestioneGruppi_regole')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61-.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24-.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Gestione Regole</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('importazione')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Importa Dati Millesimi</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('userManagement')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Gestione Utenti</p>
+                    </div>
+                </div>
+                ${userProfile?.tipoUtente === 'adm' ? `
+                <div onclick="navigateTo('gestoreFunzioniSupervisore')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,12C13.66,12 15,10.66 15,9C15,7.34 13.66,6 12,6C10.34,6 9,7.34 9,9C9,10.66 10.34,12 12,12M18,20H6V18.6C6,16.6 10,15.5 12,15.5C14,15.5 18,16.6 18,18.6V20Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Gestore Funzioni Supervisore</p>
+                    </div>
+                </div>
+                ` : ''}
+                <div onclick="navigateTo('periodiAmministrativi')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('gestione_archivio')" class="dashboard-item" style="position: relative;">
+                    <span id="dashboard-gestione-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Gestione Archivio</p>
+                    </div>
+                </div>
+                <div onclick="navigateTo('impostazioniSondaggi')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,15H7V17H5V15M3,13H9V19H3V13Z" /></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Gestione Sondaggi</p>
+                    </div>
+                </div>
+                ${userProfile?.tipoUtente === 'adm' ? `
+                <div onclick="navigateTo('abilitaServizi')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,6.19L13.41,7.59L12,9L10.59,7.59L12,6.19M16.5,11H7.5V10C7.5,8.62,8.62,7.5,10,7.5H14C15.38,7.5,16.5,8.62,16.5,10V11M14.12,15.88L15.5,14.5L12,11L8.5,14.5L9.88,15.88L12,13.75L14.12,15.88Z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Abilita Servizi</p>
+                    </div>
+                </div>
+                ` : ''}
+                <div onclick="navigateTo('puliziaDati')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 16h4v2h-4v-2zm0-8h7v2h-7V8zm0 4h6v2h-6v-2zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12V5z"/></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Pulizia Dati</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        ${renderBottomNavigation()}
+    `;
 
         const renderGestioneGruppi_Lista = () => `
             ${renderHeader('Crea e Visualizza Gruppi')}
@@ -4278,25 +4352,12 @@ ${renderBottomNavigation()}
                     <h3 class="card-title">Crea Nuovo Utente</h3>
                     <div id="admin-create-user-message" class="message-box"></div>
                     <form id="admin-create-user-form" class="space-y-4">
-                        <div class="form-group"><label for="admin-email" class="form-label">Email</label><input id="admin-email" type="email" required class="form-input"></div>
-                        <div class="form-group"><label for="admin-password" class="form-label">Password Temporanea</label><input id="admin-password" type="password" required class="form-input"></div>
                         
-                        <div class="form-group custom-dropdown-container">
-                            <label for="admin-nominativo-search" class="form-label">Cerca Nominativo (per auto-compilazione)</label>
-                            <div style="position: relative;">
-                                <input id="admin-nominativo-search" type="text" placeholder="Digita per cercare nella tabella importata..." class="form-input" autocomplete="off">
-                                <button type="button" id="admin-clear-nominativo-search" class="password-toggle-btn hidden" style="transform: translateY(calc(-50% + 0.25rem));">&times;</button>
-                            </div>
-                            <div id="admin-nominativo-options" class="custom-dropdown-list hidden"></div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="form-group"><label for="admin-nome" class="form-label">Nome</label><input id="admin-nome" type="text" required class="form-input"></div>
-                            <div class="form-group"><label for="admin-cognome" class="form-label">Cognome/Azienda</label><input id="admin-cognome" type="text" required class="form-input"></div>
-                        </div>
-                        <div class="form-group"><label for="admin-tipo-utente" class="form-label">Tipo di Utente</label>
+                        <!-- 1. TIPO UTENTE (SPOSTATO IN ALTO) -->
+                        <div class="form-group">
+                            <label for="admin-tipo-utente" class="form-label">Tipo di Utente</label>
                             <select id="admin-tipo-utente" required class="form-select">
-                                <option value="">Seleziona...</option>
+                                <option value="">Seleziona per iniziare...</option>
                                 <option value="condomino">Condomino</option>
                                 <option value="amministratore">Amministratore</option>
                                 <option value="custode">Custode</option>
@@ -4306,6 +4367,41 @@ ${renderBottomNavigation()}
                                 ${userProfile?.tipoUtente === 'adm' ? `<option value="adm">Admin (ADM)</option>` : ''}
                             </select>
                         </div>
+
+                        <!-- 2. NATURA GIURIDICA (NUOVO E NASCOSTO) -->
+                        <div id="natura-giuridica-container" class="form-group hidden">
+                            <label class="form-label">Natura Giuridica</label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="natura-giuridica" value="fisica" checked class="form-check-input"> Persona Fisica</label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="natura-giuridica" value="giuridica" class="form-check-input"> Persona Giuridica</label>
+                            </div>
+                        </div>
+
+                        <!-- CAMPI PER PERSONA FISICA (NUOVO E NASCOSTO) -->
+                        <div id="persona-fisica-fields" class="hidden">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="form-group"><label for="admin-nome" class="form-label">Nome</label><input id="admin-nome" type="text" class="form-input"></div>
+                                <div class="form-group"><label for="admin-cognome" class="form-label">Cognome</label><input id="admin-cognome" type="text" class="form-input"></div>
+                            </div>
+                        </div>
+
+                        <!-- CAMPO PER PERSONA GIURIDICA (NUOVO E NASCOSTO) -->
+                        <div id="persona-giuridica-fields" class="hidden">
+                             <div class="form-group"><label for="admin-azienda" class="form-label">Azienda</label><input id="admin-azienda" type="text" class="form-input"></div>
+                        </div>
+
+                        <!-- 3. CERCA NOMINATIVO (NASCOSTO DI DEFAULT) -->
+                        <div id="cerca-nominativo-container" class="form-group custom-dropdown-container hidden">
+                            <label for="admin-nominativo-search" class="form-label">Cerca nominativo per importare dati U.I.</label>
+                             <div style="position: relative;">
+                                <input id="admin-nominativo-search" type="text" placeholder="Digita per cercare nella tabella importata..." class="form-input" autocomplete="off">
+                                <button type="button" id="admin-clear-nominativo-search" class="password-toggle-btn hidden" style="transform: translateY(calc(-50% + 0.25rem));">&times;</button>
+                            </div>
+                            <div id="admin-nominativo-options" class="custom-dropdown-list hidden"></div>
+                        </div>
+                        
+                        <div class="form-group"><label for="admin-email" class="form-label">Email</label><input id="admin-email" type="email" required class="form-input"></div>
+                        <div class="form-group"><label for="admin-password" class="form-label">Password Temporanea</label><input id="admin-password" type="password" required class="form-input"></div>
                         <div class="form-group"><label for="admin-telefono" class="form-label">Telefono</label><input id="admin-telefono" type="tel" class="form-input"></div>
                         
                         <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
@@ -4383,10 +4479,24 @@ ${renderBottomNavigation()}
                 <div id="upload-progress-container" class="hidden" style="margin-top: 1rem;"></div>
             ` : '';
 
+            // NUOVO: Azioni di massa per l'eliminazione
+            const bulkActions = canManage ? `
+                <div id="archive-bulk-actions" class="hidden" style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color-light); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <label class="flex items-center gap-3 cursor-pointer" style="background-color: var(--surface-color-light); padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+                        <input type="checkbox" id="archive-select-all" onchange="toggleAllArchiveItems(this)" style="width: 20px; height: 20px; accent-color: var(--accent-color);">
+                        <span class="font-medium">Seleziona tutto</span>
+                    </label>
+                    <button id="archive-delete-selected-btn" class="btn" style="background-color: var(--danger); color: white;" onclick="handleBulkDeleteArchive()" disabled>
+                        Elimina Selezionati
+                    </button>
+                </div>
+            ` : '';
+
             return `
             ${renderHeader('Archivio Documenti')}
             <main>
                 <div class="card" style="margin-bottom: 1.5rem;">
+                    ${bulkActions}
                     <div id="storage-breadcrumbs" class="filter-chips-container" style="padding-bottom: 0; margin-bottom: 1rem;">
                         <!-- Breadcrumbs will be populated here -->
                     </div>
@@ -5931,30 +6041,32 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                             fileUrls = await Promise.all(uploadPromises);
                         }
 
-                        // 3. Use transaction to get communication number and set document data
+                        // 3. Use transaction to get communication number for the current year
                         await runTransaction(db, async (transaction) => {
-                            const counterDoc = await transaction.get(counterRef);
-                            const newCommNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
-                            finalCommNumber = newCommNumber;
+                            const currentYear = new Date().getFullYear();
+                            const yearCounterRef = doc(db, "counters", `communicationsCounter_${currentYear}`);
+                            
+                            const counterDoc = await transaction.get(yearCounterRef);
+                            const newCommNumberInYear = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+                            
+                            // Costruiamo il numero finale nel formato "NUMERO/ANNO"
+                            finalCommNumber = `${newCommNumberInYear}/${currentYear}`;
 
-                            // --- MODIFICATION START ---
-                            // Get the state of the new checkbox. It defaults to false if not present.
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
 
                             const commData = {
-                                communicationNumber: newCommNumber,
+                                communicationNumber: finalCommNumber, // SALVIAMO IL NUOVO FORMATO
                                 title: title,
                                 content: content,
                                 targetGroup: targetGroup,
-                                forwardToCustode: forwardToCustode, // Save the checkbox state
+                                forwardToCustode: forwardToCustode,
                                 fileUrls: fileUrls,
                                 createdBy: `${userProfile.nome} ${userProfile.cognome}`,
                                 createdById: currentUser.uid,
                                 createdAt: serverTimestamp()
                             };
-                            // --- MODIFICATION END ---
 
-                            transaction.set(counterRef, { lastNumber: newCommNumber });
+                            transaction.set(yearCounterRef, { lastNumber: newCommNumberInYear });
                             transaction.set(newCommRef, commData);
                         });
 
@@ -6134,6 +6246,10 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const lastPollNumber = lastPollsSnapshot.empty ? 0 : lastPollsSnapshot.docs[0].data().pollNumber;
                     const newPollNumber = lastPollNumber + 1;
 
+                    const isVisibleToAdminCheckbox = document.getElementById("poll-visible-to-admin");
+                    // Se la checkbox esiste, usa il suo valore. Altrimenti (se a creare è l'admin), il sondaggio è visibile di default.
+                    const isVisibleToAdmin = isVisibleToAdminCheckbox ? isVisibleToAdminCheckbox.checked : true;
+
                     const pollData = {
                         pollNumber: newPollNumber,
                         pollType: pollType,
@@ -6142,6 +6258,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         options: options,
                         deadline: deadline,
                         multipleChoice: isMultipleChoice,
+                        isVisibleToAdmin: isVisibleToAdmin, // <-- RIGA AGGIUNTA
                         createdBy: `${userProfile.nome} ${userProfile.cognome}`,
                         createdById: currentUser.uid,
                         createdAt: serverTimestamp(),
@@ -6993,21 +7110,38 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const generateTableHTML = (data) => {
                 if (!data || data.length === 0) return '<p style="color:var(--secondary-text);">Nessun dato da visualizzare.</p>';
 
-                const headers = Object.keys(data[0]);
-                let tableHTML = `<table class="data-table"><thead><tr>`;
-                headers.forEach(header => {
-                    tableHTML += `<th>${header.toUpperCase()}</th>`;
-                });
+                const originalHeaders = Object.keys(data[0]);
+                const findKey = (keywords) => originalHeaders.find(h => keywords.some(k => h.toLowerCase().includes(k))) || null;
+
+                const keyRuolo = findKey(['ruolo']);
+                const keyNominativo = findKey(['nominativo']);
+                const keyTelefono = findKey(['telefono']);
+                const keyEmail = findKey(['email']);
+                const keyGiorni = findKey(['giorni', 'lavorativi']);
+                const keyOrari = findKey(['orari']);
+
+                let tableHTML = `<table class="data-table"><thead><tr>
+                    <th>RUOLO</th>
+                    <th>NOMINATIVO</th>
+                    <th>N.TELEFONICO</th>
+                    <th>EMAIL</th>
+                    <th>ORARI GIORNI LAVORATIVI</th>
+                `;
                 if (isEditable) {
                     tableHTML += `<th style="text-align:right;">AZIONI</th>`;
                 }
                 tableHTML += `</tr></thead><tbody>`;
 
                 data.forEach((row, index) => {
-                    tableHTML += `<tr>`;
-                    headers.forEach(header => {
-                        tableHTML += `<td>${row[header] !== undefined ? row[header] : ''}</td>`;
-                    });
+                    const orariGiorniValue = [row[keyGiorni], row[keyOrari]].filter(Boolean).join(' ');
+
+                    tableHTML += `<tr>
+                        <td>${row[keyRuolo] || ''}</td>
+                        <td>${row[keyNominativo] || ''}</td>
+                        <td>${row[keyTelefono] || ''}</td>
+                        <td>${row[keyEmail] || ''}</td>
+                        <td>${orariGiorniValue}</td>
+                    `;
 
                     if (isEditable) {
                         const editIcon = `<button onclick="editImportedAdminEntry(${index}, ${JSON.stringify(row).replace(/"/g, '&quot;')})" class="btn-icon" title="Modifica" style="margin-right: 0.5rem;"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>`;
@@ -7054,13 +7188,12 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         const findKey = (keywords, fallback) => headers.find(h => keywords.some(k => h.toLowerCase().includes(k))) || fallback;
 
                         const newEntry = {
+                            [findKey(['ruolo'], 'Ruolo')]: document.getElementById('admin-data-ruolo').value,
                             [findKey(['nominativo'], 'Nominativo')]: document.getElementById('admin-data-nominativo').value,
-                            [findKey(['referente'], 'Referente')]: document.getElementById('admin-data-referente').value,
                             [findKey(['telefono'], 'Telefono')]: document.getElementById('admin-data-telefono').value,
                             [findKey(['email'], 'Email')]: document.getElementById('admin-data-email').value,
-                            [findKey(['orari'], 'Orari')]: document.getElementById('admin-data-orari').value,
                             [findKey(['giorni', 'lavorativi'], 'Giorni Lavorativi')]: document.getElementById('admin-data-giorni-lavorativi').value,
-                            [findKey(['ruolo'], 'Ruolo')]: document.getElementById('admin-data-ruolo').value,
+                            [findKey(['orari'], 'Orari')]: document.getElementById('admin-data-orari').value
                         };
 
                         tableData.push(newEntry);
@@ -7398,11 +7531,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 try {
                     const qGroups = query(collection(db, "partialCondos"), orderBy("name"));
                     const qData = query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1));
-
                     const [groupsSnapshot, dataSnapshot] = await Promise.all([getDocs(qGroups), getDocs(qData)]);
-
                     availableGroups = groupsSnapshot.docs.map(doc => doc.data());
-
                     if (!dataSnapshot.empty) {
                         const tableData = dataSnapshot.docs[0].data().tableData || [];
                         const headers = tableData.length > 0 ? Object.keys(tableData[0]) : [];
@@ -7410,7 +7540,6 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         const idHeader = findHeader(headers, ['interno', 'appartamento', 'unita']);
                         const millesimiHeader = findHeader(headers, ['millesimi', 'quota']);
                         const groupHeader = findHeader(headers, ['raggruppamento', 'gruppo']);
-
                         if (nominativoHeader && idHeader && millesimiHeader) {
                             groupedProperties = {};
                             tableData.forEach(item => {
@@ -7429,16 +7558,19 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     console.error("Impossibile caricare i dati per la pagina di creazione:", error);
                 }
             };
-            loadPrerequisitesForCreation();
 
+            // Riferimenti agli elementi del DOM
             const form = document.getElementById('admin-create-user-form');
+            const tipoUtenteSelect = document.getElementById('admin-tipo-utente');
+            const naturaGiuridicaContainer = document.getElementById('natura-giuridica-container');
+            const personaFisicaFields = document.getElementById('persona-fisica-fields');
+            const personaGiuridicaFields = document.getElementById('persona-giuridica-fields');
+            const cercaNominativoContainer = document.getElementById('cerca-nominativo-container');
             const searchInput = document.getElementById('admin-nominativo-search');
             const optionsContainer = document.getElementById('admin-nominativo-options');
             const propertiesContainer = document.getElementById('properties-editor-container');
             const addPropertyBtn = document.getElementById('admin-add-property-btn');
             const clearSearchBtn = document.getElementById('admin-clear-nominativo-search');
-            const nomeInput = document.getElementById('admin-nome');
-            const cognomeInput = document.getElementById('admin-cognome');
 
             const renderDropdownOptions = (filter = '') => {
                 const lowerFilter = filter.toLowerCase();
@@ -7454,14 +7586,6 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 optionsContainer.classList.add('hidden');
                 clearSearchBtn.classList.remove('hidden');
                 addPropertyBtn.classList.add('hidden');
-
-                // Auto-compila e blocca nome e cognome/azienda secondo la nuova regola
-                cognomeInput.value = name;   // Il "Nominativo" della tabella va nel cognome/azienda
-                nomeInput.value = '-';       // Il nome è fisso a "-"
-                cognomeInput.readOnly = true;
-                nomeInput.readOnly = true;
-
-                // Auto-compila e blocca le proprietà (gestisce anche le multiproprietà)
                 const properties = groupedProperties[name] || [];
                 propertiesContainer.innerHTML = properties.map(prop => `
                     <div class="property-edit-row grid grid-cols-4 gap-2 items-center" style="margin-bottom: 0.5rem;">
@@ -7477,24 +7601,48 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 searchInput.value = '';
                 clearSearchBtn.classList.add('hidden');
                 addPropertyBtn.classList.remove('hidden');
-
-                // Svuota e sblocca nome e cognome
-                cognomeInput.value = '';
-                nomeInput.value = '';
-                cognomeInput.readOnly = false;
-                nomeInput.readOnly = false;
-
                 propertiesContainer.innerHTML = `<p class="form-label" style="color:var(--secondary-text); font-size:0.9rem;">Cerca un nominativo per caricare i dati o aggiungi le proprietà manualmente.</p>`;
             };
+            
+            const updateFormVisibility = () => {
+                const userType = tipoUtenteSelect.value;
+                const natura = document.querySelector('input[name="natura-giuridica"]:checked')?.value;
 
-            searchInput?.addEventListener('input', () => renderDropdownOptions(searchInput.value));
-            searchInput?.addEventListener('focus', () => renderDropdownOptions(searchInput.value));
-            clearSearchBtn?.addEventListener('click', clearSelection);
-            optionsContainer?.addEventListener('click', (e) => {
-                if (e.target.dataset.value) selectNominativo(e.target.dataset.value);
-            });
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.custom-dropdown-container')) optionsContainer?.classList.add('hidden');
+                naturaGiuridicaContainer.classList.add('hidden');
+                personaFisicaFields.classList.add('hidden');
+                personaGiuridicaFields.classList.add('hidden');
+                cercaNominativoContainer.classList.add('hidden');
+
+                if (['condomino', 'consigliere', 'supervisore'].includes(userType)) {
+                    naturaGiuridicaContainer.classList.remove('hidden');
+                    cercaNominativoContainer.classList.remove('hidden');
+                    if (natura === 'fisica') {
+                        personaFisicaFields.classList.remove('hidden');
+                    } else if (natura === 'giuridica') {
+                        personaGiuridicaFields.classList.remove('hidden');
+                    }
+                } else if (['amministratore', 'fornitore'].includes(userType)) {
+                    personaGiuridicaFields.classList.remove('hidden');
+                } else if (userType === 'custode') {
+                    personaFisicaFields.classList.remove('hidden');
+                }
+            };
+            
+            loadPrerequisitesForCreation().then(() => {
+                tipoUtenteSelect.addEventListener('change', updateFormVisibility);
+                naturaGiuridicaContainer.addEventListener('change', updateFormVisibility);
+
+                searchInput?.addEventListener('input', () => renderDropdownOptions(searchInput.value));
+                searchInput?.addEventListener('focus', () => renderDropdownOptions(searchInput.value));
+                clearSearchBtn?.addEventListener('click', clearSelection);
+                optionsContainer?.addEventListener('click', (e) => {
+                    if (e.target.dataset.value) selectNominativo(e.target.dataset.value);
+                });
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.custom-dropdown-container')) optionsContainer?.classList.add('hidden');
+                });
+                
+                updateFormVisibility();
             });
 
             form?.addEventListener('submit', async (e) => {
@@ -7505,44 +7653,53 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 try {
                     const propertiesForUser = [];
                     let totalMillesimi = 0;
-                    const propertyRows = form.querySelectorAll('.property-edit-row');
-
-                    propertyRows.forEach(row => {
+                    form.querySelectorAll('.property-edit-row').forEach(row => {
                         const internoInput = row.querySelector('input[data-field="interno"]');
                         const millesimiInput = row.querySelector('input[data-field="millesimi"]');
                         const gruppoSelect = row.querySelector('select[data-field="gruppo"]');
                         const gruppoInput = row.querySelector('input[data-field="gruppo"]');
-
                         const interno = internoInput.value.trim();
                         const millesimi = parseFloat(millesimiInput.value) || 0;
                         const gruppo = gruppoSelect ? gruppoSelect.value : (gruppoInput ? gruppoInput.value.trim() : '');
-
                         if (interno) {
                             propertiesForUser.push({ interno, millesimi, gruppo });
                             totalMillesimi += millesimi;
                         }
                     });
 
+                    const tipoUtente = tipoUtenteSelect.value;
+                    let nome = '';
+                    let cognome = '';
+
+                    if (personaFisicaFields.offsetParent !== null) {
+                        nome = document.getElementById('admin-nome').value;
+                        cognome = document.getElementById('admin-cognome').value;
+                    } else if (personaGiuridicaFields.offsetParent !== null) {
+                        nome = '-';
+                        cognome = document.getElementById('admin-azienda').value;
+                    }
+
+                    if (!cognome || !tipoUtente) {
+                        throw new Error('Compilare tutti i campi obbligatori (Tipo Utente e Cognome/Azienda).');
+                    }
+                    
                     const profileData = {
-                        nome: nomeInput.value,
-                        cognome: cognomeInput.value,
-                        tipoUtente: document.getElementById('admin-tipo-utente').value,
+                        nome: nome,
+                        cognome: cognome,
+                        tipoUtente: tipoUtente,
                         telefono: document.getElementById('admin-telefono').value,
                         proprieta: propertiesForUser,
                         millesimiTotali: totalMillesimi
                     };
 
-                    if (!profileData.nome || !profileData.cognome || !profileData.tipoUtente) {
-                        throw new Error('Nome, Cognome e Tipo Utente sono obbligatori.');
-                    }
-
                     await adminCreateUser(document.getElementById('admin-email').value, document.getElementById('admin-password').value, profileData);
-
+                    
                     messageBox.className = 'message-box success';
                     messageBox.textContent = `Utente ${profileData.cognome} creato con successo!`;
                     messageBox.style.display = 'block';
                     form.reset();
                     clearSelection();
+                    updateFormVisibility();
 
                 } catch (error) {
                     messageBox.className = 'message-box error';
@@ -8960,34 +9117,41 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     // Filter polls based on search, type, status, and user role
                     let filteredPolls = snapshot.docs.filter(docSnap => {
                         const poll = docSnap.data();
-
-                        // --- NUOVA LOGICA DI FILTRAGGIO (PIÙ CHIARA E CORRETTA) ---
                         const userRole = userProfile.tipoUtente;
+                        
+                        // --- NUOVA REGOLA DI VISIBILITÀ PER L'AMMINISTRATORE ---
+                        if (userRole === 'amministratore') {
+                            // L'amministratore vede il sondaggio solo se:
+                            // 1. È stato lui a crearlo.
+                            // 2. Il creatore ha esplicitamente dato il permesso (`isVisibleToAdmin` è true).
+                            if (poll.createdById !== currentUser.uid && poll.isVisibleToAdmin !== true) {
+                                return false; // Nascondi il sondaggio se non ha i permessi
+                            }
+                        }
+
+                        // --- LOGICA DI FILTRAGGIO ESISTENTE PER GLI ALTRI RUOLI ---
                         const pollType = poll.pollType;
 
-                        if (userRole === 'adm' || userRole === 'amministratore' || userRole === 'supervisore') {
-                            // Questi ruoli possono vedere tutti i tipi di sondaggi.
-                            // Non facciamo nulla e proseguiamo con gli altri filtri (status, ricerca, etc.)
+                        if (userRole === 'adm' || userRole === 'supervisore') {
+                            // Questi ruoli continuano a vedere tutto
                         } else if (userRole === 'consigliere') {
-                            // Il consigliere può vedere sia i sondaggi per 'condomini' che quelli per 'supervisor-consiglieri'.
                             if (pollType !== 'condomini' && pollType !== 'supervisor-consiglieri') {
-                                return false; // Nascondi tutti gli altri tipi di sondaggi
+                                return false;
                             }
                         } else if (userRole.startsWith('condomino')) {
-                            // Il condomino può vedere solo i sondaggi per 'condomini'.
                             if (pollType !== 'condomini') {
-                                return false; // Nascondi tutti gli altri tipi di sondaggi
+                                return false;
                             }
-                        } else {
-                            // Tutti gli altri ruoli (es. custode, fornitore) non vedono nessun sondaggio.
+                        } else if (userRole !== 'amministratore') { // Evitiamo di escludere l'amministratore che ha già passato il check sopra
+                            // Altri ruoli come custode, fornitore non vedono nulla
                             return false;
                         }
-                        // --- FINE DELLA NUOVA LOGICA ---
+                        
+                        // --- FILTRI AGGIUNTIVI (STATUS, RICERCA, TIPO) ---
 
                         // Filter by status (active/closed)
                         if (status !== 'all') {
                             if (!poll.deadline) {
-                                // Polls without deadline are considered active
                                 if (status === 'closed') return false;
                             } else {
                                 const deadline = poll.deadline.toDate();
@@ -10354,7 +10518,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     return;
                 }
 
-                let tableHtml = `<table class="data-table"><thead><tr><th>Nome</th><th>Cognome</th><th>Email</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
+                let tableHtml = `<table class="data-table"><thead><tr><th>Ruolo</th><th>Nome</th><th>Cognome</th><th>Email</th><th>Proprietà</th><th>Piano</th><th>Raggruppamento</th><th>Millesimi</th></tr></thead><tbody>`;
 
                 filteredUsers.forEach(docSnap => {
                     const user = docSnap.data();
@@ -10363,26 +10527,27 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const createCell = (content) => `<div class="cell-content-wrapper"><span>${content}</span>${editIconHtml}</div>`;
 
                     if (user.proprieta && user.proprieta.length > 0) {
-                        user.proprieta.forEach((prop, index) => {
-                            tableHtml += `<tr>
-                                ${index === 0 ? `<td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td><td data-label="Email" rowspan="${user.proprieta.length}">${createCell(user.email)}</td>` : ''}
-                                <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
-                                <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
-                                <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
-                                <td data-label="Millesimi">${createCell((prop.millesimi || 0).toFixed(2))}</td>
-                            </tr>`;
-                        });
-                    } else {
+                    user.proprieta.forEach((prop, index) => {
                         tableHtml += `<tr>
-                            <td data-label="Nome">${createCell(user.nome)}</td>
-                            <td data-label="Cognome">${createCell(user.cognome)}</td>
-                            <td data-label="Email">${createCell(user.email)}</td>
-                            <td data-label="Proprietà">${createCell('Nessuna')}</td>
-                            <td data-label="Piano">${createCell('N/A')}</td>
-                            <td data-label="Raggruppamento">${createCell('N/D')}</td>
-                            <td data-label="Millesimi">${createCell('0.00')}</td>
+                            ${index === 0 ? `<td data-label="Ruolo" rowspan="${user.proprieta.length}">${createCell(user.tipoUtente)}</td><td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td><td data-label="Email" rowspan="${user.proprieta.length}">${createCell(user.email)}</td>` : ''}
+                            <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
+                            <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
+                            <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
+                            <td data-label="Millesimi">${createCell((prop.millesimi || 0).toFixed(2))}</td>
                         </tr>`;
-                    }
+                    });
+                    } else {
+                    tableHtml += `<tr>
+                        <td data-label="Ruolo">${createCell(user.tipoUtente)}</td>
+                        <td data-label="Nome">${createCell(user.nome)}</td>
+                        <td data-label="Cognome">${createCell(user.cognome)}</td>
+                        <td data-label="Email">${createCell(user.email)}</td>
+                        <td data-label="Proprietà">${createCell('Nessuna')}</td>
+                        <td data-label="Piano">${createCell('N/A')}</td>
+                        <td data-label="Raggruppamento">${createCell('N/D')}</td>
+                        <td data-label="Millesimi">${createCell('0.00')}</td>
+                    </tr>`;
+                }
                 });
 
                 tableHtml += `</tbody></table>`;
@@ -11159,6 +11324,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const breadcrumbsContainer = document.getElementById('storage-breadcrumbs');
             if (!container || !breadcrumbsContainer) return;
 
+            // Nascondi subito le azioni di massa al cambio cartella
+            updateArchiveSelection(); 
+
             container.innerHTML = `<p style="color:var(--secondary-text);">Caricamento elementi...</p>`;
 
             const pathSegments = path.split('/').filter(Boolean);
@@ -11166,7 +11334,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             let currentPath = '';
             pathSegments.forEach(segment => {
                 currentPath += segment + '/';
-                breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="handleBreadcrumbClick('${currentPath}')">${segment}</div>`;
+                const displaySegment = segment.replace(/__SLASH__/g, '/'); // Decodifica per visualizzazione
+                breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="handleBreadcrumbClick('${currentPath}')">${displaySegment}</div>`;
             });
             breadcrumbsContainer.innerHTML = breadcrumbsHtml;
 
@@ -11178,6 +11347,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 let itemsHtml = '';
 
                 res.prefixes.forEach(folderRef => {
+                    const displayName = folderRef.name.replace(/__SLASH__/g, '/'); // Decodifica per visualizzazione
                     const managementActions = canManage ? `
                         <div class="list-item-action flex gap-2">
                             <button onclick="event.stopPropagation(); handleDeleteItem('${folderRef.fullPath}', true)" class="btn-icon" title="Elimina Cartella" style="background:var(--danger); color:white;">
@@ -11186,9 +11356,12 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         </div>
                     ` : '';
                     itemsHtml += `
-                    <div class="list-item" onclick="handleFolderClick('${folderRef.name}')">
-                        <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
-                        <div class="list-item-content"><div class="title">${folderRef.name}</div></div>
+                    <div class="list-item">
+                        ${canManage ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${folderRef.fullPath}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                        <div onclick="handleFolderClick('${folderRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
+                            <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
+                            <div class="list-item-content"><div class="title">${displayName}</div></div>
+                        </div>
                         ${managementActions}
                     </div>`;
                 });
@@ -11203,9 +11376,12 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         </div>
                     ` : '';
                     itemsHtml += `
-                    <div class="list-item" onclick="handleDownloadFile('${itemRef.fullPath}', '${itemRef.name}')">
-                        <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
-                        <div class="list-item-content"><div class="title">${itemRef.name}</div></div>
+                    <div class="list-item">
+                         ${canManage ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${itemRef.fullPath}" data-type="file" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                        <div onclick="handleDownloadFile('${itemRef.fullPath}', '${itemRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
+                            <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
+                            <div class="list-item-content"><div class="title">${itemRef.name}</div></div>
+                        </div>
                         ${managementActions}
                     </div>`;
                 });
@@ -11326,17 +11502,19 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         const handleRenameFolder = async (oldPath) => {
-            const oldName = oldPath.split('/').filter(Boolean).pop();
+            const oldName = oldPath.split('/').filter(Boolean).pop().replace(/__SLASH__/g, '/'); // Decodifica per il prompt
             const newName = prompt("Inserisci il nuovo nome per la cartella:", oldName);
 
-            if (!newName || newName.trim() === '' || newName.includes('/')) {
+            if (!newName || newName.trim() === '') {
                 alert("Nome non valido.");
                 return;
             }
             if (newName === oldName) return;
 
-            const parentPath = oldPath.substring(0, oldPath.lastIndexOf(oldName));
-            const newPath = parentPath + newName.trim() + '/';
+            // Codifica il nuovo nome per renderlo sicuro per il percorso
+            const safeNewName = newName.trim().replace(/\//g, '__SLASH__');
+            const parentPath = oldPath.substring(0, oldPath.lastIndexOf(oldName.replace(/\//g, '__SLASH__')));
+            const newPath = parentPath + safeNewName + '/';
 
             showModal('Ridenominazione in corso...', '<p>Questa operazione potrebbe richiedere alcuni istanti. Non chiudere la pagina.</p>');
 
@@ -11374,8 +11552,11 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const folderName = prompt("Inserisci il nome della nuova cartella:");
             if (!folderName || folderName.trim() === '') return;
 
+            // Codifica il carattere "/" per renderlo sicuro per il percorso di storage.
+            const safeFolderName = folderName.trim().replace(/\//g, '__SLASH__');
+
             // In Storage, le cartelle sono create caricando un file placeholder al loro interno.
-            const placeholderPath = `${currentStoragePath}${folderName.trim()}/.placeholder`;
+            const placeholderPath = `${currentStoragePath}${safeFolderName}/.placeholder`;
             const placeholderRef = ref(storage, placeholderPath);
 
             try {
@@ -11404,40 +11585,32 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             }
         };
 
-        const handleDeleteItem = async (fullPath, isFolder) => {
-            const itemType = isFolder ? "cartella" : "file";
-            if (!confirm(`Sei sicuro di voler eliminare questo ${itemType}? L'azione è irreversibile.`)) return;
+        const deleteFolderContents = async (path) => {
+            const listRef = ref(storage, path);
+            const res = await listAll(listRef);
 
+            const deleteFilePromises = res.items.map(itemRef => deleteObject(itemRef));
+            const deleteFolderPromises = res.prefixes.map(folderRef => deleteFolderContents(folderRef.fullPath));
+
+            await Promise.all([...deleteFilePromises, ...deleteFolderPromises]);
+        };
+
+        const handleDeleteItem = async (fullPath, isFolder) => {
             if (isFolder) {
-                // La cancellazione di cartelle non vuote non è supportata direttamente dal client SDK.
-                // Eliminiamo il placeholder per "cancellare" la cartella vuota.
-                // Per cartelle non vuote, mostriamo un avviso.
-                const listRef = ref(storage, fullPath);
-                const res = await listAll(listRef);
-                if (res.items.length > 1 || res.prefixes.length > 0) {
-                    alert("Impossibile eliminare cartelle non vuote dall'app. Si prega di svuotare prima la cartella.");
-                    return;
-                }
-                // Se è vuota (o contiene solo il placeholder), elimina il placeholder.
-                const placeholderPath = `${fullPath}/.placeholder`;
-                const placeholderRef = ref(storage, placeholderPath);
+                if (!confirm(`Sei sicuro di voler eliminare la cartella e TUTTO il suo contenuto? L'azione è irreversibile.`)) return;
+                
                 try {
-                    await deleteObject(placeholderRef);
+                    await deleteFolderContents(fullPath);
                     await logActivity("folder_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: fullPath });
                     loadStorageItems(currentStoragePath);
                 } catch (error) {
-                    // Se il placeholder non esiste ma la cartella sì, potrebbe essere un residuo.
-                    // In questo caso, l'utente deve gestirlo dalla console Firebase.
-                    if (error.code === 'storage/object-not-found') {
-                        await logActivity("folder_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: fullPath });
-                        loadStorageItems(currentStoragePath); // Ricarica per rimuoverla dalla vista
-                    } else {
-                        console.error(`Errore eliminazione cartella:`, error);
-                        alert(`Impossibile eliminare la cartella: ${error.message}`);
-                    }
+                    console.error(`Errore eliminazione ricorsiva cartella:`, error);
+                    alert(`Impossibile eliminare la cartella: ${error.message}`);
                 }
             } else {
                 // Cancellazione di un file singolo
+                if (!confirm(`Sei sicuro di voler eliminare questo file? L'azione è irreversibile.`)) return;
+
                 const fileRef = ref(storage, fullPath);
                 try {
                     await deleteObject(fileRef);
@@ -11687,6 +11860,84 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         window.handleFileUpload = handleFileUpload;
         window.handleCreateFolder = handleCreateFolder;
         window.handleDownloadFile = handleDownloadFile;
+                const updateArchiveSelection = () => {
+            const bulkActionsContainer = document.getElementById('archive-bulk-actions');
+            const deleteBtn = document.getElementById('archive-delete-selected-btn');
+            const selectAllCheckbox = document.getElementById('archive-select-all');
+            if (!bulkActionsContainer || !deleteBtn || !selectAllCheckbox) return;
+
+            const selectedCheckboxes = document.querySelectorAll('.archive-item-checkbox:checked');
+            const totalCheckboxes = document.querySelectorAll('.archive-item-checkbox').length;
+            const selectedCount = selectedCheckboxes.length;
+
+            if (selectedCount > 0) {
+                bulkActionsContainer.classList.remove('hidden');
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = `Elimina Selezionati (${selectedCount})`;
+            } else {
+                bulkActionsContainer.classList.add('hidden');
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = 'Elimina Selezionati';
+            }
+
+            selectAllCheckbox.checked = selectedCount === totalCheckboxes && totalCheckboxes > 0;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCheckboxes;
+        };
+
+        const toggleAllArchiveItems = (source) => {
+            const checkboxes = document.querySelectorAll('.archive-item-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = source.checked;
+            });
+            updateArchiveSelection();
+        };
+
+        const handleBulkDeleteArchive = async () => {
+            const selectedCheckboxes = document.querySelectorAll('.archive-item-checkbox:checked');
+            if (selectedCheckboxes.length === 0) return;
+            
+            if (!confirm(`Sei sicuro di voler eliminare ${selectedCheckboxes.length} elementi? L'azione è irreversibile e cancellerà anche tutto il contenuto delle cartelle selezionate.`)) {
+                return;
+            }
+
+            const deleteBtn = document.getElementById('archive-delete-selected-btn');
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = 'Eliminazione...';
+            
+            const deletePromises = [];
+            
+            selectedCheckboxes.forEach(cb => {
+                const path = cb.dataset.path;
+                const type = cb.dataset.type;
+
+                if (type === 'folder') {
+                    deletePromises.push(
+                        deleteFolderContents(path)
+                            .then(() => logActivity("folder_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: path }))
+                    );
+                } else {
+                    deletePromises.push(
+                        deleteObject(ref(storage, path))
+                            .then(() => logActivity("file_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: path }))
+                    );
+                }
+            });
+
+            try {
+                await Promise.all(deletePromises);
+                alert(`${selectedCheckboxes.length} elementi eliminati con successo.`);
+            } catch (error) {
+                console.error("Errore nell'eliminazione di massa:", error);
+                alert(`Si è verificato un errore: ${error.message}`);
+            } finally {
+                loadStorageItems(currentStoragePath);
+            }
+        };
+
+        window.handleDownloadFile = handleDownloadFile;
+                window.updateArchiveSelection = updateArchiveSelection;
+        window.toggleAllArchiveItems = toggleAllArchiveItems;
+        window.handleBulkDeleteArchive = handleBulkDeleteArchive;
         window.handleDeleteItem = handleDeleteItem;
         window.openUploadModal = openUploadModal;
         window.selectUploadPath = selectUploadPath;
@@ -11696,7 +11947,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         window.handleCleanupSelectionChange = handleCleanupSelectionChange;
         window.handleBulkDelete = handleBulkDelete;
         window.clearActivityHistory = clearActivityHistory;
-        window.deleteAdministrativePeriod = deleteAdministrativePeriod; // NUOVO
+    window.deleteAdministrativePeriod = deleteAdministrativePeriod;
+    window.openPeriodEditModal = openPeriodEditModal; // NUOVO
+    window.updateAdministrativePeriod = updateAdministrativePeriod; // NUOVO
 
         const showSupervisorWarningForConsigliere = () => {
             const modalContent = `
