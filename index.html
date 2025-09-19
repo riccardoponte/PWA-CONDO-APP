@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    
+
     <!-- Link al manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
     <style>
@@ -486,15 +486,18 @@
         .property-controls-stack {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem; /* Spazio tra i due menu */
+            gap: 0.5rem;
+            /* Spazio tra i due menu */
             flex-shrink: 0;
-            width: 160px; /* Larghezza fissa per il contenitore, come il campo 'gruppo' originale */
+            width: 160px;
+            /* Larghezza fissa per il contenitore, come il campo 'gruppo' originale */
         }
 
         /* Reset e override per i select all'interno del nuovo contenitore */
         .property-controls-stack .group-select,
         .property-controls-stack .plan-select {
-            flex-basis: auto; /* Annulla la base flessibile */
+            flex-basis: auto;
+            /* Annulla la base flessibile */
             width: 100%;
         }
 
@@ -1069,12 +1072,13 @@
             height: 16px;
         }
 
-                /* Stili per le autorizzazioni nel form */
-                .permission-item {
+        /* Stili per le autorizzazioni nel form */
+        .permission-item {
             padding: 0.75rem 1rem;
             background-color: var(--surface-color-light);
             border-radius: var(--radius-sm);
         }
+
         .form-check-input {
             width: 22px;
             height: 22px;
@@ -1082,6 +1086,7 @@
             flex-shrink: 0;
             cursor: pointer;
         }
+
         .form-check-input:disabled {
             cursor: not-allowed;
             opacity: 0.7;
@@ -1587,7 +1592,7 @@
                 await deleteApp(secondaryApp);
             }
         };
-                const renderAbilitaCustode = () => `
+        const renderAbilitaCustode = () => `
             ${renderHeader('Abilita Funzioni Custode')}
             <main>
                 <div class="card">
@@ -1634,7 +1639,7 @@
                 try {
                     await setDoc(settingsRef, { canContactFornitore: canContact });
                     await logActivity("custodian_permissions_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { canContactFornitore: canContact });
-                    
+
                     messageBox.className = 'message-box success';
                     messageBox.textContent = 'Impostazioni salvate con successo!';
                     messageBox.style.display = 'block';
@@ -1747,7 +1752,7 @@
                     }
 
                     await adminCreateFornitore(email, password, fornitoreData);
-                    
+
                     messageBox.className = 'message-box success';
                     messageBox.textContent = `Account fornitore per "${fornitoreData.nomeAzienda}" creato con successo!`;
                     messageBox.style.display = 'block';
@@ -1771,13 +1776,127 @@
 
         const resetPassword = async t => await sendPasswordResetEmail(auth, t);
         const loadUserProfile = async t => { if (t) { const e = await getDoc(doc(db, "users", t.uid)); e.exists() && (userProfile = e.data()) } };
-        
+
+        // --- NUOVE FUNZIONI PER GESTIONE ACCOUNT ---
+
+        // Funzione per scaricare i dati dell'utente
+        window.downloadUserData = async () => {
+            try {
+                if (!currentUser || !userProfile) {
+                    alert('Errore: dati utente non disponibili');
+                    return;
+                }
+
+                // Raccolta di tutti i dati dell'utente
+                const userData = {
+                    informazioniPersonali: {
+                        nome: userProfile.nome,
+                        cognome: userProfile.cognome,
+                        email: currentUser.email,
+                        telefono: userProfile.telefono || 'Non specificato',
+                        tipoUtente: userProfile.tipoUtente,
+                        dataCreazione: userProfile.createdAt
+                    },
+                    proprieta: userProfile.proprieta || [],
+                    millesimiTotali: userProfile.millesimiTotali || 0,
+                    autorizzazioni: {
+                        consenteCustodeViewPhone: userProfile.allowCustodeViewPhone || false,
+                        consenteFornitoreViewPhone: userProfile.allowFornitoreViewPhone || false,
+                        consenteAdminViewContacts: userProfile.allowAdminViewContacts !== false
+                    },
+                    dataEsportazione: new Date().toISOString()
+                };
+
+                // Creazione del file JSON
+                const dataStr = JSON.stringify(userData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+                // Download del file
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `dati_utente_${userProfile.nome}_${userProfile.cognome}_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                // Log dell'attività
+                await logActivity("user_data_downloaded", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
+                    downloadDate: new Date().toISOString()
+                });
+
+                alert('I tuoi dati sono stati scaricati con successo!');
+            } catch (error) {
+                console.error('Errore durante il download dei dati:', error);
+                alert('Errore durante il download dei dati. Riprova più tardi.');
+            }
+        };
+
+        // Funzione per confermare l'eliminazione dell'account
+        window.confirmDeleteAccount = () => {
+            const confirmation = confirm(
+                'ATTENZIONE: Questa azione eliminerà permanentemente il tuo account e tutti i dati associati.\n\n' +
+                'Questa operazione NON può essere annullata.\n\n' +
+                'Sei sicuro di voler procedere?'
+            );
+
+            if (confirmation) {
+                const secondConfirmation = confirm(
+                    'ULTIMA CONFERMA: Stai per eliminare definitivamente il tuo account.\n\n' +
+                    'Clicca OK per procedere con l\'eliminazione o Annulla per tornare indietro.'
+                );
+
+                if (secondConfirmation) {
+                    window.deleteUserAccount();
+                }
+            }
+        };
+
+        // Funzione per eliminare l'account dell'utente
+        window.deleteUserAccount = async () => {
+            try {
+                if (!currentUser || !userProfile) {
+                    alert('Errore: dati utente non disponibili');
+                    return;
+                }
+
+                // Log dell'attività prima dell'eliminazione
+                await logActivity("user_account_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
+                    deletionDate: new Date().toISOString(),
+                    userType: userProfile.tipoUtente
+                });
+
+                // Eliminazione del documento utente dal database
+                await deleteDoc(doc(db, "users", currentUser.uid));
+
+                // Eliminazione dell'account di autenticazione
+                await currentUser.delete();
+
+                alert('Il tuo account è stato eliminato con successo.');
+
+                // Reindirizzamento alla pagina di login
+                currentUser = null;
+                userProfile = null;
+                navigateTo('login');
+
+            } catch (error) {
+                console.error('Errore durante l\'eliminazione dell\'account:', error);
+
+                if (error.code === 'auth/requires-recent-login') {
+                    alert('Per motivi di sicurezza, devi effettuare nuovamente il login prima di eliminare l\'account. Effettua il logout e accedi di nuovo, poi riprova.');
+                } else {
+                    alert('Errore durante l\'eliminazione dell\'account. Riprova più tardi o contatta l\'assistenza.');
+                }
+            }
+        };
+
         // NUOVO: Carica il periodo amministrativo corrente
         const loadCurrentAdministrativePeriod = async () => {
             try {
                 const now = new Date();
-                const q = query(collection(db, "administrativePeriods"), 
-                    where("startDate", "<=", now), 
+                const q = query(collection(db, "administrativePeriods"),
+                    where("startDate", "<=", now),
                     orderBy("startDate", "desc"),
                     limit(1));
 
@@ -1887,7 +2006,7 @@
                         endDate: endDate,
                         createdAt: serverTimestamp()
                     });
-                    
+
                     await logActivity("admin_period_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { year });
                     messageBox.className = 'message-box success';
                     messageBox.textContent = 'Periodo creato con successo!';
@@ -1916,12 +2035,12 @@
                     const endDate = period.endDate.toDate().toLocaleDateString('it-IT');
                     const isCurrent = currentAdministrativePeriod && currentAdministrativePeriod.id === docSnap.id;
                     const periodObjectString = JSON.stringify({
-                    year: period.year,
-                    startDate: period.startDate.toDate().toISOString().split('T')[0], // Formato YYYY-MM-DD
-                    endDate: period.endDate.toDate().toISOString().split('T')[0] // Formato YYYY-MM-DD
-                }).replace(/"/g, '&quot;');
+                        year: period.year,
+                        startDate: period.startDate.toDate().toISOString().split('T')[0], // Formato YYYY-MM-DD
+                        endDate: period.endDate.toDate().toISOString().split('T')[0] // Formato YYYY-MM-DD
+                    }).replace(/"/g, '&quot;');
 
-                return `
+                    return `
                 <div class="list-item" style="background: var(--surface-color-light);">
                     <div class="list-item-content" style="flex-grow: 1;">
                         <div class="title">${period.year} ${isCurrent ? '<span class="badge status-chiusa" style="margin-left:8px;">In Corso</span>' : ''}</div>
@@ -1942,21 +2061,21 @@
 
         // NUOVO: Funzione per eliminare un periodo
         const deleteAdministrativePeriod = async (periodId) => {
-        if (!confirm("Sei sicuro di voler eliminare questo periodo amministrativo? L'azione è irreversibile.")) {
-            return;
-        }
-        try {
-            await deleteDoc(doc(db, 'administrativePeriods', periodId));
-            await logActivity("admin_period_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId });
-            await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
-        } catch (error) {
-            console.error("Errore eliminazione periodo:", error);
-            alert(`Errore: ${error.message}`);
-        }
-    };
+            if (!confirm("Sei sicuro di voler eliminare questo periodo amministrativo? L'azione è irreversibile.")) {
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'administrativePeriods', periodId));
+                await logActivity("admin_period_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId });
+                await loadCurrentAdministrativePeriod(); // Ricarica per verificare se il periodo corrente è stato eliminato
+            } catch (error) {
+                console.error("Errore eliminazione periodo:", error);
+                alert(`Errore: ${error.message}`);
+            }
+        };
 
-    const openPeriodEditModal = (periodId, currentData) => {
-        const modalContent = `
+        const openPeriodEditModal = (periodId, currentData) => {
+            const modalContent = `
             <form id="edit-period-form" class="space-y-4" onsubmit="updateAdministrativePeriod(event, '${periodId}')">
                 <div class="form-group">
                     <label for="edit-period-year" class="form-label">Anno Amministrativo</label>
@@ -1978,42 +2097,42 @@
                 </div>
             </form>
         `;
-        showModal('Modifica Periodo Amministrativo', modalContent);
-    };
+            showModal('Modifica Periodo Amministrativo', modalContent);
+        };
 
-    const updateAdministrativePeriod = async (event, periodId) => {
-        event.preventDefault();
-        const year = document.getElementById('edit-period-year').value.trim();
-        const startDateStr = document.getElementById('edit-period-start-date').value;
-        const endDateStr = document.getElementById('edit-period-end-date').value;
+        const updateAdministrativePeriod = async (event, periodId) => {
+            event.preventDefault();
+            const year = document.getElementById('edit-period-year').value.trim();
+            const startDateStr = document.getElementById('edit-period-start-date').value;
+            const endDateStr = document.getElementById('edit-period-end-date').value;
 
-        if (!year || !startDateStr || !endDateStr) {
-            alert('Tutti i campi sono obbligatori.');
-            return;
-        }
+            if (!year || !startDateStr || !endDateStr) {
+                alert('Tutti i campi sono obbligatori.');
+                return;
+            }
 
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
 
-        if (endDate < startDate) {
-            alert('La data di fine non può essere precedente alla data di inizio.');
-            return;
-        }
+            if (endDate < startDate) {
+                alert('La data di fine non può essere precedente alla data di inizio.');
+                return;
+            }
 
-        try {
-            await updateDoc(doc(db, "administrativePeriods", periodId), {
-                year: year,
-                startDate: startDate,
-                endDate: endDate
-            });
-            await logActivity("admin_period_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId, year });
-            hideModal();
-            await loadCurrentAdministrativePeriod(); // Ricarica il periodo corrente per riflettere le modifiche
-        } catch (error) {
-            console.error("Errore nell'aggiornamento del periodo:", error);
-            alert(`Errore: ${error.message}`);
-        }
-    };
+            try {
+                await updateDoc(doc(db, "administrativePeriods", periodId), {
+                    year: year,
+                    startDate: startDate,
+                    endDate: endDate
+                });
+                await logActivity("admin_period_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { periodId, year });
+                hideModal();
+                await loadCurrentAdministrativePeriod(); // Ricarica il periodo corrente per riflettere le modifiche
+            } catch (error) {
+                console.error("Errore nell'aggiornamento del periodo:", error);
+                alert(`Errore: ${error.message}`);
+            }
+        };
 
         const navigateTo = (e, event) => {
             if (event) {
@@ -2030,7 +2149,7 @@
                 'reportPage': 'report', 'elencoCondomini': 'report'
             };
             const requiredService = serviceMap[e];
-            
+
             // CORREZIONE: Aggiunta un'eccezione per permettere al custode di accedere alla lista condomini
             const isCustodianAccessingCondoList = userType === 'custode' && e === 'elencoCondomini';
 
@@ -2465,10 +2584,10 @@
                     </div>
                 `);
             }
-            
 
-                if (userProfile?.tipoUtente === 'amministratore') {
-                    dashboardItemsHtml.push(`
+
+            if (userProfile?.tipoUtente === 'amministratore') {
+                dashboardItemsHtml.push(`
                         <div onclick="navigateTo('funzioniAmministratore')" class="dashboard-item">
                             <div class="dashboard-card">
                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
@@ -2476,15 +2595,15 @@
                             <p>Funzioni Amministr.</p>
                         </div>
                     `);
-                }
+            }
 
-                // Blocco 1: Pulsante "Funzioni Supervisore" per utenti 'supervisore' o con permesso speciale
-                if (userProfile?.tipoUtente === 'supervisore' || userProfile?.canAccessSupervisorFunctions) {
-                    const rolesRequiringWarning = ['consigliere', 'amministratore', 'adm'];
-                    const shouldShowWarning = rolesRequiringWarning.includes(userProfile?.tipoUtente);
-                    const supervisorFunctionOnclick = shouldShowWarning ? "showSupervisorWarningForConsigliere()" : "navigateTo('gestioneGruppi')";
-                    
-                    dashboardItemsHtml.push(`
+            // Blocco 1: Pulsante "Funzioni Supervisore" per utenti 'supervisore' o con permesso speciale
+            if (userProfile?.tipoUtente === 'supervisore' || userProfile?.canAccessSupervisorFunctions) {
+                const rolesRequiringWarning = ['consigliere', 'amministratore', 'adm'];
+                const shouldShowWarning = rolesRequiringWarning.includes(userProfile?.tipoUtente);
+                const supervisorFunctionOnclick = shouldShowWarning ? "showSupervisorWarningForConsigliere()" : "navigateTo('gestioneGruppi')";
+
+                dashboardItemsHtml.push(`
                         <div onclick="${supervisorFunctionOnclick}" class="dashboard-item">
                             <div class="dashboard-card">
                                 <svg fill="currentColor" viewBox="0 0 24 24">
@@ -2494,12 +2613,12 @@
                             <p>Funzioni Supervisore</p>
                         </div>
                     `);
-                }
+            }
 
-                // Blocco 2: Pulsanti esclusivi per l'utente 'adm'
-                if (userProfile?.tipoUtente === 'adm') {
-                    // Pulsante "Funzioni Admin" (invariato, senza popup)
-                    dashboardItemsHtml.push(`
+            // Blocco 2: Pulsanti esclusivi per l'utente 'adm'
+            if (userProfile?.tipoUtente === 'adm') {
+                // Pulsante "Funzioni Admin" (invariato, senza popup)
+                dashboardItemsHtml.push(`
                         <div onclick="navigateTo('gestioneGruppi')" class="dashboard-item">
                             <div class="dashboard-card">
                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
@@ -2508,8 +2627,8 @@
                         </div>
                     `);
 
-                    // Pulsante "Cronologia Attività"
-                    dashboardItemsHtml.push(`
+                // Pulsante "Cronologia Attività"
+                dashboardItemsHtml.push(`
                         <div onclick="navigateTo('cronologiaAttivita')" class="dashboard-item">
                             <div class="dashboard-card">
                                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
@@ -2517,7 +2636,7 @@
                             <p>Cronologia Attività</p>
                         </div>
                     `);
-                }
+            }
 
             return `
             ${renderHeader('Home')}
@@ -2586,7 +2705,7 @@
             </main>
             ${renderBottomNavigation()}
         `;
-        
+
         const setupStatisticheCondominiHandlers = async () => {
             const filterForm = document.getElementById('stats-filter-form');
             const resetBtn = document.getElementById('reset-stats-filters-btn');
@@ -2612,16 +2731,16 @@
                 console.error("Error populating condo filter:", error);
                 condoFilterSelect.innerHTML += '<option disabled>Errore nel caricamento</option>';
             }
-            
+
             const handleFilter = (e) => {
-                if(e) e.preventDefault();
+                if (e) e.preventDefault();
                 loadCondoStats();
             };
-            
+
             filterForm.addEventListener('submit', handleFilter);
             resetBtn.addEventListener('click', () => {
                 filterForm.reset();
-                setTimeout(handleFilter, 0); 
+                setTimeout(handleFilter, 0);
             });
 
             loadCondoStats();
@@ -2635,7 +2754,7 @@
             try {
                 const startDateInput = document.getElementById('start-date')?.value;
                 const endDateInput = document.getElementById('end-date')?.value;
-                
+
                 let startDate = null;
                 let endDate = null;
 
@@ -2711,7 +2830,7 @@
                 pollsSnapshot.forEach(doc => {
                     const poll = doc.data();
                     if (poll.pollType === 'condomini') {
-                         allGroupNames.forEach(groupName => {
+                        allGroupNames.forEach(groupName => {
                             if (stats[groupName]) stats[groupName].polls++;
                         });
                     }
@@ -2727,7 +2846,7 @@
                 // 5. Apply filters and render the table
                 const selectedCondo = document.getElementById('condo-filter')?.value || 'all';
                 const selectedActivity = document.getElementById('activity-type-filter')?.value || 'all';
-                
+
                 let tableHtml = `<table class="data-table"><thead><tr><th>Condominio / Gruppo</th>`;
                 if (selectedActivity === 'all' || selectedActivity === 'communications') tableHtml += `<th style="text-align:center;">Comunicazioni</th>`;
                 if (selectedActivity === 'all' || selectedActivity === 'reports') tableHtml += `<th style="text-align:center;">Segnalazioni</th>`;
@@ -2758,7 +2877,7 @@
                     tableHtml += buildRow('Totale', grandTotals);
                     tableHtml += `</tfoot>`;
                 }
-                
+
                 tableHtml += '</table>';
                 container.innerHTML = tableHtml;
 
@@ -3192,11 +3311,11 @@
     <select id="report-interest-type" required class="form-select">
         <option value="">Seleziona...</option>
         ${['amministratore', 'adm'].includes(userProfile?.tipoUtente)
-            ? `<option value="personale">Segnazione di interesse di un singolo condomino</option>`
-            : userProfile?.tipoUtente === 'fornitore'
-                ? `<option value="personale">Segnalazione singolo condomino</option>`
-                : `<option value="personale">Segnalazione di interesse personale</option>`
-        }
+                    ? `<option value="personale">Segnazione di interesse di un singolo condomino</option>`
+                    : userProfile?.tipoUtente === 'fornitore'
+                        ? `<option value="personale">Segnalazione singolo condomino</option>`
+                        : `<option value="personale">Segnalazione di interesse personale</option>`
+                }
         <option value="condominiale">Segnalazione di interesse condominiale</option>
     </select>
 </div>
@@ -3328,6 +3447,26 @@
                         <button type="submit" class="btn btn-primary w-full">Salva Modifiche Profilo</button>
                     </form>
                 </div>
+                
+                <!-- Sezione Gestione Account -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3 class="card-title">Gestione Account</h3>
+                    <div class="space-y-4">
+                        <button onclick="downloadUserData()" class="btn btn-secondary w-full" style="margin-bottom: 1rem;">
+                            <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            Scarica i Miei Dati
+                        </button>
+                        <button onclick="confirmDeleteAccount()" class="btn" style="background-color: var(--danger); color: white; width: 100%;">
+                            <svg style="width: 20px; height: 20px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                            </svg>
+                            Elimina Account
+                        </button>
+                    </div>
+                </div>
+                
                  <div style="margin-top: 2rem;">
                   <button onclick="logout()" class="btn btn-secondary w-full">Esci</button>
                 </div>
@@ -3377,8 +3516,8 @@
             } else {
                 // NUOVO: Aggiunta logica condizionale per il custode
                 if (['custode', 'amministratore', 'adm'].includes(userProfile?.tipoUtente)) {
-                                // Visualizzazione personalizzata per il custode
-            return `
+                    // Visualizzazione personalizzata per il custode
+                    return `
             ${renderHeader('Numeri Utili')}
             <main>
                 <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
@@ -3396,8 +3535,8 @@
             `;
                 } else {
                     // Visualizzazione originale per tutti gli altri utenti (es. condomino)
-const isAdmin = userProfile?.tipoUtente === 'amministratore';
-return `
+                    const isAdmin = userProfile?.tipoUtente === 'amministratore';
+                    return `
 ${renderHeader('Numeri Utili')}
 <main>
     <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
@@ -3759,7 +3898,7 @@ ${renderBottomNavigation()}
 
             try {
                 const usersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "==", "condomino")));
-                
+
                 let allProperties = [];
                 usersSnapshot.forEach(doc => {
                     const user = doc.data();
@@ -3775,7 +3914,7 @@ ${renderBottomNavigation()}
                         });
                     }
                 });
-                
+
                 // Funzione helper per popolare un select
                 const populateSelect = (selectId, values) => {
                     const select = document.getElementById(selectId);
@@ -3796,12 +3935,12 @@ ${renderBottomNavigation()}
                 const uniqueCognomi = [...new Set(allProperties.map(p => p.cognome).filter(Boolean))].sort();
                 const uniqueGruppi = [...new Set(allProperties.map(p => p.gruppo).filter(Boolean))].sort();
                 const uniquePiani = [...new Set(allProperties.map(p => p.piano).filter(p => p != null))].sort((a, b) => a - b);
-                
+
                 populateSelect('filter-proprieta', uniqueProprieta);
                 populateSelect('filter-cognome', uniqueCognomi);
                 populateSelect('filter-raggruppamento', uniqueGruppi);
                 populateSelect('filter-piano', uniquePiani);
-                
+
                 const applyFiltersAndRender = () => {
                     const propFilter = document.getElementById('filter-proprieta').value;
                     const cognomeFilter = document.getElementById('filter-cognome').value;
@@ -3815,7 +3954,7 @@ ${renderBottomNavigation()}
                         const pianoMatch = !pianoFilter || (item.piano != null && item.piano.toString() === pianoFilter);
                         return propMatch && cognomeMatch && gruppoMatch && pianoMatch;
                     });
-                    
+
                     if (filteredData.length === 0) {
                         container.innerHTML = '<p style="color:var(--secondary-text);">Nessun risultato trovato per i filtri applicati.</p>';
                         return;
@@ -3834,7 +3973,7 @@ ${renderBottomNavigation()}
                             </tr>
                         </thead>
                         <tbody>`;
-                    
+
                     filteredData.forEach(item => {
                         tableHtml += `<tr>
                             <td data-label="Proprietà">${item.interno || 'N/D'}</td>
@@ -3853,7 +3992,7 @@ ${renderBottomNavigation()}
 
                 // Aggiungi event listener al form (usa 'change' per i select)
                 form.addEventListener('change', applyFiltersAndRender);
-                
+
                 // Esegui il primo rendering
                 applyFiltersAndRender();
 
@@ -4793,7 +4932,7 @@ ${renderBottomNavigation()}
             ${renderBottomNavigation()}
         `;
 
-const setupGestoreFunzioniSupervisoreHandlers = async () => {
+        const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const listContainer = document.getElementById('supervisor-permissions-list');
             const form = document.getElementById('supervisor-permissions-form');
             if (!listContainer || !form) return;
@@ -4814,7 +4953,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         // If user types are the same, sort by last name
                         return (userA.cognome || '').localeCompare(userB.cognome || '');
                     });
-                
+
                 // Create a mock snapshot object to maintain the existing logic
                 const usersSnapshot = {
                     empty: usersDocs.length === 0,
@@ -4855,7 +4994,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 const submitBtn = form.querySelector('button[type="submit"]');
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Salvataggio...';
-                
+
                 try {
                     const batch = writeBatch(db);
                     const checkboxes = form.querySelectorAll('.supervisor-permission-checkbox');
@@ -5518,7 +5657,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     if (userProfile?.tipoUtente === 'amministratore') content = renderCreaFornitore();
                     else navigateTo('dashboard');
                     break;
-                                    case 'abilitaCustode':
+                case 'abilitaCustode':
                     if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
                     else navigateTo('dashboard');
                     break;
@@ -5630,7 +5769,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
                 case 'funzioniAmministratore': /* Nessun handler specifico per la pagina menu */ break;
                 case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
-                                case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
+                case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
                 case 'archivio':
                 case 'gestione_archivio':
                     setupArchivioHandlers();
@@ -5683,40 +5822,40 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             };
 
             let activeRules = [];
-        let importedHeaders = [];
+            let importedHeaders = [];
 
-        const getAutomaticGroupByRules = (propertyData) => {
-            if (!propertyData || activeRules.length === 0) return '';
-            
-            for (const rule of activeRules) {
-                if (rule.type === 'text_contains_classification' && rule.params) {
-                    const targetColumn = rule.params.targetColumn;
-                    const searchText = rule.params.searchText.toLowerCase();
-                    const propertyValue = (propertyData[targetColumn] || '').toString().toLowerCase();
-                    
-                    if (propertyValue.includes(searchText)) {
-                        return rule.params.classification; // Applica la prima regola che corrisponde
+            const getAutomaticGroupByRules = (propertyData) => {
+                if (!propertyData || activeRules.length === 0) return '';
+
+                for (const rule of activeRules) {
+                    if (rule.type === 'text_contains_classification' && rule.params) {
+                        const targetColumn = rule.params.targetColumn;
+                        const searchText = rule.params.searchText.toLowerCase();
+                        const propertyValue = (propertyData[targetColumn] || '').toString().toLowerCase();
+
+                        if (propertyValue.includes(searchText)) {
+                            return rule.params.classification; // Applica la prima regola che corrisponde
+                        }
                     }
+                    // Nota: le regole 'row_range_classification' non sono applicabili in questo contesto.
                 }
-                // Nota: le regole 'row_range_classification' non sono applicabili in questo contesto.
-            }
-            
-            return ''; // Nessuna regola corrispondente
-        };
 
-        const loadActiveGroupRules = async () => {
-            if (activeRules.length > 0) return;
-            try {
-                const q = query(collection(db, "groupRules"), where("isActive", "==", true));
-                const snapshot = await getDocs(q);
-                activeRules = snapshot.docs.map(doc => doc.data());
-            } catch (error) {
-                console.error("Errore nel caricamento delle regole di gruppo:", error);
-                activeRules = [];
-            }
-        };
+                return ''; // Nessuna regola corrispondente
+            };
 
-        const loadPropertyDataForRegistration = async () => {
+            const loadActiveGroupRules = async () => {
+                if (activeRules.length > 0) return;
+                try {
+                    const q = query(collection(db, "groupRules"), where("isActive", "==", true));
+                    const snapshot = await getDocs(q);
+                    activeRules = snapshot.docs.map(doc => doc.data());
+                } catch (error) {
+                    console.error("Errore nel caricamento delle regole di gruppo:", error);
+                    activeRules = [];
+                }
+            };
+
+            const loadPropertyDataForRegistration = async () => {
                 if (Object.keys(localGroupedProperties).length > 0) return;
                 try {
                     const q = query(collection(db, "importedData"), orderBy("uploadedAt", "desc"), limit(1));
@@ -5805,7 +5944,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const groupSelect = itemElement.querySelector('.group-select');
                     const planSelect = itemElement.querySelector('.plan-select');
                     const selectedOption = groupSelect.options[groupSelect.selectedIndex];
-                    
+
                     if (!selectedOption || !selectedOption.dataset.start) {
                         planSelect.innerHTML = '<option>Seleziona gruppo</option>';
                         planSelect.disabled = true;
@@ -5814,7 +5953,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
 
                     const start = parseInt(selectedOption.dataset.start, 10);
                     const end = parseInt(selectedOption.dataset.end, 10);
-                    
+
                     let planOptionsHtml = '<option value="" disabled selected>Piano...</option>';
                     for (let i = start; i <= end; i++) {
                         planOptionsHtml += `<option value="${i}">${i}</option>`;
@@ -5890,11 +6029,11 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 registerFields.classList.toggle("hidden", !isRegistering);
                 forgotPasswordBtn.classList.toggle("hidden", isRegistering);
                 if (isRegistering) {
-                await Promise.all([
-                    loadPropertyDataForRegistration(),
-                    loadActiveGroupRules()
-                ]);
-            }
+                    await Promise.all([
+                        loadPropertyDataForRegistration(),
+                        loadActiveGroupRules()
+                    ]);
+                }
             });
 
             authForm?.addEventListener("submit", async t => {
@@ -5949,11 +6088,11 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                             }
                         }
 
-                                            const allowCustodeViewPhone = document.getElementById("allowCustodeViewPhone").checked;
-                    const allowFornitoreViewPhone = document.getElementById("allowFornitoreViewPhone").checked;
-                    const allowAdminViewContacts = document.getElementById("allowAdminViewContacts").checked; // Sempre true
+                        const allowCustodeViewPhone = document.getElementById("allowCustodeViewPhone").checked;
+                        const allowFornitoreViewPhone = document.getElementById("allowFornitoreViewPhone").checked;
+                        const allowAdminViewContacts = document.getElementById("allowAdminViewContacts").checked; // Sempre true
 
-                    await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts });
+                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts });
                         r.textContent = "Registrazione completata! Ora puoi accedere."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
@@ -6045,10 +6184,10 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         await runTransaction(db, async (transaction) => {
                             const currentYear = new Date().getFullYear();
                             const yearCounterRef = doc(db, "counters", `communicationsCounter_${currentYear}`);
-                            
+
                             const counterDoc = await transaction.get(yearCounterRef);
                             const newCommNumberInYear = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
-                            
+
                             // Costruiamo il numero finale nel formato "NUMERO/ANNO"
                             finalCommNumber = `${newCommNumberInYear}/${currentYear}`;
 
@@ -6440,7 +6579,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     specificRecipientContainer.innerHTML = `<p class="message-box error" style="display:block;">Errore nel caricamento.</p>`;
                 }
             };
-            
+
             recipientSelect?.addEventListener("change", function () {
                 const recipient = this.value;
                 specificRecipientContainer.classList.add('hidden');
@@ -6449,7 +6588,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 // Mostra/nascondi opzioni di comunicazione in base al destinatario
                 const ownerPhoneLabel = document.getElementById("owner-phone-label");
                 phoneCommunicationCheckboxes?.classList.toggle("hidden", recipient !== 'fornitore');
-                
+
                 if (recipient === 'fornitore') {
                     // Se l'utente è un amministratore e seleziona "fornitore", nasconde l'opzione del telefono del condomino
                     if (userProfile?.tipoUtente === 'amministratore' && ownerPhoneLabel) {
@@ -6470,7 +6609,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 if (recipient === 'condomino' || recipient === 'fornitore') {
                     populateSpecificRecipientDropdown(recipient);
                 }
-                
+
                 // Update priority options logic...
                 const prioritySelect = document.getElementById("report-priority");
                 const allOptions = [
@@ -6500,7 +6639,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 const submitBtn = document.getElementById("submit-report-btn");
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Invio in corso...';
-                
+
                 const title = document.getElementById("report-title").value;
                 const description = document.getElementById("report-description").value;
                 const category = document.getElementById("report-category").value;
@@ -6510,7 +6649,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 const otherUiOwner = document.getElementById("other-ui-owner").value;
                 const communicateOwnerPhone = document.getElementById("communicate-owner-phone").checked;
                 const communicateOtherUiPhone = document.getElementById("communicate-other-ui-phone").checked;
-                
+
                 let location = '', propertyInfo = null;
                 const manualLocationInput = document.getElementById("report-location-manual");
                 if (manualLocationInput) {
@@ -6523,7 +6662,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         propertyInfo = { interno, piano };
                     }
                 }
-                
+
                 let specificRecipientId = null;
                 if (recipient === 'condomino' || recipient === 'fornitore') {
                     const specificSelect = document.getElementById('specific-recipient-select');
@@ -6555,7 +6694,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     }
 
                     submitBtn.textContent = 'Salvataggio dati...';
-                    
+
                     let reportData;
                     await runTransaction(db, async (transaction) => {
                         const counterDoc = await transaction.get(counterRef);
@@ -6589,7 +6728,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     // Webhook e log... (codice esistente)
                     (async () => { try { /* ... */ } catch (e) { console.error(e) } })();
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId, title, attachments: fileUrls.length });
-                    
+
                     form.reset();
                     selectedReportFiles = [];
                     renderFilePreviews();
@@ -6630,16 +6769,16 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 try {
                     // Oggetto per gli aggiornamenti del documento Firestore
                     const allowCustodeViewPhone = document.getElementById("profile_allowCustodeViewPhone").checked;
-                const allowFornitoreViewPhone = document.getElementById("profile_allowFornitoreViewPhone").checked;
+                    const allowFornitoreViewPhone = document.getElementById("profile_allowFornitoreViewPhone").checked;
 
-                // Oggetto per gli aggiornamenti del documento Firestore
-                const firestoreUpdates = {
-                    nome: nome,
-                    cognome: cognome,
-                    telefono: telefono,
-                    allowCustodeViewPhone: allowCustodeViewPhone,
-                    allowFornitoreViewPhone: allowFornitoreViewPhone
-                };
+                    // Oggetto per gli aggiornamenti del documento Firestore
+                    const firestoreUpdates = {
+                        nome: nome,
+                        cognome: cognome,
+                        telefono: telefono,
+                        allowCustodeViewPhone: allowCustodeViewPhone,
+                        allowFornitoreViewPhone: allowFornitoreViewPhone
+                    };
 
                     // 1. Gestisci la modifica dell'email se è cambiata
                     if (newEmail && newEmail !== currentUser.email) {
@@ -7491,7 +7630,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 const nameInput = document.getElementById('partial-condo-name');
                 const startPlanInput = document.getElementById('partial-condo-start-plan');
                 const endPlanInput = document.getElementById('partial-condo-end-plan');
-                
+
                 const name = nameInput.value.trim();
                 const startPlan = parseInt(startPlanInput.value, 10);
                 const endPlan = parseInt(endPlanInput.value, 10);
@@ -7603,7 +7742,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 addPropertyBtn.classList.remove('hidden');
                 propertiesContainer.innerHTML = `<p class="form-label" style="color:var(--secondary-text); font-size:0.9rem;">Cerca un nominativo per caricare i dati o aggiungi le proprietà manualmente.</p>`;
             };
-            
+
             const updateFormVisibility = () => {
                 const userType = tipoUtenteSelect.value;
                 const natura = document.querySelector('input[name="natura-giuridica"]:checked')?.value;
@@ -7627,7 +7766,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     personaFisicaFields.classList.remove('hidden');
                 }
             };
-            
+
             loadPrerequisitesForCreation().then(() => {
                 tipoUtenteSelect.addEventListener('change', updateFormVisibility);
                 naturaGiuridicaContainer.addEventListener('change', updateFormVisibility);
@@ -7641,7 +7780,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.custom-dropdown-container')) optionsContainer?.classList.add('hidden');
                 });
-                
+
                 updateFormVisibility();
             });
 
@@ -7682,7 +7821,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     if (!cognome || !tipoUtente) {
                         throw new Error('Compilare tutti i campi obbligatori (Tipo Utente e Cognome/Azienda).');
                     }
-                    
+
                     const profileData = {
                         nome: nome,
                         cognome: cognome,
@@ -7693,7 +7832,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     };
 
                     await adminCreateUser(document.getElementById('admin-email').value, document.getElementById('admin-password').value, profileData);
-                    
+
                     messageBox.className = 'message-box success';
                     messageBox.textContent = `Utente ${profileData.cognome} creato con successo!`;
                     messageBox.style.display = 'block';
@@ -8865,7 +9004,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 if (commDoc.exists()) {
                     const comm = commDoc.data();
                     let attachmentsHtml = '';
-                    
+
                     // --- MODIFICATION START ---
                     // This block now renders a gallery of attachments if fileUrls exist.
                     if (comm.fileUrls && comm.fileUrls.length > 0) {
@@ -8873,38 +9012,38 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         <h4 style="font-size: 1rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem;">Allegati:</h4>
                         <div class="report-attachments-gallery" style="padding-left: 0;">
                             ${comm.fileUrls.map(url => {
-                                // Simple logic to differentiate file types based on common extensions in the URL
-                                const lowerUrl = url.toLowerCase();
-                                const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(lowerUrl);
-                                const isVideo = /\.(mp4|mov|webm)$/.test(lowerUrl);
-                                
-                                let fileName = 'Documento';
-                                try {
-                                    // Extract a user-friendly file name from the URL
-                                    const urlPath = new URL(url).pathname;
-                                    const decodedPath = decodeURIComponent(urlPath);
-                                    fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
-                                    // Remove the timestamp prefix for display
-                                    if (fileName.includes('_')) {
-                                        fileName = fileName.substring(fileName.indexOf('_') + 1);
-                                    }
-                                } catch (e) { /* Fallback if URL parsing fails */ }
+                            // Simple logic to differentiate file types based on common extensions in the URL
+                            const lowerUrl = url.toLowerCase();
+                            const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(lowerUrl);
+                            const isVideo = /\.(mp4|mov|webm)$/.test(lowerUrl);
 
-                                if (isImage) {
-                                    return `<a href="${url}" target="_blank" class="gallery-item"><img src="${url}" alt="Allegato immagine"></a>`;
-                                } else if (isVideo) {
-                                    return `<a href="${url}" target="_blank" class="gallery-item"><video src="${url}" controls preload="metadata"></video></a>`;
-                                } else {
-                                    // Fallback for documents (PDF, DOCX, etc.)
-                                    return `
+                            let fileName = 'Documento';
+                            try {
+                                // Extract a user-friendly file name from the URL
+                                const urlPath = new URL(url).pathname;
+                                const decodedPath = decodeURIComponent(urlPath);
+                                fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
+                                // Remove the timestamp prefix for display
+                                if (fileName.includes('_')) {
+                                    fileName = fileName.substring(fileName.indexOf('_') + 1);
+                                }
+                            } catch (e) { /* Fallback if URL parsing fails */ }
+
+                            if (isImage) {
+                                return `<a href="${url}" target="_blank" class="gallery-item"><img src="${url}" alt="Allegato immagine"></a>`;
+                            } else if (isVideo) {
+                                return `<a href="${url}" target="_blank" class="gallery-item"><video src="${url}" controls preload="metadata"></video></a>`;
+                            } else {
+                                // Fallback for documents (PDF, DOCX, etc.)
+                                return `
                                     <a href="${url}" target="_blank" class="gallery-item">
                                         <div class="preview-item-document">
                                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                                             <span>${fileName}</span>
                                         </div>
                                     </a>`;
-                                }
-                            }).join('')}
+                            }
+                        }).join('')}
                         </div>
                         `;
                     }
@@ -8945,7 +9084,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     if (userRole === 'custode') {
                         return comm.forwardToCustode === true;
                     }
-                    
+
                     // Logica generale per tutti gli altri utenti.
                     const hasGeneralPermission = canSeeAll || !comm.targetGroup || comm.targetGroup === 'Tutti' || userGroups.includes(comm.targetGroup);
                     return hasGeneralPermission;
@@ -8969,7 +9108,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         if (!comm.createdAt) return "";
 
                         const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-                        
+
                         const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
                             ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
                             : '';
@@ -9118,7 +9257,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     let filteredPolls = snapshot.docs.filter(docSnap => {
                         const poll = docSnap.data();
                         const userRole = userProfile.tipoUtente;
-                        
+
                         // --- NUOVA REGOLA DI VISIBILITÀ PER L'AMMINISTRATORE ---
                         if (userRole === 'amministratore') {
                             // L'amministratore vede il sondaggio solo se:
@@ -9146,7 +9285,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                             // Altri ruoli come custode, fornitore non vedono nulla
                             return false;
                         }
-                        
+
                         // --- FILTRI AGGIUNTIVI (STATUS, RICERCA, TIPO) ---
 
                         // Filter by status (active/closed)
@@ -9192,7 +9331,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     filteredPolls.sort((a, b) => {
                         const pollA = a.data();
                         const pollB = b.data();
-                        
+
                         // Primary sort: by pollNumber descending. Higher number comes first.
                         const numberSort = (pollB.pollNumber || 0) - (pollA.pollNumber || 0);
                         if (numberSort !== 0) {
@@ -9291,8 +9430,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         actionButtons.push(`<button onclick="showPollVoters('${docSnap.id}')" class="btn btn-secondary" style="flex-grow:1;">Mostra Votanti</button>`);
 
                         if (poll.createdById === currentUser.uid && !isExpired && userProfile.tipoUtente !== 'amministratore') {
-    actionButtons.push(`<button onclick="deletePoll('${docSnap.id}')" class="btn" style="background:var(--danger); color:white; flex-grow:1;">Elimina</button>`);
-}
+                            actionButtons.push(`<button onclick="deletePoll('${docSnap.id}')" class="btn" style="background:var(--danger); color:white; flex-grow:1;">Elimina</button>`);
+                        }
                         const actionButtonsHtml = actionButtons.length > 0 ? `<div class="flex gap-4 mt-4">${actionButtons.join('')}</div>` : '';
 
                         const typeBadge = `<span class="badge" style="background: var(--accent-color); color: white; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; margin-bottom: 0.5rem; display: inline-block;">${pollTypeLabel}</span>`;
@@ -9344,8 +9483,8 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             let primaryActionButtonsHtml = '';
             let forwardButtonHtml = '';
             let updateButtonHtml = '';
-                        // Logica pulsante "Rispondi" per il condomino nella vista delle segnalazioni ricevute
-                        if (userProfile?.tipoUtente === 'condomino' && currentPage === 'segnalazioni_ricevute' && report.status !== 'chiusa') {
+            // Logica pulsante "Rispondi" per il condomino nella vista delle segnalazioni ricevute
+            if (userProfile?.tipoUtente === 'condomino' && currentPage === 'segnalazioni_ricevute' && report.status !== 'chiusa') {
                 primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Rispondi</button>`;
             }
 
@@ -9899,7 +10038,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             onSnapshot(baseQuery, (snapshot) => {
                 let relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
-                    
+
                     // NUOVA LOGICA DI FILTRAGGIO
                     if (data.specificRecipientId) {
                         // Se c'è un destinatario specifico, solo lui può vederlo
@@ -10138,7 +10277,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     if (recipientIds.length > 0) {
                         const uniqueRecipientIds = [...new Set(recipientIds)];
                         const recipientsSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "in", uniqueRecipientIds)));
-                        
+
                         const recipientsMap = new Map();
                         recipientsSnapshot.forEach(doc => {
                             const user = doc.data();
@@ -10158,7 +10297,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         });
                     }
                 }
-                
+
                 handleUserReports(docsForHandler);
             });
         };
@@ -10299,13 +10438,13 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const interno = row.querySelector('input[data-field="interno"]').value.trim();
                     const millesimi = parseFloat(row.querySelector('input[data-field="millesimi"]').value) || 0;
                     const gruppo = row.querySelector('select[data-field="gruppo"]').value;
-                        const pianoSelect = row.querySelector('select[data-field="piano"]');
-                        const piano = pianoSelect.value ? parseInt(pianoSelect.value, 10) : null;
+                    const pianoSelect = row.querySelector('select[data-field="piano"]');
+                    const piano = pianoSelect.value ? parseInt(pianoSelect.value, 10) : null;
 
-                        if (interno) {
-                            updatedProperties.push({ interno, millesimi, gruppo, piano });
-                            totalMillesimi += millesimi;
-                        }
+                    if (interno) {
+                        updatedProperties.push({ interno, millesimi, gruppo, piano });
+                        totalMillesimi += millesimi;
+                    }
                 });
 
                 const updatedData = {
@@ -10408,7 +10547,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             `;
 
             showModal(`Modifica Utente: ${user.nome} ${user.cognome}`, modalContent);
-            
+
             // Add event listeners for dynamic plan selects
             document.querySelectorAll('.property-edit-row .form-select[data-field="gruppo"]').forEach(groupSelect => {
                 groupSelect.addEventListener('change', (e) => {
@@ -10423,7 +10562,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
 
                     const start = parseInt(selectedOption.dataset.start, 10);
                     const end = parseInt(selectedOption.dataset.end, 10);
-                    
+
                     let planOptionsHtml = '<option value="" disabled selected>Piano...</option>';
                     for (let i = start; i <= end; i++) {
                         planOptionsHtml += `<option value="${i}">${i}</option>`;
@@ -10527,17 +10666,17 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                     const createCell = (content) => `<div class="cell-content-wrapper"><span>${content}</span>${editIconHtml}</div>`;
 
                     if (user.proprieta && user.proprieta.length > 0) {
-                    user.proprieta.forEach((prop, index) => {
-                        tableHtml += `<tr>
+                        user.proprieta.forEach((prop, index) => {
+                            tableHtml += `<tr>
                             ${index === 0 ? `<td data-label="Ruolo" rowspan="${user.proprieta.length}">${createCell(user.tipoUtente)}</td><td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td><td data-label="Email" rowspan="${user.proprieta.length}">${createCell(user.email)}</td>` : ''}
                             <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
                             <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
                             <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
                             <td data-label="Millesimi">${createCell((prop.millesimi || 0).toFixed(2))}</td>
                         </tr>`;
-                    });
+                        });
                     } else {
-                    tableHtml += `<tr>
+                        tableHtml += `<tr>
                         <td data-label="Ruolo">${createCell(user.tipoUtente)}</td>
                         <td data-label="Nome">${createCell(user.nome)}</td>
                         <td data-label="Cognome">${createCell(user.cognome)}</td>
@@ -10547,7 +10686,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                         <td data-label="Raggruppamento">${createCell('N/D')}</td>
                         <td data-label="Millesimi">${createCell('0.00')}</td>
                     </tr>`;
-                }
+                    }
                 });
 
                 tableHtml += `</tbody></table>`;
@@ -11325,7 +11464,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             if (!container || !breadcrumbsContainer) return;
 
             // Nascondi subito le azioni di massa al cambio cartella
-            updateArchiveSelection(); 
+            updateArchiveSelection();
 
             container.innerHTML = `<p style="color:var(--secondary-text);">Caricamento elementi...</p>`;
 
@@ -11598,7 +11737,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         const handleDeleteItem = async (fullPath, isFolder) => {
             if (isFolder) {
                 if (!confirm(`Sei sicuro di voler eliminare la cartella e TUTTO il suo contenuto? L'azione è irreversibile.`)) return;
-                
+
                 try {
                     await deleteFolderContents(fullPath);
                     await logActivity("folder_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: fullPath });
@@ -11860,7 +11999,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         window.handleFileUpload = handleFileUpload;
         window.handleCreateFolder = handleCreateFolder;
         window.handleDownloadFile = handleDownloadFile;
-                const updateArchiveSelection = () => {
+        const updateArchiveSelection = () => {
             const bulkActionsContainer = document.getElementById('archive-bulk-actions');
             const deleteBtn = document.getElementById('archive-delete-selected-btn');
             const selectAllCheckbox = document.getElementById('archive-select-all');
@@ -11895,7 +12034,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         const handleBulkDeleteArchive = async () => {
             const selectedCheckboxes = document.querySelectorAll('.archive-item-checkbox:checked');
             if (selectedCheckboxes.length === 0) return;
-            
+
             if (!confirm(`Sei sicuro di voler eliminare ${selectedCheckboxes.length} elementi? L'azione è irreversibile e cancellerà anche tutto il contenuto delle cartelle selezionate.`)) {
                 return;
             }
@@ -11903,9 +12042,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
             const deleteBtn = document.getElementById('archive-delete-selected-btn');
             deleteBtn.disabled = true;
             deleteBtn.textContent = 'Eliminazione...';
-            
+
             const deletePromises = [];
-            
+
             selectedCheckboxes.forEach(cb => {
                 const path = cb.dataset.path;
                 const type = cb.dataset.type;
@@ -11935,7 +12074,7 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         };
 
         window.handleDownloadFile = handleDownloadFile;
-                window.updateArchiveSelection = updateArchiveSelection;
+        window.updateArchiveSelection = updateArchiveSelection;
         window.toggleAllArchiveItems = toggleAllArchiveItems;
         window.handleBulkDeleteArchive = handleBulkDeleteArchive;
         window.handleDeleteItem = handleDeleteItem;
@@ -11947,9 +12086,9 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
         window.handleCleanupSelectionChange = handleCleanupSelectionChange;
         window.handleBulkDelete = handleBulkDelete;
         window.clearActivityHistory = clearActivityHistory;
-    window.deleteAdministrativePeriod = deleteAdministrativePeriod;
-    window.openPeriodEditModal = openPeriodEditModal; // NUOVO
-    window.updateAdministrativePeriod = updateAdministrativePeriod; // NUOVO
+        window.deleteAdministrativePeriod = deleteAdministrativePeriod;
+        window.openPeriodEditModal = openPeriodEditModal; // NUOVO
+        window.updateAdministrativePeriod = updateAdministrativePeriod; // NUOVO
 
         const showSupervisorWarningForConsigliere = () => {
             const modalContent = `
@@ -12031,13 +12170,13 @@ const setupGestoreFunzioniSupervisoreHandlers = async () => {
                 }
                 renderCurrentPage();
             } else {
-                 // Se lo stato è nullo, potrebbe essere la prima pagina caricata.
-                 // Controlla l'hash per un fallback.
-                 const hash = window.location.hash.substring(1);
-                 if (hash && hash !== currentPage) {
-                     currentPage = hash;
-                     renderCurrentPage();
-                 }
+                // Se lo stato è nullo, potrebbe essere la prima pagina caricata.
+                // Controlla l'hash per un fallback.
+                const hash = window.location.hash.substring(1);
+                if (hash && hash !== currentPage) {
+                    currentPage = hash;
+                    renderCurrentPage();
+                }
             }
         });
 
