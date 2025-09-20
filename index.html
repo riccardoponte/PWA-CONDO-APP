@@ -1439,6 +1439,109 @@
         const hideModal = () => {
             modalContainer.classList.add('hidden');
         };
+                const showPrivacyPolicy = () => {
+            const policyTitle = 'Informativa sul Trattamento dei Dati Personali';
+            const policyHtml = `
+                <p style="font-size: 0.8rem; text-align: center; color: var(--secondary-text); margin-top: -1rem; margin-bottom: 1.5rem;">Ai sensi dell'art. 13 del Regolamento (UE) 2016/679 (GDPR)</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">1. Titolare del Trattamento</h4>
+                <p>Il Titolare del trattamento dei dati è <strong>Alberto Giorgio Ponte</strong>, in qualità di Sviluppatore e gestore dell'applicazione per conto del Condominio (di seguito "Titolare"), con sede in <strong>Via Bellini 13, Cormano (MI)</strong>, contattabile all'indirizzo email: <strong>aerponte@yahoo.it</strong>.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">2. Dati Personali Raccolti e Fonte dei Dati</h4>
+                <p>Per fornire i servizi tramite l'applicazione Con-bridge, raccogliamo dati personali che ci fornisci direttamente al momento della registrazione e dati pre-caricati dal Titolare.</p>
+                <ul style="padding-left: 20px; list-style-position: inside;">
+                    <li style="margin-bottom: 0.5rem;">
+                        <strong>Dati forniti direttamente dall'utente:</strong> Indirizzo email, password, numero di telefono e i contenuti da te generati (messaggi, file caricati, voti nei sondaggi).
+                    </li>
+                    <li style="margin-bottom: 0.5rem;">
+                        <strong>Dati pre-caricati dal Titolare:</strong> Per facilitare la registrazione e garantire la corretta associazione alle unità immobiliari, il Titolare pre-carica nell'applicazione i dati anagrafici (nominativo) e di proprietà (interno, millesimi) dei condomini.
+                        <br>
+                        <em style="font-size: 0.9em;">Fonte di questi dati:</em> Tali informazioni provengono esclusivamente dall'anagrafica condominiale e dal piano di riparto annuale, documenti ufficiali del condominio redatti dall'amministratore e distribuiti ai condomini.
+                    </li>
+                    <li style="margin-bottom: 0.5rem;">
+                        <strong>Dati Tecnici e di Utilizzo:</strong> Informazioni sulle tue interazioni con l'app (log delle attività per finalità di sicurezza e miglioramento del servizio.
+                    </li>
+                </ul>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">3. Finalità e Base Giuridica del Trattamento</h4>
+                <p>I tuoi dati sono trattati per le seguenti finalità e sulla base delle seguenti condizioni di liceità:</p>
+                <div style="margin-top: 1rem;">
+                    <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color-light);">
+                        <p><strong>Finalità:</strong> Gestione della vita condominiale, ovvero fornire accesso a bacheca, segnalazioni, sondaggi, rubrica, archivio e gestire l'anagrafica utenti.</p>
+                        <p style="margin-top: 0.5rem;"><em>Base Giuridica:</em> <strong>Esecuzione di un contratto</strong> di cui sei parte (il rapporto condominiale e l'utilizzo dei servizi annessi).</p>
+                    </div>
+                    <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color-light);">
+                        <p><strong>Finalità:</strong> Condivisione del recapito telefonico per consentire al custode o a un fornitore di contattarti per interventi relativi a una tua segnalazione.</p>
+                        <p style="margin-top: 0.5rem;"><em>Base Giuridica:</em> <strong>Il tuo consenso esplicito</strong>, fornito tramite le apposite caselle. Puoi revocare il consenso in qualsiasi momento dalla pagina "Profilo".</p>
+                    </div>
+                    <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-color-light);">
+                        <p><strong>Finalità:</strong> Amministrazione, sicurezza e auditing, ovvero gestire ruoli e permessi, monitorare le attività per prevenire abusi e garantire il corretto funzionamento tecnico.</p>
+                        <p style="margin-top: 0.5rem;"><em>Base Giuridica:</em> <strong>Legittimo interesse</strong> del Titolare a proteggere i propri sistemi e garantire la sicurezza della piattaforma e degli utenti.</p>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <p><strong>Finalità:</strong> Invio di notifiche via email per informarti riguardo a nuove comunicazioni, sondaggi o solleciti pertinenti alla vita condominiale.</p>
+                        <p style="margin-top: 0.5rem;"><em>Base Giuridica:</em> <strong>Esecuzione di un contratto</strong> e <strong>Legittimo interesse</strong> a garantire una comunicazione efficace.</p>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">4. Ambito di Circolazione e Destinatari dei Dati</h4>
+                <p>I tuoi dati potranno essere comunicati a:</p>
+                <ul style="padding-left: 20px; list-style-position: inside;">
+                    <li style="margin-bottom: 0.5rem;"><strong>Altri utenti dell'applicazione:</strong> In base ai ruoli e alle autorizzazioni (es. l'amministratore, il custode, i fornitori per le segnalazioni di loro competenza).</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Fornitori di servizi tecnici:</strong> Google Firebase per l'infrastruttura tecnica (database, autenticazione, hosting file).</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Servizi di terze parti per le notifiche:</strong> Per l'invio di notifiche email, il tuo indirizzo email e il contenuto della notifica vengono condivisi con i nostri fornitori di webhook (es. <strong>Make.com, Railway.app</strong>).</li>
+                </ul>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">5. Modalità di Trattamento e Trasferimento Dati Extra-UE</h4>
+                <p>I tuoi dati sono salvati e gestiti sull'infrastruttura cloud <strong>Google Firebase</strong>, che garantisce elevati standard di sicurezza. Le informazioni relative alle notifiche non lette (es. il badge rosso) sono salvate temporaneamente solo sul tuo dispositivo (nella memoria locale del browser) e non vengono trasmesse o archiviate altrove.</p>
+                <p style="margin-top: 0.5rem;">Il fornitore Google Firebase potrebbe trasferire i dati al di fuori dello Spazio Economico Europeo (SEE). Tale trasferimento è legittimato dall'adozione di Clausole Contrattuali Standard (SCC) approvate dalla Commissione Europea, che garantiscono un livello di protezione adeguato.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">6. Periodo di Conservazione</h4>
+                <p>I dati personali legati al tuo account vengono conservati fino a quando sei un membro del condominio. In caso di cessazione del rapporto (es. vendita dell'immobile), il tuo account e i dati personali associati verranno eliminati. I contenuti generati (comunicazioni, segnalazioni, sondaggi) vengono conservati per la durata dell'esercizio amministrativo di riferimento e successivamente eliminati, fatti salvi specifici obblighi di legge che potrebbero richiedere una conservazione più lunga (es. documenti con valenza legale o fiscale per 10 anni).</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">7. Diritti dell'Interessato</h4>
+                <p>In qualità di interessato, hai il diritto di esercitare i seguenti diritti previsti dal GDPR. L'applicazione è stata progettata per rendere l'esercizio di questi diritti il più semplice possibile.</p>
+                <ul style="padding-left: 20px; list-style-position: inside; margin-top: 1rem;">
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto di Accesso (Art. 15):</strong> Hai il diritto di sapere se stiamo trattando i tuoi dati e di visualizzarli.
+                        <br>
+                        <em>Come esercitarlo nell'app:</em> Puoi visualizzare tutti i tuoi dati personali principali (nome, email, telefono, proprietà associate) direttamente nella pagina <strong>"Profilo"</strong>. Per una copia completa, puoi usare il diritto alla portabilità.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto di Rettifica (Art. 16):</strong> Hai il diritto di correggere o aggiornare i tuoi dati personali se sono inesatti o incompleti.
+                        <br>
+                        <em>Come esercitarlo nell'app:</em> Nella pagina <strong>"Profilo"</strong>, puoi modificare direttamente i campi relativi a nome, cognome, email e numero di telefono e salvare le modifiche.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto alla Cancellazione (Diritto all'Oblio, Art. 17):</strong> Hai il diritto di richiedere la cancellazione permanente dei tuoi dati personali.
+                        <br>
+                        <em>Come esercitarlo nell'app:</em> Nella pagina <strong>"Profilo"</strong>, è presente la funzione <strong>"Elimina Account"</strong> che, previa conferma, cancellerà in modo definitivo il tuo account e tutti i dati ad esso associati.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto di Limitazione del Trattamento (Art. 18):</strong> In determinate circostanze (es. se contesti l'esattezza dei dati), hai il diritto di richiedere che l'uso dei tuoi dati venga temporaneamente sospeso.
+                        <br>
+                        <em>Come esercitarlo:</em> Per questo diritto, è necessario <strong>contattare il Titolare</strong> del Trattamento ai recapiti indicati al punto 1 di questa informativa.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto alla Portabilità dei Dati (Art. 20):</strong> Hai il diritto di ricevere una copia dei tuoi dati personali in un formato strutturato e di uso comune (JSON).
+                        <br>
+                        <em>Come esercitarlo nell'app:</em> Nella pagina <strong>"Profilo"</strong>, puoi utilizzare la funzione <strong>"Scarica i Miei Dati"</strong> per ottenere immediatamente un file JSON con tutte le tue informazioni.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto di Opposizione (Art. 21):</strong> Hai il diritto di opporti al trattamento dei tuoi dati quando questo si basa sul nostro legittimo interesse.
+                        <br>
+                        <em>Come esercitarlo:</em> Per opporti al trattamento, puoi <strong>contattare il Titolare</strong> del Trattamento ai recapiti indicati.
+                    </li>
+                    <li style="margin-bottom: 1rem;">
+                        <strong>Diritto di Proporre Reclamo:</strong> Se ritieni che i tuoi diritti siano stati violati, hai il diritto di presentare un reclamo all'autorità di controllo competente (in Italia, il Garante per la Protezione dei Dati Personali).
+                    </li>
+                </ul>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">8. Processi Decisionali Automatizzati</h4>
+                <p>L'applicazione non utilizza processi decisionali automatizzati, inclusa la profilazione, che producano effetti giuridici che ti riguardano.</p>
+            `;
+            showModal(policyTitle, policyHtml);
+        };
 
         const loadServicePermissions = async () => {
             try {
@@ -1512,7 +1615,7 @@
                 console.error("Errore nel logging dell'attività:", error);
             }
         };
-        const register = async (t, e, o) => { const a = await createUserWithEmailAndPassword(auth, t, e); const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0); return await setDoc(doc(db, "users", a.user.uid), { nome: o.nome, cognome: o.cognome, email: t, tipoUtente: o.tipoUtente, proprieta: o.proprieta || [], telefono: o.telefono || "", millesimiTotali: totalMillesimi, createdAt: (new Date).toISOString(), allowCustodeViewPhone: o.allowCustodeViewPhone, allowFornitoreViewPhone: o.allowFornitoreViewPhone, allowAdminViewContacts: o.allowAdminViewContacts }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a };
+        const register = async (t, e, o) => { const a = await createUserWithEmailAndPassword(auth, t, e); const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0); return await setDoc(doc(db, "users", a.user.uid), { nome: o.nome, cognome: o.cognome, email: t, tipoUtente: o.tipoUtente, proprieta: o.proprieta || [], telefono: o.telefono || "", millesimiTotali: totalMillesimi, createdAt: (new Date).toISOString(), allowCustodeViewPhone: o.allowCustodeViewPhone, allowFornitoreViewPhone: o.allowFornitoreViewPhone, allowAdminViewContacts: o.allowAdminViewContacts, privacyAccepted: o.privacyAccepted || false }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a };
 
         const adminCreateUser = async (email, password, profileData) => {
             const tempAppName = `user-creation-${Date.now()}`;
@@ -2359,9 +2462,12 @@
                 <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
                     ${backButtonHtml}
                     <div class="user-avatar">${userInitial}</div>
-                    <div>
+                    <div style="flex-grow: 1;">
                         <h1 class="page-title">${title}</h1>
-                        <p class="page-subtitle">${userType}</p>
+                        <div class="flex items-center gap-4">
+                            <p class="page-subtitle">${userType}</p>
+                            <a href="#" onclick="event.preventDefault(); showPrivacyPolicy()" style="font-size: 0.8rem; color: var(--secondary-text); text-decoration: underline; white-space: nowrap;">Privacy Policy</a>
+                        </div>
                     </div>
                 </div>
                 ${buttonsContainer}
@@ -2442,7 +2548,17 @@
                             <input type="checkbox" id="allowAdminViewContacts" name="allowAdminViewContacts" class="form-check-input" checked disabled>
                         </div>
                     </div>
+                        <!-- SPOSTATO QUI -->
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <div class="permission-item flex items-center justify-between">
+                                <label for="privacy-policy-consent" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">
+                                    Dichiaro di aver letto e accettato l'<a href="#" onclick="event.preventDefault(); showPrivacyPolicy()" style="color: var(--accent-color); text-decoration: underline;">Informativa Privacy</a>.
+                                </label>
+                                <input type="checkbox" id="privacy-policy-consent" name="privacyPolicyConsent" class="form-check-input">
+                            </div>
+                        </div>
                     </div>
+                    <!-- RIMOSSO DA QUI -->
                     
                     <button type="submit" id="auth-submit" class="btn btn-primary w-full">Accedi</button>
 
@@ -3464,6 +3580,19 @@
                             </svg>
                             Elimina Account
                         </button>
+                    </div>
+                </div>
+
+                <!-- NUOVA SEZIONE INFORMAZIONI -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <h3 class="card-title">Informazioni</h3>
+                    <div class="menu-list-container">
+                        <div onclick="showPrivacyPolicy()" class="menu-list-item" style="padding: 1rem 1.25rem;">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,11.9C13.1,11.9 14,11 14,9.9C14,8.8 13.1,7.9 12,7.9C10.9,7.9 10,8.8 10,9.9C10,11 10.9,11.9 12,11.9M16,17H8V15.2C8,13.9 10.7,12.9 12,12.9C13.3,12.9 16,13.9 16,15.2V17Z"/>
+                            </svg>
+                            <p style="font-size: 1rem;">Informativa Privacy</p>
+                        </div>
                     </div>
                 </div>
                 
@@ -6091,8 +6220,13 @@ ${renderBottomNavigation()}
                         const allowCustodeViewPhone = document.getElementById("allowCustodeViewPhone").checked;
                         const allowFornitoreViewPhone = document.getElementById("allowFornitoreViewPhone").checked;
                         const allowAdminViewContacts = document.getElementById("allowAdminViewContacts").checked; // Sempre true
+                        const privacyPolicyConsent = document.getElementById("privacy-policy-consent").checked;
 
-                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts });
+                        if (!privacyPolicyConsent) {
+                            throw new Error("È necessario accettare l'Informativa Privacy per procedere con la registrazione.");
+                        }
+
+                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent });
                         r.textContent = "Registrazione completata! Ora puoi accedere."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
@@ -12127,6 +12261,7 @@ ${renderBottomNavigation()}
         window.updateUser = updateUser;
         window.deletePoll = deletePoll;
         window.showSupervisorWarningForConsigliere = showSupervisorWarningForConsigliere;
+        window.showPrivacyPolicy = showPrivacyPolicy;
 
         let availableGroups = []; // Variabile globale per contenere i gruppi
 
