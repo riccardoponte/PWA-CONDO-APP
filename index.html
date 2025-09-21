@@ -12,6 +12,10 @@
 
     <!-- Link al manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
+
+    <!-- Libreria jsPDF per generazione PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
         /* --- NUOVO DESIGN SYSTEM v4 (Stile App Nativa) --- */
 
@@ -1101,9 +1105,42 @@
         .form-check-input {
             width: 22px;
             height: 22px;
-            accent-color: var(--accent-color);
-            flex-shrink: 0;
+        }
+
+        /* Stili per i pulsanti di download PDF */
+        .pdf-download-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-download-btn:hover {
+            background-color: var(--accent-color-dark);
+            transform: translateY(-1px);
+        }
+
+        .pdf-download-btn:active {
+            transform: translateY(0);
+        }
+
+        .pdf-download-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        accent-color: var(--accent-color);
+        flex-shrink: 0;
+        cursor: pointer;
         }
 
         .form-check-input:disabled {
@@ -2449,8 +2486,8 @@
                 </button>
             ` : '';
 
-            // MODIFICA: Mostra sempre i pulsanti dell'header
-            const showButtons = true;
+            // MODIFICA: Mostra i pulsanti solo nella schermata Home
+            const showButtons = title === 'Home';
 
             const themeToggleButtonHtml = showButtons ? `
                 <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-icon" title="Cambia tema" aria-label="Cambia tema" role="button" tabindex="0">
@@ -2833,6 +2870,12 @@
                 </div>
                 <div class="card">
                     <h2 class="section-title">Riepilogo Attività per Gruppo</h2>
+                    <button class="pdf-download-btn" id="condo-stats-pdf-btn" onclick="downloadCondoStatsPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="condo-stats-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Applica i filtri per visualizzare le statistiche...</p>
                     </div>
@@ -3015,6 +3058,10 @@
 
                 tableHtml += '</table>';
                 container.innerHTML = tableHtml;
+
+                // Mostra il pulsante PDF
+                const pdfBtn = document.getElementById('condo-stats-pdf-btn');
+                if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
             } catch (error) {
                 console.error("Error loading condo stats:", error);
@@ -3755,6 +3802,12 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem;">
                         Elenco dei contatti importati tramite file Excel. Il file più recente sostituisce i precedenti.
                     </p>
+                    <button class="pdf-download-btn" id="imported-numbers-pdf-btn" onclick="downloadImportedNumbersPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="imported-numbers-table-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento contatti importati...</p>
                     </div>
@@ -3803,6 +3856,12 @@ ${renderBottomNavigation()}
                 <div class="card">
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 1.5rem;">Aggiungi o visualizza i contatti di emergenza inseriti manualmente. La modifica è riservata ai ruoli autorizzati.</p>
                     ${addFormHtml}
+                    <button class="pdf-download-btn" id="useful-numbers-pdf-btn" onclick="downloadUsefulNumbersPDF()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div class="data-table-container">
                         <table class="data-table" id="useful-numbers-table">
                             <tbody id="useful-numbers-table-body">
@@ -3878,6 +3937,12 @@ ${renderBottomNavigation()}
                         </div>
                         <div class="card">
                              <h3 class="card-title">Risultati</h3>
+                            <button class="pdf-download-btn" id="custodian-results-pdf-btn" onclick="downloadCustodianResultsPDF()" style="display: none;">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                                </svg>
+                                Scarica PDF
+                            </button>
                             <div id="custodian-user-list-container" class="data-table-container">
                                 <p style="color:var(--secondary-text);">Applica i filtri per visualizzare i risultati...</p>
                             </div>
@@ -3895,6 +3960,12 @@ ${renderBottomNavigation()}
                             <div id="report-mode-complessiva" class="chip" onclick="loadElencoCondomini('complessiva')">Riepilogo Complessivo</div>
                             <div id="report-mode-anagrafica" class="chip" onclick="loadElencoCondomini('anagrafica')">Riepilogo Anagrafica</div>
                         </div>
+                        <button class="pdf-download-btn" id="elenco-condomini-pdf-btn" onclick="downloadElencoCondominiPDF()" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            Scarica PDF
+                        </button>
                         <div id="elenco-condomini-container">
                             <div class="card"><p>Caricamento elenco in corso...</p></div>
                         </div>
@@ -4030,6 +4101,12 @@ ${renderBottomNavigation()}
                     }
                 }
                 container.innerHTML = html;
+
+                // Mostra il pulsante PDF se ci sono tabelle
+                const pdfBtn = document.getElementById('elenco-condomini-pdf-btn');
+                if (pdfBtn && html.includes('data-table')) {
+                    pdfBtn.style.display = 'inline-flex';
+                }
             } catch (error) {
                 console.error("Errore nel caricamento dell'elenco condomini:", error);
                 container.innerHTML = `<div class="card"><p class="message-box error" style="display:block;">Si è verificato un errore: ${error.message}</p></div>`;
@@ -4169,6 +4246,12 @@ ${renderBottomNavigation()}
                     </div>
                     <div class="mt-4">
                         <h4 class="section-title" style="font-size: 1rem; margin-bottom: 0.5rem;">Anteprima / Dati Attuali</h4>
+                        <button class="pdf-download-btn" id="millesimi-pdf-btn" onclick="downloadMillesimiPDF()" style="display: none;">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                            </svg>
+                            Scarica PDF
+                        </button>
                         <div id="excel-table-container-millesimi" class="data-table-container">
                             <p style="color:var(--secondary-text);">Nessun file selezionato o caricato.</p>
                         </div>
@@ -4246,6 +4329,12 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
                         Visualizza, modifica o elimina le voci esistenti.
                     </p>
+                    <button class="pdf-download-btn" id="orari-custode-manual-pdf-btn" onclick="downloadOrariCustodeManualPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="excel-table-container-orari-custode-manual" class="data-table-container">
                         <p style="color:var(--secondary-text);">Nessun dato presente.</p>
                     </div>
@@ -4303,6 +4392,12 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
                         Elenco completo di tutti i dati relativi agli orari del custode. Le modifiche possono essere effettuate nella sezione "Gestione Manuale".
                     </p>
+                    <button class="pdf-download-btn" id="orari-custode-view-pdf-btn" onclick="downloadOrariCustodeViewPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="excel-table-container-orari-custode-view" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento dati...</p>
                     </div>
@@ -4378,6 +4473,12 @@ ${renderBottomNavigation()}
         </div>
         <div class="card">
             <h3 class="card-title">Dati Attuali</h3>
+            <button class="pdf-download-btn" id="admin-data-pdf-btn" onclick="downloadAdminDataPDF()" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+                Scarica PDF
+            </button>
             <div id="table-container-admin-data" class="data-table-container">
                 <p style="color:var(--secondary-text);">Nessun dato presente.</p>
             </div>
@@ -4437,6 +4538,12 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
                         Informazioni di contatto per l'amministrazione del condominio.
                     </p>
+                    <button class="pdf-download-btn" id="admin-summary-pdf-btn" onclick="downloadAdminSummaryPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="admin-data-summary-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento dati...</p>
                     </div>
@@ -4726,6 +4833,12 @@ ${renderBottomNavigation()}
                 </div>
                 <div class="card">
                     <h3 class="card-title">Riepilogo Utenti e Proprietà</h3>
+                    <button class="pdf-download-btn" id="user-summary-pdf-btn" onclick="downloadUserSummaryPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="user-summary-table-container" class="data-table-container">
                         <p>Caricamento elenco...</p>
                     </div>
@@ -7172,6 +7285,10 @@ ${renderBottomNavigation()}
                     data = applyClassificationRules(data, activeRules);
                     tableContainerMillesimi.innerHTML = generateTableHTML(data, true);
                     saveBtnContainerMillesimi.classList.remove('hidden');
+
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('millesimi-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
                     millesimiFileName = docData.fileName || 'dati_esistenti.xlsx';
                 } else {
                     tableContainerMillesimi.innerHTML = '<p style="color:var(--secondary-text);">Nessun dato anagrafico ancora importato.</p>';
@@ -7197,6 +7314,10 @@ ${renderBottomNavigation()}
                         dataAsObjects = applyClassificationRules(dataAsObjects, activeRules);
                         tableContainerMillesimi.innerHTML = generateTableHTML(dataAsObjects, true);
                         saveBtnContainerMillesimi.classList.remove('hidden');
+
+                        // Mostra il pulsante PDF
+                        const pdfBtn = document.getElementById('millesimi-pdf-btn');
+                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
                     } catch (err) {
                         messageBoxMillesimi.className = 'message-box error';
                         messageBoxMillesimi.textContent = `Errore: ${err.message}`;
@@ -7309,6 +7430,15 @@ ${renderBottomNavigation()}
                     const docData = snapshot.docs[0].data();
                     const data = docData.tableData;
                     tableContainer.innerHTML = generateTableHTML(data);
+                    
+                    // Mostra il pulsante PDF appropriato
+                    if (containerId === 'excel-table-container-orari-custode-manual') {
+                        const pdfBtn = document.getElementById('orari-custode-manual-pdf-btn');
+                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    } else if (containerId === 'excel-table-container-orari-custode-view') {
+                        const pdfBtn = document.getElementById('orari-custode-view-pdf-btn');
+                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    }
                 } else {
                     tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>';
                 }
@@ -7460,6 +7590,15 @@ ${renderBottomNavigation()}
             onSnapshot(q, (snapshot) => {
                 if (!snapshot.empty) {
                     tableContainer.innerHTML = generateTableHTML(snapshot.docs[0].data().tableData);
+                    
+                    // Mostra il pulsante PDF appropriato
+                    if (containerId === 'table-container-admin-data') {
+                        const pdfBtn = document.getElementById('admin-data-pdf-btn');
+                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    } else if (containerId === 'admin-data-summary-container') {
+                        const pdfBtn = document.getElementById('admin-summary-pdf-btn');
+                        if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+                    }
                 } else {
                     tableContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun dato amministratore importato.</p>';
                 }
@@ -8830,11 +8969,23 @@ ${renderBottomNavigation()}
                     </p>
 
                     <h3 class="section-title" style="font-size: 1.1rem;">Contatti da Importazione Automatica</h3>
+                    <button class="pdf-download-btn" id="rubrica-imported-pdf-btn" onclick="downloadRubricaImportedPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="rubrica-imported-container" class="data-table-container" style="margin-bottom: 2.5rem;">
                         <p style="color:var(--secondary-text);">Caricamento contatti importati...</p>
                     </div>
 
                     <h3 class="section-title" style="font-size: 1.1rem;">Contatti da Inserimento Manuale</h3>
+                    <button class="pdf-download-btn" id="rubrica-manual-pdf-btn" onclick="downloadRubricaManualPDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="rubrica-manual-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento contatti manuali...</p>
                     </div>
@@ -8904,6 +9055,10 @@ ${renderBottomNavigation()}
                     tableHTML += '</tbody></table>';
 
                     importedContainer.innerHTML = tableHTML;
+                    
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('rubrica-imported-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
                     // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
                     if (canManage) {
@@ -8986,6 +9141,10 @@ ${renderBottomNavigation()}
                     tableHTML += '</tbody></table>';
 
                     manualContainer.innerHTML = tableHTML;
+                    
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('rubrica-manual-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
                     // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
                     if (canManage) {
@@ -9008,6 +9167,12 @@ ${renderBottomNavigation()}
                     <p class="form-label" style="color: var(--secondary-text); margin-bottom: 2rem;">
                         SCORRERE A DESTRA PER VISUALIZZARE AL COMPLETO
                     </p>
+                    <button class="pdf-download-btn" id="custode-schedule-pdf-btn" onclick="downloadCustodeSchedulePDF()" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        Scarica PDF
+                    </button>
                     <div id="custode-schedule-container" class="data-table-container">
                         <p style="color:var(--secondary-text);">Caricamento orari custode...</p>
                     </div>
@@ -9077,6 +9242,10 @@ ${renderBottomNavigation()}
 
                     tableHTML += '</tbody></table>';
                     scheduleContainer.innerHTML = tableHTML;
+                    
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('custode-schedule-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
                 } else {
                     scheduleContainer.innerHTML = `<p style="color:var(--secondary-text);">Nessun orario custode ancora importato.</p>`;
                 }
@@ -10882,6 +11051,10 @@ ${renderBottomNavigation()}
 
                 tableHtml += `</tbody></table>`;
                 container.innerHTML = tableHtml;
+                
+                // Mostra il pulsante PDF
+                const pdfBtn = document.getElementById('user-summary-pdf-btn');
+                if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
             } catch (error) {
                 console.error("Errore nel caricare la tabella utenti:", error);
@@ -11021,6 +11194,10 @@ ${renderBottomNavigation()}
                     }).join('');
 
                     manualTableBody.innerHTML = tableHeader + `<tbody>${rowsHtml}</tbody>`;
+
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('useful-numbers-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
                 });
             }
             if (importedTableContainer) {
@@ -11076,6 +11253,10 @@ ${renderBottomNavigation()}
                     tableHTML += '</tbody></table>';
 
                     importedTableContainer.innerHTML = tableHTML;
+
+                    // Mostra il pulsante PDF
+                    const pdfBtn = document.getElementById('imported-numbers-pdf-btn');
+                    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
                     // Aggiungi pulsante per eliminazione multipla se l'utente può gestire
                     if (canManage) {
@@ -12133,7 +12314,7 @@ ${renderBottomNavigation()}
                     if (!comm.targetGroup || comm.targetGroup === 'Tutti') {
                         return true;
                     }
-                    
+
                     return userGroups.includes(comm.targetGroup);
                 }).length;
                 updateNotificationUI('bacheca', unreadCount);
@@ -12642,6 +12823,201 @@ ${renderBottomNavigation()}
                     });
             });
         }
+
+        // Funzione per generare PDF dalle tabelle
+        const generateTablePDF = (tableElement, filename, title) => {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Aggiungi titolo
+                doc.setFontSize(16);
+                doc.text(title, 20, 20);
+
+                // Aggiungi data di generazione
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT');
+                doc.setFontSize(10);
+                doc.text(`Generato il: ${dateStr}`, 20, 30);
+
+                // Estrai dati dalla tabella
+                const rows = [];
+                const headers = [];
+
+                // Estrai headers
+                const headerCells = tableElement.querySelectorAll('thead th');
+                headerCells.forEach(cell => {
+                    headers.push(cell.textContent.trim());
+                });
+
+                // Estrai righe dati
+                const bodyRows = tableElement.querySelectorAll('tbody tr');
+                bodyRows.forEach(row => {
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach(cell => {
+                        rowData.push(cell.textContent.trim());
+                    });
+                    if (rowData.length > 0) {
+                        rows.push(rowData);
+                    }
+                });
+
+                // Aggiungi tabella al PDF
+                if (headers.length > 0) {
+                    doc.autoTable({
+                        head: [headers],
+                        body: rows,
+                        startY: 40,
+                        styles: {
+                            fontSize: 8,
+                            cellPadding: 2
+                        },
+                        headStyles: {
+                            fillColor: [29, 185, 84],
+                            textColor: 255
+                        }
+                    });
+                }
+
+                // Salva il PDF
+                doc.save(`${filename}.pdf`);
+
+            } catch (error) {
+                console.error('Errore nella generazione del PDF:', error);
+                alert('Errore nella generazione del PDF. Assicurati che la libreria jsPDF sia caricata correttamente.');
+            }
+        };
+
+        // Funzioni specifiche per ogni sezione
+        const downloadCondoStatsPDF = () => {
+            const table = document.querySelector('#condo-stats-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'riepilogo-attivita-gruppo', 'Riepilogo Attività per Gruppo');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadImportedNumbersPDF = () => {
+            const table = document.querySelector('#imported-numbers-table-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'contatti-importati', 'Contatti Importati');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadUsefulNumbersPDF = () => {
+            const table = document.querySelector('#useful-numbers-table');
+            if (table) {
+                generateTablePDF(table, 'contatti-emergenza', 'Contatti di Emergenza');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadCustodianResultsPDF = () => {
+            const table = document.querySelector('#custodian-user-list-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'risultati-custode', 'Risultati Ricerca Custode');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadMillesimiPDF = () => {
+            const table = document.querySelector('#excel-table-container-millesimi table.data-table');
+            if (table) {
+                generateTablePDF(table, 'dati-millesimi', 'Dati Millesimi');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadUserSummaryPDF = () => {
+            const table = document.querySelector('#user-summary-table-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'riepilogo-utenti-proprieta', 'Riepilogo Utenti e Proprietà');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadCustodeSchedulePDF = () => {
+            const table = document.querySelector('#custode-schedule-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'orari-custode', 'Orari del Custode');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadAdminDataPDF = () => {
+            const table = document.querySelector('#table-container-admin-data table.data-table');
+            if (table) {
+                generateTablePDF(table, 'dati-amministratore', 'Dati Amministratore');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadAdminSummaryPDF = () => {
+            const table = document.querySelector('#admin-data-summary-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'recapiti-amministrazione', 'Recapiti Amministrazione');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadOrariCustodeManualPDF = () => {
+            const table = document.querySelector('#excel-table-container-orari-custode-manual table.data-table');
+            if (table) {
+                generateTablePDF(table, 'orari-custode-gestione-manuale', 'Orari Custode - Gestione Manuale');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadOrariCustodeViewPDF = () => {
+            const table = document.querySelector('#excel-table-container-orari-custode-view table.data-table');
+            if (table) {
+                generateTablePDF(table, 'orari-custode-elenco-completo', 'Orari Custode - Elenco Completo');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadRubricaImportedPDF = () => {
+            const table = document.querySelector('#rubrica-imported-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'rubrica-contatti-importati', 'Rubrica - Contatti Importati');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadRubricaManualPDF = () => {
+            const table = document.querySelector('#rubrica-manual-container table.data-table');
+            if (table) {
+                generateTablePDF(table, 'rubrica-contatti-manuali', 'Rubrica - Contatti Manuali');
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
+
+        const downloadElencoCondominiPDF = () => {
+            const table = document.querySelector('#elenco-condomini-container table.data-table');
+            if (table) {
+                // Determina il titolo in base alla modalità attiva
+                const activeChip = document.querySelector('.filter-chips-container .chip.active');
+                const mode = activeChip ? activeChip.textContent : 'Elenco Condomini';
+                generateTablePDF(table, 'elenco-condomini', `Elenco Condomini - ${mode}`);
+            } else {
+                alert('Nessuna tabella disponibile per il download.');
+            }
+        };
     </script>
 </body>
 
