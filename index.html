@@ -934,6 +934,25 @@
             border-bottom: none;
         }
 
+        /* Modifica 3: Stili per il modal di selezione cartella */
+        #folder-selection-modal .modal-content {
+            max-width: 600px;
+        }
+
+        #folder-selection-modal .list-item {
+            transition: background-color 0.2s ease;
+        }
+
+        #folder-selection-modal .list-item:hover {
+            background-color: var(--surface-color-light);
+        }
+
+        #folder-selection-modal .filter-chips-container {
+            background-color: var(--surface-color-light);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+        }
+
         /* Utilities */
         .hidden {
             display: none !important;
@@ -1439,7 +1458,7 @@
         const hideModal = () => {
             modalContainer.classList.add('hidden');
         };
-                const showPrivacyPolicy = () => {
+        const showPrivacyPolicy = () => {
             const policyTitle = 'Informativa sul Trattamento dei Dati Personali';
             const policyHtml = `
                 <p style="font-size: 0.8rem; text-align: center; color: var(--secondary-text); margin-top: -1rem; margin-bottom: 1.5rem;">Ai sensi dell'art. 13 del Regolamento (UE) 2016/679 (GDPR)</p>
@@ -2430,8 +2449,8 @@
                 </button>
             ` : '';
 
-            // Only show theme toggle and refresh buttons on Home page
-            const showButtons = title === 'Home';
+            // MODIFICA: Mostra sempre i pulsanti dell'header
+            const showButtons = true;
 
             const themeToggleButtonHtml = showButtons ? `
                 <button id="theme-toggle-btn" onclick="toggleTheme()" class="btn-icon" title="Cambia tema" aria-label="Cambia tema" role="button" tabindex="0">
@@ -4669,7 +4688,11 @@ ${renderBottomNavigation()}
                         </div>
                         
                         <div class="form-group"><label for="admin-email" class="form-label">Email</label><input id="admin-email" type="email" required class="form-input"></div>
-                        <div class="form-group"><label for="admin-password" class="form-label">Password Temporanea</label><input id="admin-password" type="password" required class="form-input"></div>
+                        <div class="form-group password-toggle-container">
+                            <label for="admin-password" class="form-label">Password Temporanea</label>
+                            <input id="admin-password" type="password" required class="form-input" style="padding-right: 3.5rem;">
+                            <button type="button" class="password-toggle-btn" data-target="admin-password">${eyeIcon}</button>
+                        </div>
                         <div class="form-group"><label for="admin-telefono" class="form-label">Telefono</label><input id="admin-telefono" type="tel" class="form-input"></div>
                         
                         <hr style="border-color: var(--surface-color-light); margin: 1.5rem 0;">
@@ -4794,19 +4817,19 @@ ${renderBottomNavigation()}
             const userRole = userProfile?.tipoUtente;
 
             // Definiamo le opzioni come oggetti per gestirle più facilmente
-            const optionTutti = { value: 'option2', label: 'Tutti (Supervisore, Amministratore, Consiglieri, Condomini)' };
-            const optionSac = { value: 'option1', label: 'Solo Supervisore, Amministratore e Consiglieri' };
-            const optionSc = { value: 'option3', label: 'Solo Supervisore e Consiglieri' };
+            const optionConsiglieri = { value: 'option1', label: 'Solo i consiglieri' };
+            const optionSupervisoreConsiglieri = { value: 'option2', label: 'Solo Supervisore e Consiglieri' };
+            const optionTutti = { value: 'option3', label: 'Supervisore, Consiglieri e Amministratore' };
 
             let orderedOptions;
 
             // Controlliamo il ruolo dell'utente per determinare l'ordine
             if (['supervisore', 'adm'].includes(userRole)) {
                 // Ordine speciale per supervisore e adm: DAL PIÙ AL MENO RISTRETTO
-                orderedOptions = [optionSc, optionSac, optionTutti]; // <-- UNICA RIGA MODIFICATA
+                orderedOptions = [optionConsiglieri, optionSupervisoreConsiglieri, optionTutti];
             } else {
                 // Ordine di default per tutti gli altri ruoli
-                orderedOptions = [optionSac, optionTutti, optionSc];
+                orderedOptions = [optionConsiglieri, optionSupervisoreConsiglieri, optionTutti];
             }
 
             // Generiamo l'HTML delle opzioni basandoci sull'array ordinato
@@ -4824,7 +4847,7 @@ ${renderBottomNavigation()}
         ${renderHeader('Impostazione Sondaggi')}
         <main>
             <div class="card">
-                <h3 class="card-title">Chi può votare nei sondaggi</h3>
+                <h3 class="card-title">Chi può creare nuovi sondaggi</h3>
                 <div id="poll-settings-message" class="message-box"></div>
                 <form id="poll-settings-form" class="space-y-4">
                     ${optionsHtml}
@@ -6299,7 +6322,6 @@ ${renderBottomNavigation()}
                         // 1. Create communication document reference to get ID first
                         const newCommRef = doc(collection(db, "communications"));
                         const commId = newCommRef.id;
-                        const counterRef = doc(db, "counters", "communicationsCounter");
                         let finalCommNumber;
                         let fileUrls = [];
 
@@ -6314,16 +6336,23 @@ ${renderBottomNavigation()}
                             fileUrls = await Promise.all(uploadPromises);
                         }
 
-                        // 3. Use transaction to get communication number for the current year
+                        // 3. Use transaction to get communication number for the current administrative period
                         await runTransaction(db, async (transaction) => {
-                            const currentYear = new Date().getFullYear();
-                            const yearCounterRef = doc(db, "counters", `communicationsCounter_${currentYear}`);
+                            // Verifica che esista un periodo amministrativo corrente
+                            if (!currentAdministrativePeriod || !currentAdministrativePeriod.year) {
+                                throw new Error("Nessun periodo amministrativo corrente trovato. Contattare l'amministratore.");
+                            }
 
-                            const counterDoc = await transaction.get(yearCounterRef);
-                            const newCommNumberInYear = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+                            const adminYear = currentAdministrativePeriod.year;
+                            // Sostituisce "/" con "_" per creare un nome documento valido in Firestore
+                            const counterDocName = `communicationsCounter_${adminYear.replace('/', '_')}`;
+                            const periodCounterRef = doc(db, "counters", counterDocName);
 
-                            // Costruiamo il numero finale nel formato "NUMERO/ANNO"
-                            finalCommNumber = `${newCommNumberInYear}/${currentYear}`;
+                            const counterDoc = await transaction.get(periodCounterRef);
+                            const newCommNumberInPeriod = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+
+                            // Costruiamo il numero finale nel formato "NUMERO/PERIODO_AMMINISTRATIVO"
+                            finalCommNumber = `${newCommNumberInPeriod}/${adminYear}`;
 
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
 
@@ -6339,7 +6368,7 @@ ${renderBottomNavigation()}
                                 createdAt: serverTimestamp()
                             };
 
-                            transaction.set(yearCounterRef, { lastNumber: newCommNumberInYear });
+                            transaction.set(periodCounterRef, { lastNumber: newCommNumberInPeriod });
                             transaction.set(newCommRef, commData);
                         });
 
@@ -8695,30 +8724,42 @@ ${renderBottomNavigation()}
 
         const editImportedAdminEntry = async (index, currentData) => {
             const hasSupervisorAccess = ['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
-            if (!hasSupervisorAccess) return;
+            if (!hasSupervisorAccess) {
+                alert('Non hai i permessi per modificare questa voce.');
+                return;
+            }
+
             const formFields = Object.keys(currentData).map(key => {
-                const value = currentData[key] || '';
-                return `<div><label class="form-label">${key}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
+                const value = String(currentData[key] || '');
+                const label = key;
+                return `<div><label class="form-label">${label}</label><input type="text" data-key="${key.replace(/"/g, '&quot;')}" value="${value.replace(/"/g, '&quot;')}" class="form-input"></div>`;
             }).join('');
+
             const editFormHtml = `<form id="edit-admin-data-form" class="space-y-4">${formFields}<div class="flex justify-end gap-4 pt-2"><button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button><button type="submit" class="btn btn-primary">Salva</button></div></form>`;
+
             showModal('Modifica Voce Amministratore', editFormHtml);
+
             document.getElementById('edit-admin-data-form')?.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 try {
                     const q = query(collection(db, "importedAdminData"), orderBy("uploadedAt", "desc"), limit(1));
                     const snapshot = await getDocs(q);
                     if (snapshot.empty) throw new Error("Dati amministratore non trovati.");
+
                     const docRef = snapshot.docs[0].ref;
                     const allData = [...snapshot.docs[0].data().tableData];
                     const updatedRow = { ...allData[index] };
+
                     event.target.querySelectorAll('input[data-key]').forEach(input => {
                         updatedRow[input.dataset.key] = input.value.trim();
                     });
+
                     allData[index] = updatedRow;
                     await updateDoc(docRef, { tableData: allData });
                     await logActivity("admin_data_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { updatedIndex: index });
                     hideModal();
                 } catch (error) {
+                    console.error("Errore aggiornamento dati amministratore:", error);
                     alert("Si è verificato un errore durante l'aggiornamento.");
                 }
             });
@@ -9301,16 +9342,32 @@ ${renderBottomNavigation()}
 
             const userType = userProfile.tipoUtente;
 
-            // Definiamo una lista fissa di ruoli che possono CREARE sondaggi.
-            const creatorRoles = [
-                'adm',
-                'supervisore',
-                'amministratore',
-                'consigliere'
-            ];
+            try {
+                // Leggiamo le impostazioni di creazione sondaggi
+                const settingsRef = doc(db, "settings", "pollCreationAuthorization");
+                const docSnap = await getDoc(settingsRef);
 
-            // La funzione ora si limita a controllare se il ruolo dell'utente è in questa lista.
-            return creatorRoles.includes(userType);
+                let setting = 'option2'; // Default: Solo Supervisore e Consiglieri
+                if (docSnap.exists()) {
+                    setting = docSnap.data().setting;
+                }
+
+                // Determiniamo chi può creare sondaggi in base all'impostazione
+                switch (setting) {
+                    case 'option1': // Solo i consiglieri
+                        return userType === 'consigliere';
+                    case 'option2': // Solo Supervisore e Consiglieri
+                        return ['supervisore', 'consigliere'].includes(userType);
+                    case 'option3': // Supervisore, Consiglieri e Amministratore
+                        return ['supervisore', 'consigliere', 'adm'].includes(userType);
+                    default:
+                        return ['supervisore', 'consigliere'].includes(userType);
+                }
+            } catch (error) {
+                console.error('Errore nel controllo permessi creazione sondaggi:', error);
+                // In caso di errore, permettiamo solo a supervisore e consiglieri (default)
+                return ['supervisore', 'consigliere'].includes(userType);
+            }
         };
 
         const showPollVoters = async (pollId) => {
@@ -10802,7 +10859,7 @@ ${renderBottomNavigation()}
                     if (user.proprieta && user.proprieta.length > 0) {
                         user.proprieta.forEach((prop, index) => {
                             tableHtml += `<tr>
-                            ${index === 0 ? `<td data-label="Ruolo" rowspan="${user.proprieta.length}">${createCell(user.tipoUtente)}</td><td data-label="Nome" rowspan="${user.proprieta.length}">${createCell(user.nome)}</td><td data-label="Cognome" rowspan="${user.proprieta.length}">${createCell(user.cognome)}</td><td data-label="Email" rowspan="${user.proprieta.length}">${createCell(user.email)}</td>` : ''}
+                            <td data-label="Ruolo">${createCell(user.tipoUtente)}</td><td data-label="Nome">${createCell(user.nome)}</td><td data-label="Cognome">${createCell(user.cognome)}</td><td data-label="Email">${createCell(user.email)}</td>
                             <td data-label="Proprietà">${createCell(prop.interno || 'N/D')}</td>
                             <td data-label="Piano">${createCell(prop.piano ?? 'N/A')}</td>
                             <td data-label="Raggruppamento">${createCell(prop.gruppo || 'N/D')}</td>
@@ -11691,7 +11748,7 @@ ${renderBottomNavigation()}
             progressContainer.classList.remove('hidden');
 
             Array.from(files).forEach(file => {
-                const filePath = uploadPath + file.name;
+                const filePath = uploadPath + (uploadPath && !uploadPath.endsWith('/') ? '/' : '') + file.name;
                 const storageRef = ref(storage, filePath);
                 const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -11821,21 +11878,149 @@ ${renderBottomNavigation()}
             }
         };
 
+        // Modifica 1: Funzione per mostrare il modal di selezione cartella
+        const showFolderSelectionModal = async () => {
+            return new Promise((resolve) => {
+                // Rendi resolve accessibile globalmente per gli onclick
+                window.folderModalResolve = resolve;
+
+                const modalHtml = `
+                    <div class="modal-overlay" id="folder-selection-modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Seleziona cartella di destinazione</h3>
+                                <button class="modal-close-btn" onclick="closeFolderModal()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label">Nome della nuova cartella:</label>
+                                    <input type="text" id="new-folder-name" class="form-input" placeholder="Inserisci il nome della cartella">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Percorso di destinazione:</label>
+                                    <div id="folder-breadcrumbs" class="filter-chips-container" style="margin-bottom: 1rem;"></div>
+                                    <div id="folder-list" class="list-container" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--surface-color); border-radius: var(--radius-sm); padding: 0.5rem;"></div>
+                                </div>
+                                <div class="flex gap-2 justify-end">
+                                    <button class="btn btn-secondary" onclick="closeFolderModal()">Annulla</button>
+                                    <button class="btn btn-primary" onclick="confirmFolderCreation()">Crea Cartella</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                let selectedPath = '';
+
+                // Funzione per chiudere il modal
+                window.closeFolderModal = () => {
+                    document.getElementById('folder-selection-modal').remove();
+                    window.folderModalResolve('');
+                    delete window.folderModalResolve;
+                    delete window.closeFolderModal;
+                    delete window.confirmFolderCreation;
+                    delete window.loadFoldersInModal;
+                };
+
+                // Funzione per caricare le cartelle nel modal
+                const loadFoldersInModal = async (path) => {
+                    const folderList = document.getElementById('folder-list');
+                    const breadcrumbsContainer = document.getElementById('folder-breadcrumbs');
+
+                    if (!folderList || !breadcrumbsContainer) return;
+
+                    selectedPath = path;
+
+                    // Aggiorna breadcrumbs
+                    const pathSegments = path.split('/').filter(Boolean);
+                    let breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('')" style="cursor: pointer;">Archivio</div>`;
+                    let currentPath = '';
+                    pathSegments.forEach(segment => {
+                        currentPath += segment + '/';
+                        const displaySegment = segment.replace(/__SLASH__/g, '/');
+                        breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="loadFoldersInModal('${currentPath}')" style="cursor: pointer;">${displaySegment}</div>`;
+                    });
+                    breadcrumbsContainer.innerHTML = breadcrumbsHtml;
+
+                    folderList.innerHTML = `<p style="color:var(--secondary-text);">Caricamento cartelle...</p>`;
+
+                    try {
+                        const listRef = ref(storage, path);
+                        const res = await listAll(listRef);
+
+                        let foldersHtml = '';
+                        res.prefixes.forEach(folderRef => {
+                            const displayName = folderRef.name.replace(/__SLASH__/g, '/');
+                            foldersHtml += `
+                                <div class="list-item" onclick="loadFoldersInModal('${path}${folderRef.name}/')" style="cursor: pointer;">
+                                    <div class="list-item-icon">
+                                        <svg fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="list-item-content">
+                                        <div class="title">${displayName}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        if (foldersHtml === '') {
+                            folderList.innerHTML = `<p style="color:var(--secondary-text);">Nessuna sottocartella disponibile.</p>`;
+                        } else {
+                            folderList.innerHTML = foldersHtml;
+                        }
+
+                    } catch (error) {
+                        console.error("Errore nel caricare le cartelle:", error);
+                        folderList.innerHTML = `<p style="color:var(--danger);">Errore nel caricamento delle cartelle.</p>`;
+                    }
+                };
+
+                // Funzione globale per confermare la creazione
+                window.confirmFolderCreation = () => {
+                    const folderName = document.getElementById('new-folder-name').value.trim();
+                    if (!folderName) {
+                        alert('Inserisci un nome per la cartella');
+                        return;
+                    }
+                    document.getElementById('folder-selection-modal').remove();
+                    window.folderModalResolve({ folderName, selectedPath });
+                    delete window.folderModalResolve;
+                    delete window.closeFolderModal;
+                    delete window.confirmFolderCreation;
+                    delete window.loadFoldersInModal;
+                };
+
+                // Carica le cartelle iniziali
+                loadFoldersInModal('');
+
+                // Rendi loadFoldersInModal globale per i breadcrumbs
+                window.loadFoldersInModal = loadFoldersInModal;
+            });
+        };
+
+        // Modifica 2: Funzione handleCreateFolder aggiornata
         const handleCreateFolder = async () => {
-            const folderName = prompt("Inserisci il nome della nuova cartella:");
-            if (!folderName || folderName.trim() === '') return;
+            const result = await showFolderSelectionModal();
+            if (!result || !result.folderName) return;
+
+            const { folderName, selectedPath } = result;
 
             // Codifica il carattere "/" per renderlo sicuro per il percorso di storage.
-            const safeFolderName = folderName.trim().replace(/\//g, '__SLASH__');
+            const safeFolderName = folderName.replace(/\//g, '__SLASH__');
 
             // In Storage, le cartelle sono create caricando un file placeholder al loro interno.
-            const placeholderPath = `${currentStoragePath}${safeFolderName}/.placeholder`;
+            const placeholderPath = `${selectedPath}${safeFolderName}/.placeholder`;
             const placeholderRef = ref(storage, placeholderPath);
 
             try {
                 await uploadBytes(placeholderRef, new Blob()); // Carica un file vuoto
-                await logActivity("folder_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: `${currentStoragePath}${folderName.trim()}` });
+                await logActivity("folder_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { path: `${selectedPath}${folderName}` });
                 loadStorageItems(currentStoragePath); // Refresh list
+                alert(`Cartella "${folderName}" creata con successo in: ${selectedPath || 'Archivio'}`);
             } catch (error) {
                 console.error("Errore nella creazione della cartella:", error);
                 alert(`Impossibile creare la cartella: ${error.message}`);
@@ -11930,8 +12115,25 @@ ${renderBottomNavigation()}
             communicationsListener = onSnapshot(q, snapshot => {
                 const unreadCount = snapshot.docs.filter(docSnap => {
                     const comm = docSnap.data();
+                    const userRole = userProfile?.tipoUtente;
                     const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
-                    if (!comm.targetGroup || comm.targetGroup === 'Tutti') return true;
+                    const canSeeAll = ['adm', 'supervisore', 'amministratore', 'consigliere'].includes(userRole);
+
+                    // Logica specifica per il Custode: riceve notifica solo se forwardToCustode è true
+                    if (userRole === 'custode') {
+                        return comm.forwardToCustode === true;
+                    }
+
+                    // Ruoli manageriali vedono sempre tutte le comunicazioni
+                    if (canSeeAll) {
+                        return true;
+                    }
+
+                    // Utenti standard: vedono se targetGroup è 'Tutti' o se appartengono al gruppo target
+                    if (!comm.targetGroup || comm.targetGroup === 'Tutti') {
+                        return true;
+                    }
+                    
                     return userGroups.includes(comm.targetGroup);
                 }).length;
                 updateNotificationUI('bacheca', unreadCount);
@@ -12118,6 +12320,31 @@ ${renderBottomNavigation()}
         window.editImportedAdminEntry = editImportedAdminEntry;
         window.deleteImportedAdminEntry = deleteImportedAdminEntry;
         window.openRuleEditor = openRuleEditor;
+
+        // Event delegation per i pulsanti di modifica amministratore come fallback
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('button[onclick*="editImportedAdminEntry"]')) {
+                event.preventDefault();
+                const button = event.target.closest('button');
+                const onclickAttr = button.getAttribute('onclick');
+
+                // Estrai i parametri dalla stringa onclick
+                const match = onclickAttr.match(/editImportedAdminEntry\((\d+),\s*(.+)\)/);
+                if (match) {
+                    const index = parseInt(match[1]);
+                    try {
+                        // Decodifica il JSON dai parametri HTML
+                        const dataStr = match[2].replace(/&quot;/g, '"');
+                        const currentData = JSON.parse(dataStr);
+                        console.log('Event delegation: chiamata editImportedAdminEntry', { index, currentData });
+                        editImportedAdminEntry(index, currentData);
+                    } catch (error) {
+                        console.error('Errore nel parsing dei dati dal pulsante:', error);
+                        alert('Errore nell\'apertura del modal di modifica');
+                    }
+                }
+            }
+        });
         window.deleteGroupRule = deleteGroupRule;
         window.toggleRuleStatus = toggleRuleStatus;
         window.toggleGroupListVisibility = toggleGroupListVisibility;
