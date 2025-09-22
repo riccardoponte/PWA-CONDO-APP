@@ -2497,19 +2497,10 @@
                 </button>
             ` : '';
 
-            const refreshButtonHtml = showButtons ? `
-                <button onclick="refreshApplication()" class="btn-icon" title="Aggiorna per ricevere gli ultimi aggiornamenti">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                    </svg>
-                </button>
-            ` : '';
-
             const buttonsContainer = showButtons ? `
                 <div class="header-buttons" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
                     <span style="font-size: 0.8rem; color: var(--secondary-text); font-weight: 500; margin-right: 0.5rem;">V. 1.1</span>
                     ${themeToggleButtonHtml}
-                    ${refreshButtonHtml}
                 </div>
             ` : '';
 
@@ -6449,28 +6440,34 @@ ${renderBottomNavigation()}
                             fileUrls = await Promise.all(uploadPromises);
                         }
 
-                        // 3. Use transaction to get communication number for the current administrative period
+                        // 3. Use transaction to get communication number
                         await runTransaction(db, async (transaction) => {
-                            // Verifica che esista un periodo amministrativo corrente
-                            if (!currentAdministrativePeriod || !currentAdministrativePeriod.year) {
-                                throw new Error("Nessun periodo amministrativo corrente trovato. Contattare l'amministratore.");
+                            let counterRef;
+                            let newCommNumber;
+
+                            if (currentAdministrativePeriod && currentAdministrativePeriod.year) {
+                                // LOGICA ESISTENTE: Usa il contatore basato sul periodo amministrativo
+                                const adminYear = currentAdministrativePeriod.year;
+                                const counterDocName = `communicationsCounter_${adminYear.replace('/', '_')}`;
+                                counterRef = doc(db, "counters", counterDocName);
+                                
+                                const counterDoc = await transaction.get(counterRef);
+                                const newCommNumberInPeriod = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+                                newCommNumber = newCommNumberInPeriod;
+                                finalCommNumber = `${newCommNumberInPeriod}/${adminYear}`; // Formato: N/ANNO
+                            } else {
+                                // LOGICA DI FALLBACK: Usa un contatore globale se non c'è un periodo attivo
+                                counterRef = doc(db, "counters", "communicationsCounter_global");
+                                
+                                const counterDoc = await transaction.get(counterRef);
+                                newCommNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+                                finalCommNumber = `${newCommNumber}`; // Formato: N
                             }
-
-                            const adminYear = currentAdministrativePeriod.year;
-                            // Sostituisce "/" con "_" per creare un nome documento valido in Firestore
-                            const counterDocName = `communicationsCounter_${adminYear.replace('/', '_')}`;
-                            const periodCounterRef = doc(db, "counters", counterDocName);
-
-                            const counterDoc = await transaction.get(periodCounterRef);
-                            const newCommNumberInPeriod = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
-
-                            // Costruiamo il numero finale nel formato "NUMERO/PERIODO_AMMINISTRATIVO"
-                            finalCommNumber = `${newCommNumberInPeriod}/${adminYear}`;
 
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
 
                             const commData = {
-                                communicationNumber: finalCommNumber, // SALVIAMO IL NUOVO FORMATO
+                                communicationNumber: finalCommNumber,
                                 title: title,
                                 content: content,
                                 targetGroup: targetGroup,
@@ -6481,7 +6478,8 @@ ${renderBottomNavigation()}
                                 createdAt: serverTimestamp()
                             };
 
-                            transaction.set(periodCounterRef, { lastNumber: newCommNumberInPeriod });
+                            // Aggiorna il contatore e crea il documento della comunicazione
+                            transaction.set(counterRef, { lastNumber: newCommNumber });
                             transaction.set(newCommRef, commData);
                         });
 
@@ -7964,6 +7962,20 @@ ${renderBottomNavigation()}
         };
 
         const setupAdminUserCreationHandler = () => {
+            // Gestore per il toggle della password
+            document.querySelectorAll('.password-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const button = e.currentTarget;
+                    const targetId = button.dataset.target;
+                    const passwordInput = document.getElementById(targetId);
+                    if (passwordInput) {
+                        const isPassword = passwordInput.type === 'password';
+                        passwordInput.type = isPassword ? 'text' : 'password';
+                        button.innerHTML = isPassword ? eyeSlashIcon : eyeIcon;
+                    }
+                });
+            });
+
             let groupedProperties = {};
 
             const findHeader = (headers, keywords) => headers.find(h => keywords.some(k => h.toLowerCase().includes(k)));
