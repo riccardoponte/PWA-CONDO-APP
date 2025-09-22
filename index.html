@@ -5502,11 +5502,7 @@ ${renderBottomNavigation()}
 
                 await Promise.all(deletePromises);
 
-                // NUOVO: Resetta il contatore se si stanno eliminando le comunicazioni
-                if (type === 'communications') {
-                    const counterRef = doc(db, "counters", "communicationsCounter");
-                    await setDoc(counterRef, { lastNumber: 0 });
-                }
+                // Il contatore delle comunicazioni verrà gestito dinamicamente al momento della creazione
 
                 await logActivity("bulk_delete", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
                     dataType: type,
@@ -6445,23 +6441,72 @@ ${renderBottomNavigation()}
                             let counterRef;
                             let newCommNumber;
 
+                            // NUOVA LOGICA: Trova il numero più alto esistente per l'anno amministrativo corrente
+                            const existingCommsQuery = query(collection(db, "communications"), orderBy("createdAt", "desc"));
+                            const existingCommsSnapshot = await getDocs(existingCommsQuery);
+
+                            let highestNumber = 0;
+                            if (!existingCommsSnapshot.empty) {
+                                const currentYear = currentAdministrativePeriod?.year;
+
+                                // Trova il numero più alto tra le comunicazioni dell'anno amministrativo corrente
+                                existingCommsSnapshot.docs.forEach(doc => {
+                                    const comm = doc.data();
+                                    if (comm.communicationNumber) {
+                                        if (currentYear) {
+                                            // Se c'è un anno amministrativo, filtra solo le comunicazioni di quell'anno
+                                            if (comm.communicationNumber.includes(currentYear)) {
+                                                // Estrai il numero dalla stringa (es. "5 - 2024/2025" -> 5)
+                                                const numberMatch = comm.communicationNumber.match(/^(\d+)/);
+                                                if (numberMatch) {
+                                                    const num = parseInt(numberMatch[1]);
+                                                    if (num > highestNumber) {
+                                                        highestNumber = num;
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // Se non c'è un anno amministrativo, considera solo comunicazioni senza anno
+                                            if (!comm.communicationNumber.includes(' - ')) {
+                                                // Estrai il numero dalla stringa (es. "5" -> 5)
+                                                const numberMatch = comm.communicationNumber.match(/^(\d+)$/);
+                                                if (numberMatch) {
+                                                    const num = parseInt(numberMatch[1]);
+                                                    if (num > highestNumber) {
+                                                        highestNumber = num;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+
+                            const currentYear = currentAdministrativePeriod?.year;
+                            console.log('DEBUG: Anno amministrativo corrente:', currentYear);
+                            console.log('DEBUG: Numero più alto trovato per questo anno:', highestNumber);
+
                             if (currentAdministrativePeriod && currentAdministrativePeriod.year) {
                                 // LOGICA ESISTENTE: Usa il contatore basato sul periodo amministrativo
                                 const adminYear = currentAdministrativePeriod.year;
                                 const counterDocName = `communicationsCounter_${adminYear.replace('/', '_')}`;
                                 counterRef = doc(db, "counters", counterDocName);
-                                
-                                const counterDoc = await transaction.get(counterRef);
-                                const newCommNumberInPeriod = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+
+                                // Il nuovo numero è sempre il più alto + 1
+                                const newCommNumberInPeriod = highestNumber + 1;
                                 newCommNumber = newCommNumberInPeriod;
                                 finalCommNumber = `${newCommNumberInPeriod} - ${adminYear}`; // Formato: N - ANNO
+
+                                console.log('DEBUG: Nuovo numero comunicazione (periodo):', newCommNumberInPeriod, 'Formato:', finalCommNumber);
                             } else {
                                 // LOGICA DI FALLBACK: Usa un contatore globale se non c'è un periodo attivo
                                 counterRef = doc(db, "counters", "communicationsCounter_global");
-                                
-                                const counterDoc = await transaction.get(counterRef);
-                                newCommNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+
+                                // Il nuovo numero è sempre il più alto + 1
+                                newCommNumber = highestNumber + 1;
                                 finalCommNumber = `${newCommNumber}`; // Formato: N
+
+                                console.log('DEBUG: Nuovo numero comunicazione (globale):', newCommNumber, 'Formato:', finalCommNumber);
                             }
 
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
@@ -7428,7 +7473,7 @@ ${renderBottomNavigation()}
                     const docData = snapshot.docs[0].data();
                     const data = docData.tableData;
                     tableContainer.innerHTML = generateTableHTML(data);
-                    
+
                     // Mostra il pulsante PDF appropriato
                     if (containerId === 'excel-table-container-orari-custode-manual') {
                         const pdfBtn = document.getElementById('orari-custode-manual-pdf-btn');
@@ -7588,7 +7633,7 @@ ${renderBottomNavigation()}
             onSnapshot(q, (snapshot) => {
                 if (!snapshot.empty) {
                     tableContainer.innerHTML = generateTableHTML(snapshot.docs[0].data().tableData);
-                    
+
                     // Mostra il pulsante PDF appropriato
                     if (containerId === 'table-container-admin-data') {
                         const pdfBtn = document.getElementById('admin-data-pdf-btn');
@@ -9067,7 +9112,7 @@ ${renderBottomNavigation()}
                     tableHTML += '</tbody></table>';
 
                     importedContainer.innerHTML = tableHTML;
-                    
+
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('rubrica-imported-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
@@ -9153,7 +9198,7 @@ ${renderBottomNavigation()}
                     tableHTML += '</tbody></table>';
 
                     manualContainer.innerHTML = tableHTML;
-                    
+
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('rubrica-manual-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
@@ -9254,7 +9299,7 @@ ${renderBottomNavigation()}
 
                     tableHTML += '</tbody></table>';
                     scheduleContainer.innerHTML = tableHTML;
-                    
+
                     // Mostra il pulsante PDF
                     const pdfBtn = document.getElementById('custode-schedule-pdf-btn');
                     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
@@ -9354,6 +9399,35 @@ ${renderBottomNavigation()}
 
         const showProfileMessage = (e, t) => { const o = document.getElementById("profile-message"); o && (o.className = `message-box ${e}`, o.textContent = t, o.style.display = "block", setTimeout(() => { o.style.display = "none" }, 5e3)) };
 
+        const deleteSingleCommunication = async (commId) => {
+            if (!confirm('Sei sicuro di voler eliminare questa comunicazione? Questa azione è irreversibile.')) {
+                return;
+            }
+
+            try {
+                // Elimina la comunicazione
+                await deleteDoc(doc(db, "communications", commId));
+
+                // Il contatore verrà gestito dinamicamente al momento della creazione di nuove comunicazioni
+
+                // Log dell'attività
+                await logActivity("communication_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
+                    communicationId: commId
+                });
+
+                // Chiudi il modal e ricarica la lista
+                hideModal();
+                if (currentPage === 'bacheca_tutte') {
+                    loadCommunications();
+                }
+
+                alert('Comunicazione eliminata con successo.');
+            } catch (error) {
+                console.error("Errore nell'eliminazione della comunicazione:", error);
+                alert('Errore durante l\'eliminazione della comunicazione.');
+            }
+        };
+
         const showCommunicationDetail = async (commId) => {
             try {
                 const commDoc = await getDoc(doc(db, "communications", commId));
@@ -9405,7 +9479,23 @@ ${renderBottomNavigation()}
                     }
                     // --- MODIFICATION END ---
 
-                    const contentHtml = `<p>${comm.content.replace(/\n/g, '<br>')}</p>${attachmentsHtml}`;
+                    // Verifica se l'utente può eliminare questa comunicazione
+                    // Solo creatori, adm e supervisore possono eliminare
+                    const canDelete = ['adm', 'supervisore'].includes(userProfile?.tipoUtente) ||
+                        comm.createdById === currentUser.uid;
+
+                    const deleteButtonHtml = canDelete ? `
+                        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--surface-color-light);">
+                            <button onclick="deleteSingleCommunication('${commId}')" class="btn" style="background:var(--danger); color:white; width: 100%;">
+                                <svg style="width: 16px; height: 16px; margin-right: 0.5rem;" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                                Elimina Comunicazione
+                            </button>
+                        </div>
+                    ` : '';
+
+                    const contentHtml = `<p>${comm.content.replace(/\n/g, '<br>')}</p>${attachmentsHtml}${deleteButtonHtml}`;
                     showModal(comm.title, contentHtml);
 
                     const latestCommQuery = query(collection(db, "communications"), orderBy("createdAt", "desc"), limit(1));
@@ -9460,28 +9550,28 @@ ${renderBottomNavigation()}
                     listEl.innerHTML = `<p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p>`;
                 } else {
                     listEl.innerHTML = filteredDocs.map(docSnap => {
-    const comm = docSnap.data();
-    if (!comm.createdAt) return "";
+                        const comm = docSnap.data();
+                        if (!comm.createdAt) return "";
 
-    // --- INIZIO MODIFICA: Formattazione dinamica del numero comunicazione ---
-    let formattedCommNumber = comm.communicationNumber || '';
-    if (formattedCommNumber && formattedCommNumber.includes('/')) {
-        // Sostituisce solo la prima occorrenza di '/' per non alterare l'anno (es. 2025/2026)
-        formattedCommNumber = formattedCommNumber.replace('/', ' - ');
-    }
-    // --- FINE MODIFICA ---
+                        // --- INIZIO MODIFICA: Formattazione dinamica del numero comunicazione ---
+                        let formattedCommNumber = comm.communicationNumber || '';
+                        if (formattedCommNumber && formattedCommNumber.includes('/')) {
+                            // Sostituisce solo la prima occorrenza di '/' per non alterare l'anno (es. 2025/2026)
+                            formattedCommNumber = formattedCommNumber.replace('/', ' - ');
+                        }
+                        // --- FINE MODIFICA ---
 
-    const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                        const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-    const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
-        ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
-        : '';
+                        const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
+                            ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
+                            : '';
 
-    const custodeBadgeHtml = comm.forwardToCustode
-        ? `<span class="badge status-in-corso" style="font-size: 0.7rem; text-transform: uppercase;">CUSTODE</span>`
-        : '';
+                        const custodeBadgeHtml = comm.forwardToCustode
+                            ? `<span class="badge status-in-corso" style="font-size: 0.7rem; text-transform: uppercase;">CUSTODE</span>`
+                            : '';
 
-    return `
+                        return `
 <div class="list-item" onclick="showCommunicationDetail('${docSnap.id}')">
     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
     <div class="list-item-content">
@@ -9496,7 +9586,7 @@ ${renderBottomNavigation()}
         <div class="subtitle" style="font-size:0.75rem; margin-top:4px;">${comm.createdBy} - ${dateFormatted}</div>
     </div>
 </div>`;
-}).join("");
+                    }).join("");
                 }
 
                 if (currentPage === 'bacheca_tutte' && !snapshot.empty) {
@@ -11071,7 +11161,7 @@ ${renderBottomNavigation()}
 
                 tableHtml += `</tbody></table>`;
                 container.innerHTML = tableHtml;
-                
+
                 // Mostra il pulsante PDF
                 const pdfBtn = document.getElementById('user-summary-pdf-btn');
                 if (pdfBtn) pdfBtn.style.display = 'inline-flex';
@@ -12495,6 +12585,7 @@ ${renderBottomNavigation()}
         window.forwardReportToAdmin = forwardReportToAdmin;
         window.openJustificationModal = openJustificationModal;
         window.showCommunicationDetail = showCommunicationDetail;
+        window.deleteSingleCommunication = deleteSingleCommunication;
         window.showPollVoters = showPollVoters;
         window.hideModal = hideModal;
         window.openGroupEditModal = openGroupEditModal;
