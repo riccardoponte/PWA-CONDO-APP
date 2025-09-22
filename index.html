@@ -9460,35 +9460,43 @@ ${renderBottomNavigation()}
                     listEl.innerHTML = `<p style="color:var(--secondary-text); padding: 1rem 0;">${message}</p>`;
                 } else {
                     listEl.innerHTML = filteredDocs.map(docSnap => {
-                        const comm = docSnap.data();
-                        if (!comm.createdAt) return "";
+    const comm = docSnap.data();
+    if (!comm.createdAt) return "";
 
-                        const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    // --- INIZIO MODIFICA: Formattazione dinamica del numero comunicazione ---
+    let formattedCommNumber = comm.communicationNumber || '';
+    if (formattedCommNumber && formattedCommNumber.includes('/')) {
+        // Sostituisce solo la prima occorrenza di '/' per non alterare l'anno (es. 2025/2026)
+        formattedCommNumber = formattedCommNumber.replace('/', ' - ');
+    }
+    // --- FINE MODIFICA ---
 
-                        const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
-                            ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
-                            : '';
+    const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-                        const custodeBadgeHtml = comm.forwardToCustode
-                            ? `<span class="badge status-in-corso" style="font-size: 0.7rem; text-transform: uppercase;">CUSTODE</span>`
-                            : '';
+    const targetGroupHtml = comm.targetGroup && comm.targetGroup !== 'Tutti'
+        ? `<span class="badge status-aperta" style="font-size: 0.7rem; text-transform: uppercase;">${comm.targetGroup}</span>`
+        : '';
 
-                        return `
-                <div class="list-item" onclick="showCommunicationDetail('${docSnap.id}')">
-                    <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
-                    <div class="list-item-content">
-                        <div class="title" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${comm.communicationNumber ? `#${comm.communicationNumber}: ` : ''}${comm.title}</span>
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0;">
-                                ${targetGroupHtml}
-                                ${custodeBadgeHtml}
-                            </div>
-                        </div>
-                        <div class="subtitle">${comm.content.substring(0, 50)}...</div>
-                        <div class="subtitle" style="font-size:0.75rem; margin-top:4px;">${comm.createdBy} - ${dateFormatted}</div>
-                    </div>
-                </div>`;
-                    }).join("");
+    const custodeBadgeHtml = comm.forwardToCustode
+        ? `<span class="badge status-in-corso" style="font-size: 0.7rem; text-transform: uppercase;">CUSTODE</span>`
+        : '';
+
+    return `
+<div class="list-item" onclick="showCommunicationDetail('${docSnap.id}')">
+    <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
+    <div class="list-item-content">
+        <div class="title" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${formattedCommNumber ? `#${formattedCommNumber}: ` : ''}${comm.title}</span>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0;">
+                ${targetGroupHtml}
+                ${custodeBadgeHtml}
+            </div>
+        </div>
+        <div class="subtitle">${comm.content.substring(0, 50)}...</div>
+        <div class="subtitle" style="font-size:0.75rem; margin-top:4px;">${comm.createdBy} - ${dateFormatted}</div>
+    </div>
+</div>`;
+}).join("");
                 }
 
                 if (currentPage === 'bacheca_tutte' && !snapshot.empty) {
