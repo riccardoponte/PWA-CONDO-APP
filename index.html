@@ -12585,7 +12585,38 @@ ${renderBottomNavigation()}
             communicationsListener && communicationsListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenComm_${currentUser.uid}`), 10);
+            const userRole = userProfile?.tipoUtente;
 
+            // Logica speciale per il custode: controlla tutte le comunicazioni inoltrate
+            if (userRole === 'custode') {
+                // Per il custode, controlla tutte le comunicazioni con forwardToCustode === true
+                const q = query(collection(db, "communications"), orderBy("createdAt", "desc"));
+
+                communicationsListener = onSnapshot(q, snapshot => {
+                    const unreadCount = snapshot.docs.filter(docSnap => {
+                        const comm = docSnap.data();
+                        // Il custode vede solo le comunicazioni inoltrate a lui
+                        if (comm.forwardToCustode === true) {
+                            // Se non ha mai visto comunicazioni, mostra tutte quelle inoltrate
+                            if (!lastSeen) {
+                                return true;
+                            }
+                            // Altrimenti mostra solo quelle più recenti dell'ultimo accesso
+                            return comm.createdAt && comm.createdAt.toMillis() > lastSeen;
+                        }
+                        return false;
+                    }).length;
+
+                    console.log('DEBUG CUSTODE - Notifiche bacheca calcolate:', unreadCount);
+                    console.log('DEBUG CUSTODE - LastSeen timestamp:', lastSeen);
+                    console.log('DEBUG CUSTODE - Comunicazioni totali nel snapshot:', snapshot.docs.length);
+
+                    updateNotificationUI('bacheca', unreadCount);
+                });
+                return;
+            }
+
+            // Logica normale per tutti gli altri utenti
             // Se non c'è un timestamp salvato, inizializza con il timestamp corrente per evitare notifiche per vecchie comunicazioni
             if (!lastSeen) {
                 lastSeen = Date.now();
@@ -12604,7 +12635,9 @@ ${renderBottomNavigation()}
 
                     // Logica specifica per il Custode: riceve notifica solo se forwardToCustode è true
                     if (userRole === 'custode') {
-                        return comm.forwardToCustode === true;
+                        const shouldNotify = comm.forwardToCustode === true;
+                        console.log('DEBUG CUSTODE - Comunicazione:', comm.title, 'forwardToCustode:', comm.forwardToCustode, 'shouldNotify:', shouldNotify);
+                        return shouldNotify;
                     }
 
                     // Ruoli manageriali vedono sempre tutte le comunicazioni
