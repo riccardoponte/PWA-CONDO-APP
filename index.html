@@ -11995,12 +11995,10 @@ ${renderBottomNavigation()}
 
             const renderFolderTree = (node, level = 0) => {
                 let html = `
-                    <div class="list-item" style="padding-left: ${level * 1.5}rem; background-color: var(--surface-color-light); margin-bottom: 0.5rem; flex-wrap: wrap; row-gap: 0.5rem; align-items: center;">
+                    <div class="list-item" style="padding-left: ${level * 1.5}rem; background-color: var(--surface-color-light); margin-bottom: 0.5rem;">
                         <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
-                        <div class="list-item-content" style="min-width: 150px;">
-                            <div class="title" style="white-space: normal; word-break: break-word;">${node.name || 'Archivio'}</div>
-                        </div>
-                        <div class="list-item-action" style="margin-left: auto;">
+                        <div class="list-item-content"><div class="title">${node.name}</div></div>
+                        <div class="list-item-action">
                             <button class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="selectUploadPath('${node.path}')">Carica qui</button>
                         </div>
                     </div>
