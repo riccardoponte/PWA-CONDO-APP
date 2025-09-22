@@ -2060,16 +2060,26 @@
                     limit(1));
 
                 const snapshot = await getDocs(q);
+                console.log('DEBUG: Periodi amministrativi trovati:', snapshot.size);
+
                 if (!snapshot.empty) {
                     const periodDoc = snapshot.docs[0];
                     const periodData = periodDoc.data();
+                    console.log('DEBUG: Periodo più recente:', periodData);
+                    console.log('DEBUG: Data fine periodo:', periodData.endDate.toDate());
+                    console.log('DEBUG: Data corrente:', now);
+                    console.log('DEBUG: Periodo attivo?', periodData.endDate.toDate() >= now);
+
                     if (periodData.endDate.toDate() >= now) {
                         currentAdministrativePeriod = { id: periodDoc.id, ...periodData };
+                        console.log('DEBUG: Periodo amministrativo attivo impostato:', currentAdministrativePeriod.year);
                     } else {
                         currentAdministrativePeriod = null;
+                        console.log('DEBUG: Periodo amministrativo scaduto, impostato a null');
                     }
                 } else {
                     currentAdministrativePeriod = null;
+                    console.log('DEBUG: Nessun periodo amministrativo trovato');
                 }
             } catch (error) {
                 console.error("Errore nel caricamento del periodo amministrativo:", error);
@@ -5502,7 +5512,87 @@ ${renderBottomNavigation()}
 
                 await Promise.all(deletePromises);
 
-                // Il contatore delle comunicazioni verrà gestito dinamicamente al momento della creazione
+                // Gestisce la rinumerazione per le comunicazioni eliminate in bulk
+                if (type === 'communications') {
+                    try {
+                        // Raggruppa le comunicazioni eliminate per periodo amministrativo
+                        const deletedComms = [];
+                        for (const id of idsToDelete) {
+                            const commDoc = await getDoc(doc(db, "communications", id));
+                            if (commDoc.exists()) {
+                                const comm = commDoc.data();
+                                const numberMatch = comm.communicationNumber?.match(/^#?(\d+)/);
+                                const periodMatch = comm.communicationNumber?.match(/ - (.+)$/);
+
+                                if (numberMatch && periodMatch) {
+                                    deletedComms.push({
+                                        id: id,
+                                        number: parseInt(numberMatch[1]),
+                                        period: periodMatch[1]
+                                    });
+                                }
+                            }
+                        }
+
+                        // Raggruppa per periodo
+                        const periodGroups = {};
+                        deletedComms.forEach(comm => {
+                            if (!periodGroups[comm.period]) {
+                                periodGroups[comm.period] = [];
+                            }
+                            periodGroups[comm.period].push(comm.number);
+                        });
+
+                        // Per ogni periodo, rinumera le comunicazioni rimanenti
+                        for (const [period, deletedNumbers] of Object.entries(periodGroups)) {
+                            deletedNumbers.sort((a, b) => a - b); // Ordina i numeri eliminati
+
+                            // Trova tutte le comunicazioni rimanenti di questo periodo
+                            const remainingCommsQuery = query(collection(db, "communications"));
+                            const remainingCommsSnapshot = await getDocs(remainingCommsQuery);
+
+                            const commsToRenumber = [];
+                            remainingCommsSnapshot.docs.forEach(doc => {
+                                if (!idsToDelete.includes(doc.id)) { // Solo quelle non eliminate
+                                    const comm = doc.data();
+                                    if (comm.communicationNumber && comm.communicationNumber.includes(period)) {
+                                        const commNumberMatch = comm.communicationNumber.match(/^#?(\d+)/);
+                                        if (commNumberMatch) {
+                                            const commNumber = parseInt(commNumberMatch[1]);
+                                            commsToRenumber.push({
+                                                id: doc.id,
+                                                currentNumber: commNumber,
+                                                data: comm
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+
+                            // Ordina per numero corrente e riassegna numeri sequenziali
+                            commsToRenumber.sort((a, b) => a.currentNumber - b.currentNumber);
+
+                            if (commsToRenumber.length > 0) {
+                                const batch = writeBatch(db);
+
+                                commsToRenumber.forEach((comm, index) => {
+                                    const newNumber = index + 1;
+                                    if (comm.currentNumber !== newNumber) {
+                                        const newCommNumber = `#${newNumber} - ${period}`;
+                                        batch.update(doc(db, "communications", comm.id), {
+                                            communicationNumber: newCommNumber
+                                        });
+                                    }
+                                });
+
+                                await batch.commit();
+                                console.log(`DEBUG: Rinumerazione completata per periodo ${period}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Errore nella rinumerazione:', error);
+                    }
+                }
 
                 await logActivity("bulk_delete", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
                     dataType: type,
@@ -6441,72 +6531,108 @@ ${renderBottomNavigation()}
                             let counterRef;
                             let newCommNumber;
 
-                            // NUOVA LOGICA: Trova il numero più alto esistente per l'anno amministrativo corrente
+                            console.log('DEBUG: currentAdministrativePeriod:', currentAdministrativePeriod);
+
+                            // STEP 1: Determina quale periodo amministrativo usare
+                            let selectedPeriod = currentAdministrativePeriod;
+
+                            // Se non c'è un periodo attivo, cerca il più recente definito dagli utenti
+                            if (!selectedPeriod) {
+                                try {
+                                    const allPeriodsQuery = query(collection(db, "administrativePeriods"),
+                                        orderBy("startDate", "desc"),
+                                        limit(1));
+                                    const allPeriodsSnapshot = await getDocs(allPeriodsQuery);
+
+                                    if (!allPeriodsSnapshot.empty) {
+                                        const latestPeriodData = allPeriodsSnapshot.docs[0].data();
+                                        selectedPeriod = { id: allPeriodsSnapshot.docs[0].id, ...latestPeriodData };
+                                        console.log('DEBUG: Usando periodo più recente definito dagli utenti:', selectedPeriod.year);
+                                    }
+                                } catch (error) {
+                                    console.error('Errore nel recupero del periodo più recente:', error);
+                                }
+                            } else {
+                                console.log('DEBUG: Usando periodo amministrativo attivo:', selectedPeriod.year);
+                            }
+
+                            // STEP 2: Trova il numero più alto per il periodo selezionato
                             const existingCommsQuery = query(collection(db, "communications"), orderBy("createdAt", "desc"));
                             const existingCommsSnapshot = await getDocs(existingCommsQuery);
 
                             let highestNumber = 0;
-                            if (!existingCommsSnapshot.empty) {
-                                const currentYear = currentAdministrativePeriod?.year;
+                            if (!existingCommsSnapshot.empty && selectedPeriod?.year) {
+                                const selectedYear = selectedPeriod.year;
+                                console.log('DEBUG: Cercando comunicazioni per il periodo:', selectedYear);
 
-                                // Trova il numero più alto tra le comunicazioni dell'anno amministrativo corrente
+                                // Trova il numero più alto tra le comunicazioni del periodo selezionato
                                 existingCommsSnapshot.docs.forEach(doc => {
                                     const comm = doc.data();
-                                    if (comm.communicationNumber) {
-                                        if (currentYear) {
-                                            // Se c'è un anno amministrativo, filtra solo le comunicazioni di quell'anno
-                                            if (comm.communicationNumber.includes(currentYear)) {
-                                                // Estrai il numero dalla stringa (es. "5 - 2024/2025" -> 5)
-                                                const numberMatch = comm.communicationNumber.match(/^(\d+)/);
-                                                if (numberMatch) {
-                                                    const num = parseInt(numberMatch[1]);
-                                                    if (num > highestNumber) {
-                                                        highestNumber = num;
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            // Se non c'è un anno amministrativo, considera solo comunicazioni senza anno
-                                            if (!comm.communicationNumber.includes(' - ')) {
-                                                // Estrai il numero dalla stringa (es. "5" -> 5)
-                                                const numberMatch = comm.communicationNumber.match(/^(\d+)$/);
-                                                if (numberMatch) {
-                                                    const num = parseInt(numberMatch[1]);
-                                                    if (num > highestNumber) {
-                                                        highestNumber = num;
-                                                    }
-                                                }
+                                    if (comm.communicationNumber && comm.communicationNumber.includes(selectedYear)) {
+                                        // Estrai il numero dalla stringa (es. "#5 - 2024/2025" -> 5)
+                                        const numberMatch = comm.communicationNumber.match(/^#?(\d+)/);
+                                        if (numberMatch) {
+                                            const num = parseInt(numberMatch[1]);
+                                            if (num > highestNumber) {
+                                                highestNumber = num;
                                             }
                                         }
                                     }
                                 });
                             }
 
-                            const currentYear = currentAdministrativePeriod?.year;
-                            console.log('DEBUG: Anno amministrativo corrente:', currentYear);
-                            console.log('DEBUG: Numero più alto trovato per questo anno:', highestNumber);
+                            console.log('DEBUG: Periodo selezionato finale:', selectedPeriod?.year);
+                            console.log('DEBUG: Numero più alto trovato per questo periodo:', highestNumber);
 
-                            if (currentAdministrativePeriod && currentAdministrativePeriod.year) {
-                                // LOGICA ESISTENTE: Usa il contatore basato sul periodo amministrativo
-                                const adminYear = currentAdministrativePeriod.year;
+                            if (selectedPeriod && selectedPeriod.year) {
+                                // USA IL PERIODO AMMINISTRATIVO DEFINITO DAGLI UTENTI
+                                const adminYear = selectedPeriod.year;
                                 const counterDocName = `communicationsCounter_${adminYear.replace('/', '_')}`;
                                 counterRef = doc(db, "counters", counterDocName);
 
                                 // Il nuovo numero è sempre il più alto + 1
                                 const newCommNumberInPeriod = highestNumber + 1;
                                 newCommNumber = newCommNumberInPeriod;
-                                finalCommNumber = `${newCommNumberInPeriod} - ${adminYear}`; // Formato: N - ANNO
+                                finalCommNumber = `#${newCommNumberInPeriod} - ${adminYear}`; // Formato: #N - ANNO
 
-                                console.log('DEBUG: Nuovo numero comunicazione (periodo):', newCommNumberInPeriod, 'Formato:', finalCommNumber);
+                                console.log('DEBUG: Nuovo numero comunicazione (periodo definito):', newCommNumberInPeriod, 'Formato:', finalCommNumber);
                             } else {
-                                // LOGICA DI FALLBACK: Usa un contatore globale se non c'è un periodo attivo
+                                // LOGICA DI FALLBACK: Se non c'è un periodo attivo, usa il più recente
+                                let fallbackYear = null;
+
+                                try {
+                                    // Cerca il periodo amministrativo più recente (anche se scaduto)
+                                    const fallbackQuery = query(collection(db, "administrativePeriods"),
+                                        orderBy("startDate", "desc"),
+                                        limit(1));
+                                    const fallbackSnapshot = await getDocs(fallbackQuery);
+
+                                    if (!fallbackSnapshot.empty) {
+                                        const latestPeriod = fallbackSnapshot.docs[0].data();
+                                        fallbackYear = latestPeriod.year;
+                                        console.log('DEBUG: Usando periodo amministrativo più recente:', fallbackYear);
+                                    } else {
+                                        // Se non ci sono periodi amministrativi, usa l'anno corrente
+                                        const currentYear = new Date().getFullYear();
+                                        const nextYear = currentYear + 1;
+                                        fallbackYear = `${currentYear}/${nextYear}`;
+                                        console.log('DEBUG: Nessun periodo amministrativo trovato, usando anno corrente:', fallbackYear);
+                                    }
+                                } catch (error) {
+                                    console.error('Errore nel recupero del periodo fallback:', error);
+                                    // Fallback finale: anno corrente
+                                    const currentYear = new Date().getFullYear();
+                                    const nextYear = currentYear + 1;
+                                    fallbackYear = `${currentYear}/${nextYear}`;
+                                }
+
                                 counterRef = doc(db, "counters", "communicationsCounter_global");
 
                                 // Il nuovo numero è sempre il più alto + 1
                                 newCommNumber = highestNumber + 1;
-                                finalCommNumber = `${newCommNumber}`; // Formato: N
+                                finalCommNumber = `#${newCommNumber} - ${fallbackYear}`;
 
-                                console.log('DEBUG: Nuovo numero comunicazione (globale):', newCommNumber, 'Formato:', finalCommNumber);
+                                console.log('DEBUG: Nuovo numero comunicazione (fallback):', newCommNumber, 'Formato:', finalCommNumber);
                             }
 
                             const forwardToCustode = document.getElementById("comm-forward-custode")?.checked || false;
@@ -9405,14 +9531,83 @@ ${renderBottomNavigation()}
             }
 
             try {
+                // Prima ottieni i dati della comunicazione da eliminare
+                const commToDeleteDoc = await getDoc(doc(db, "communications", commId));
+                if (!commToDeleteDoc.exists()) {
+                    alert('Comunicazione non trovata.');
+                    return;
+                }
+
+                const commToDelete = commToDeleteDoc.data();
+                const deletedCommNumber = commToDelete.communicationNumber;
+
+                // Estrai il numero e il periodo dalla comunicazione eliminata
+                const numberMatch = deletedCommNumber.match(/^#?(\d+)/);
+                const periodMatch = deletedCommNumber.match(/ - (.+)$/);
+
+                if (!numberMatch || !periodMatch) {
+                    // Se non riesce a parsare il numero, elimina senza rinumerare
+                    await deleteDoc(doc(db, "communications", commId));
+                    alert('Comunicazione eliminata con successo.');
+                    return;
+                }
+
+                const deletedNumber = parseInt(numberMatch[1]);
+                const period = periodMatch[1];
+
+                console.log('DEBUG: Eliminando comunicazione #' + deletedNumber + ' del periodo ' + period);
+
                 // Elimina la comunicazione
                 await deleteDoc(doc(db, "communications", commId));
 
-                // Il contatore verrà gestito dinamicamente al momento della creazione di nuove comunicazioni
+                // Trova tutte le comunicazioni dello stesso periodo con numero maggiore
+                const allCommsQuery = query(collection(db, "communications"), orderBy("createdAt", "asc"));
+                const allCommsSnapshot = await getDocs(allCommsQuery);
+
+                const commsToRenumber = [];
+                allCommsSnapshot.docs.forEach(doc => {
+                    const comm = doc.data();
+                    if (comm.communicationNumber && comm.communicationNumber.includes(period)) {
+                        const commNumberMatch = comm.communicationNumber.match(/^#?(\d+)/);
+                        if (commNumberMatch) {
+                            const commNumber = parseInt(commNumberMatch[1]);
+                            if (commNumber > deletedNumber) {
+                                commsToRenumber.push({
+                                    id: doc.id,
+                                    currentNumber: commNumber,
+                                    newNumber: commNumber - 1,
+                                    data: comm
+                                });
+                            }
+                        }
+                    }
+                });
+
+                console.log('DEBUG: Comunicazioni da rinumerare:', commsToRenumber.length);
+
+                // Rinumera le comunicazioni in batch
+                if (commsToRenumber.length > 0) {
+                    const batch = writeBatch(db);
+
+                    commsToRenumber.forEach(comm => {
+                        const newCommNumber = `#${comm.newNumber} - ${period}`;
+                        console.log('DEBUG: Rinumerando da #' + comm.currentNumber + ' a #' + comm.newNumber);
+
+                        batch.update(doc(db, "communications", comm.id), {
+                            communicationNumber: newCommNumber
+                        });
+                    });
+
+                    await batch.commit();
+                    console.log('DEBUG: Rinumerazione completata');
+                }
 
                 // Log dell'attività
                 await logActivity("communication_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
-                    communicationId: commId
+                    communicationId: commId,
+                    deletedNumber: deletedNumber,
+                    period: period,
+                    renumberedCount: commsToRenumber.length
                 });
 
                 // Chiudi il modal e ricarica la lista
@@ -9421,7 +9616,7 @@ ${renderBottomNavigation()}
                     loadCommunications();
                 }
 
-                alert('Comunicazione eliminata con successo.');
+                alert(`Comunicazione eliminata con successo. ${commsToRenumber.length} comunicazioni rinumerate.`);
             } catch (error) {
                 console.error("Errore nell'eliminazione della comunicazione:", error);
                 alert('Errore durante l\'eliminazione della comunicazione.');
@@ -9553,13 +9748,8 @@ ${renderBottomNavigation()}
                         const comm = docSnap.data();
                         if (!comm.createdAt) return "";
 
-                        // --- INIZIO MODIFICA: Formattazione dinamica del numero comunicazione ---
-                        let formattedCommNumber = comm.communicationNumber || '';
-                        if (formattedCommNumber && formattedCommNumber.includes('/')) {
-                            // Sostituisce solo la prima occorrenza di '/' per non alterare l'anno (es. 2025/2026)
-                            formattedCommNumber = formattedCommNumber.replace('/', ' - ');
-                        }
-                        // --- FINE MODIFICA ---
+                        // Il numero della comunicazione è già nel formato corretto (#N - ANNO)
+                        const formattedCommNumber = comm.communicationNumber || '';
 
                         const dateFormatted = comm.createdAt.toDate().toLocaleString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -9576,7 +9766,7 @@ ${renderBottomNavigation()}
     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg></div>
     <div class="list-item-content">
         <div class="title" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${formattedCommNumber ? `#${formattedCommNumber}: ` : ''}${comm.title}</span>
+            <span style="white-space: normal; flex-grow: 1; padding-right: 0.5rem;">${formattedCommNumber ? `${formattedCommNumber}: ` : ''}${comm.title}</span>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex-shrink: 0;">
                 ${targetGroupHtml}
                 ${custodeBadgeHtml}
