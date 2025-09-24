@@ -1608,13 +1608,14 @@
                 } else {
                     // Default permissions if not set (all enabled for everyone)
                     servicePermissions = {
-                        'all_services': { enabled: true, allowedRoles: ['tutti'] },
-                        'bacheca': { enabled: true, allowedRoles: ['tutti'] },
-                        'segnalazioni': { enabled: true, allowedRoles: ['tutti'] },
-                        'sondaggi': { enabled: true, allowedRoles: ['tutti'] },
-                        'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
-                        'report': { enabled: true, allowedRoles: ['tutti'] }
-                    };
+    'all_services': { enabled: true, allowedRoles: ['tutti'] },
+    'bacheca': { enabled: true, allowedRoles: ['tutti'] },
+    'segnalazioni': { enabled: true, allowedRoles: ['tutti'] },
+    'sondaggi': { enabled: true, allowedRoles: ['tutti'] },
+    'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
+    'report': { enabled: true, allowedRoles: ['tutti'] },
+    'archivio': { enabled: true, allowedRoles: ['tutti'] }
+};
                 }
             } catch (error) {
                 console.error("Error loading service permissions:", error);
@@ -2311,12 +2312,13 @@
 
             // Service permission check
             const serviceMap = {
-                'bacheca': 'bacheca',
-                'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni',
-                'sondaggi': 'sondaggi', 'sondaggi_crea': 'sondaggi', 'sondaggi_elenco': 'sondaggi', 'sondaggi_attivi': 'sondaggi', 'sondaggi_conclusi': 'sondaggi',
-                'infoUtili': 'numeri_utili', 'numeriUtiliImportati': 'numeri_utili', 'numeriUtiliManuali': 'numeri_utili', 'numeriUtiliRubrica': 'numeri_utili', 'numeriUtiliCustode': 'numeri_utili', 'infoUtili_amministratore': 'numeri_utili',
-                'reportPage': 'report', 'elencoCondomini': 'report'
-            };
+    'bacheca': 'bacheca',
+    'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni',
+    'sondaggi': 'sondaggi', 'sondaggi_crea': 'sondaggi', 'sondaggi_elenco': 'sondaggi', 'sondaggi_attivi': 'sondaggi', 'sondaggi_conclusi': 'sondaggi',
+    'infoUtili': 'numeri_utili', 'numeriUtiliImportati': 'numeri_utili', 'numeriUtiliManuali': 'numeri_utili', 'numeriUtiliRubrica': 'numeri_utili', 'numeriUtiliCustode': 'numeri_utili', 'infoUtili_amministratore': 'numeri_utili',
+    'reportPage': 'report', 'elencoCondomini': 'report',
+    'archivio': 'archivio', 'gestione_archivio': 'archivio'
+};
             const requiredService = serviceMap[e];
 
             // CORREZIONE: Aggiunta un'eccezione per permettere al custode di accedere alla lista condomini
@@ -2748,15 +2750,15 @@
                 `);
             }
             // Aggiunta pulsante Archivio
-            if (userProfile?.tipoUtente !== 'fornitore' && userProfile?.tipoUtente !== 'custode') {
-                dashboardItemsHtml.push(`
-                    <div onclick="navigateTo('archivio')" class="dashboard-item" style="position: relative;">
-                        <span id="dashboard-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
-                        <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg></div>
-                        <p>Archivio</p>
-                    </div>
-                `);
-            }
+if (isServiceEnabledForCurrentUser('archivio')) {
+    dashboardItemsHtml.push(`
+        <div onclick="navigateTo('archivio')" class="dashboard-item" style="position: relative;">
+            <span id="dashboard-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
+            <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg></div>
+            <p>Archivio</p>
+        </div>
+    `);
+}
 
 
             if (userProfile?.tipoUtente === 'amministratore') {
@@ -4607,13 +4609,15 @@ ${renderBottomNavigation()}
                         <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
                     </div>
                 </div>
-                <div onclick="navigateTo('gestione_archivio')" class="dashboard-item" style="position: relative;">
-                    <span id="dashboard-gestione-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
-                    <div class="menu-list-item">
-                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg>
-                        <p style="text-align: left; font-size: 1.1rem;">Gestione Archivio</p>
-                    </div>
-                </div>
+                ${isServiceEnabledForCurrentUser('archivio') ? `
+<div onclick="navigateTo('gestione_archivio')" class="dashboard-item" style="position: relative;">
+    <span id="dashboard-gestione-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
+    <div class="menu-list-item">
+        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg>
+        <p style="text-align: left; font-size: 1.1rem;">Gestione Archivio</p>
+    </div>
+</div>
+` : ''}
                 <div onclick="navigateTo('impostazioniSondaggi')" class="dashboard-item">
                     <div class="menu-list-item">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,15H7V17H5V15M3,13H9V19H3V13Z" /></svg>
@@ -5295,13 +5299,14 @@ ${renderBottomNavigation()}
 
         const renderAbilitaServizi = () => {
             const services = [
-                { id: 'all_services', name: 'Tutti i Servizi (Generale)' },
-                { id: 'bacheca', name: 'Bacheca' },
-                { id: 'segnalazioni', name: 'Segnalazioni' },
-                { id: 'sondaggi', name: 'Sondaggi' },
-                { id: 'numeri_utili', name: 'Numeri Utili' },
-                { id: 'report', name: 'Report' },
-            ];
+    { id: 'all_services', name: 'Tutti i Servizi (Generale)' },
+    { id: 'bacheca', name: 'Bacheca' },
+    { id: 'segnalazioni', name: 'Segnalazioni' },
+    { id: 'sondaggi', name: 'Sondaggi' },
+    { id: 'numeri_utili', name: 'Numeri Utili' },
+    { id: 'report', name: 'Report' },
+    { id: 'archivio', name: 'Archivio' },
+];
 
             const roles = [
                 { id: 'tutti', name: 'Tutti i Ruoli' },
@@ -5758,7 +5763,7 @@ ${renderBottomNavigation()}
                 submitBtn.textContent = 'Salvataggio...';
 
                 const newPermissions = {};
-                const services = ['all_services', 'bacheca', 'segnalazioni', 'sondaggi', 'numeri_utili', 'report'];
+                const services = ['all_services', 'bacheca', 'segnalazioni', 'sondaggi', 'numeri_utili', 'report', 'archivio'];
 
                 services.forEach(serviceId => {
                     const serviceToggle = document.getElementById(`toggle-${serviceId}`);
@@ -9787,24 +9792,27 @@ ${renderBottomNavigation()}
             });
         };
 
-        const isUserAllowedToVote = (userType, setting) => {
-            // ADM can always vote
-            if (userType === 'adm') return true;
+            const isUserAllowedToVote = (userType, setting) => {
+        // NUOVA REGOLA: Esclude specifici ruoli dal voto, indipendentemente dalle impostazioni.
+        if (['amministratore', 'fornitore', 'custode', 'adm'].includes(userType)) {
+            return false;
+        }
 
-            const allowedRoles = {
-                option1: ['supervisore', 'amministratore', 'consigliere'],
-                option2: ['supervisore', 'amministratore', 'consigliere', 'condomino'],
-                option3: ['supervisore', 'consigliere']
-            };
-            const roles = allowedRoles[setting] || allowedRoles['option2'];
-
-            // Check if user is a condomino (including condomino2, condomino3, etc.)
-            if (userType.startsWith('condomino') && roles.includes('condomino')) {
-                return true;
-            }
-
-            return roles.includes(userType);
+        // La logica esistente continua a gestire gli utenti autorizzati.
+        const allowedRoles = {
+            option1: ['supervisore', 'amministratore', 'consigliere'],
+            option2: ['supervisore', 'amministratore', 'consigliere', 'condomino'],
+            option3: ['supervisore', 'consigliere']
         };
+        const roles = allowedRoles[setting] || allowedRoles['option2'];
+
+        // Controlla se l'utente è un condomino
+        if (userType.startsWith('condomino') && roles.includes('condomino')) {
+            return true;
+        }
+
+        return roles.includes(userType);
+    };
 
         const isUserAllowedToCreatePolls = async () => {
             if (!userProfile) return false;
@@ -9828,7 +9836,7 @@ ${renderBottomNavigation()}
                     case 'option2': // Solo Supervisore e Consiglieri
                         return ['supervisore', 'consigliere'].includes(userType);
                     case 'option3': // Supervisore, Consiglieri e Amministratore
-                        return ['supervisore', 'consigliere', 'adm'].includes(userType);
+                        return ['supervisore', 'consigliere', 'amministratore'].includes(userType);
                     default:
                         return ['supervisore', 'consigliere'].includes(userType);
                 }
@@ -10005,12 +10013,36 @@ ${renderBottomNavigation()}
                     });
 
                     container.innerHTML = filteredPolls.map((docSnap, index) => {
-                        const poll = docSnap.data();
-                        const deadline = poll.deadline ? poll.deadline.toDate() : null;
-                        const isExpired = deadline ? deadline < new Date() : false;
-                        const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
-                        const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
-                        const showVoteUI = !isExpired && canUserVote;
+    const poll = docSnap.data();
+    const deadline = poll.deadline ? poll.deadline.toDate() : null;
+    const isExpired = deadline ? deadline < new Date() : false;
+    const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
+    const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+    const showVoteUI = !isExpired && canUserVote;
+
+    // Aggiungi calcolo millesimi
+    const showMillesimiResults = poll.pollType === 'condomini' || poll.pollType === 'supervisor-consiglieri';
+    let totalMillesimiVoted = 0;
+    const optionsWithMillesimi = poll.options.map(opt => ({ ...opt, millesimi: 0 }));
+
+    if (showMillesimiResults && poll.voters && poll.voters.length > 0) {
+        // Calcola il totale dei millesimi di tutti i partecipanti al voto
+        totalMillesimiVoted = poll.voters.reduce((sum, voter) => sum + (parseFloat(voter.millesimi) || 0), 0);
+        
+        // Distribuisce i millesimi a ogni opzione in base ai voti espressi
+        poll.voters.forEach(voter => {
+            const voterMillesimi = parseFloat(voter.millesimi) || 0;
+            if (voter.vote) { // Assicurati che l'utente abbia votato
+                const voterChoices = voter.vote.split(', ');
+                voterChoices.forEach(choiceText => {
+                    const option = optionsWithMillesimi.find(o => o.text === choiceText);
+                    if (option) {
+                        option.millesimi += voterMillesimi;
+                    }
+                });
+            }
+        });
+    }
 
                         const pollTypeLabel = poll.pollType === 'supervisor-consiglieri' ? 'Supervisor e Consiglieri' : 'Condomini';
                         const pollTitle = poll.pollNumber ? `Sondaggio N. ${poll.pollNumber}: ${poll.title}` : poll.title;
@@ -10032,48 +10064,84 @@ ${renderBottomNavigation()}
                                 const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
                                 const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
                                 const optionsCheckboxes = poll.options.map((option, index) => {
-                                    const percentage = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-                                    const isChecked = hasVoted && previousVotes.includes(option.text);
-                                    return `
-                                    <div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                            <span class="font-medium">${option.text}</span>
-                                            <span style="color:var(--secondary-text); font-size:0.9rem;">${percentage}%</span>
-                                        </div>
-                                        <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentage}%"></div></div>
-                                        <label class="flex items-center gap-3 p-3 mt-3 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
-                                            <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);">
-                                            <span>Seleziona questa opzione</span>
-                                        </label>
-                                    </div>`;
+                                    const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
+const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
+const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
+const isChecked = hasVoted && previousVotes.includes(option.text);
+
+const millesimiHtml = showMillesimiResults ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
+        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
+` : '';
+
+return `
+<div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+        <span class="font-medium">${option.text}</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
+    ${millesimiHtml}
+    <label class="flex items-center gap-3 p-3 mt-3 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
+        <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);">
+        <span>Seleziona questa opzione</span>
+    </label>
+</div>`;
                                 }).join('');
                                 const submitButton = `<button onclick="voteOnPoll('${docSnap.id}')" class="btn btn-primary w-full mt-4">${buttonText}</button>`;
                                 optionsHtml = `<div class="space-y-4">${optionsCheckboxes}</div>${submitButton}`;
                             } else {
                                 optionsHtml = `<div class="space-y-4">${poll.options.map((option, index) => {
-                                    const percentage = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-                                    return `
-                                    <div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                            <span class="font-medium">${option.text}</span>
-                                            <span style="color:var(--secondary-text); font-size:0.9rem;">${percentage}%</span>
-                                        </div>
-                                        <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentage}%"></div></div>
-                                        <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%; margin-top:0.75rem;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
-                                    </div>`;
+                                    const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
+const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
+const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
+
+const millesimiHtml = showMillesimiResults ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
+        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
+` : '';
+
+return `
+<div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+        <span class="font-medium">${option.text}</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
+    ${millesimiHtml}
+    <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%; margin-top:0.75rem;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
+</div>`;
                                 }).join("")}</div>`;
                             }
                         } else {
                             optionsHtml = `<div class="space-y-4">${poll.options.map(option => {
-                                const percentage = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-                                return `
-                                <div>
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                        <span class="font-medium">${option.text}</span>
-                                        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentage}%</span>
-                                    </div>
-                                    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentage}%"></div></div>
-                                </div>`;
+                                const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
+const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
+const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
+
+const millesimiHtml = showMillesimiResults ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
+        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
+` : '';
+
+return `
+<div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+        <span class="font-medium">${option.text}</span>
+        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
+    </div>
+    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
+    ${millesimiHtml}
+</div>`;
                             }).join("")}</div>`;
                         }
 
