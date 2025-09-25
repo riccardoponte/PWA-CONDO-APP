@@ -3216,13 +3216,21 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                     <h3 class="card-title">Crea un Nuovo Sondaggio</h3>
                     <div id="poll-creation-message" class="message-box"></div>
                     <form id="create-poll-form" class="space-y-4">
-                        <div><label class="form-label">Tipo Sondaggio</label>
-                            <select id="poll-type" required class="form-select">
-                                <option value="">Seleziona tipo...</option>
-                                <option value="supervisor-consiglieri">Sondaggio rivolto a Supervisor e Consiglieri</option>
-                                <option value="condomini">Sondaggio rivolto ai Condomini</option>
-                            </select>
-                        </div>
+                                            <div><label class="form-label">Tipo Sondaggio</label>
+                        <select id="poll-type" required class="form-select">
+                            <option value="">Seleziona tipo...</option>
+                            <option value="supervisor-consiglieri">Sondaggio rivolto a Supervisor e Consiglieri</option>
+                            <option value="condomini">Sondaggio rivolto ai Condomini</option>
+                        </select>
+                    </div>
+                    <!-- NUOVO: Sezione per la selezione del target dei condomini -->
+                    <div id="poll-target-condomini-container" class="form-group hidden">
+                        <label for="poll-target-group" class="form-label">Rivolto a</label>
+                        <select id="poll-target-group" class="form-select">
+                            <option value="Tutti">Intero Condominio</option>
+                            <!-- I gruppi verranno popolati dinamicamente -->
+                        </select>
+                    </div>
                         <div><label class="form-label">Titolo</label><input type="text" id="poll-title" required class="form-input"></div>
                         <div><label class="form-label">Descrizione (opzionale)</label><textarea id="poll-description" rows="3" class="form-textarea"></textarea></div>
                         <div><label class="form-label">Opzioni</label><div id="poll-options-list" class="space-y-4"></div><button type="button" id="add-poll-option" class="btn btn-secondary mt-4">Aggiungi opzione</button></div>
@@ -6735,13 +6743,48 @@ ${renderBottomNavigation()}
                 });
             }
         };
-        const setupPollHandlers = () => {
-            const form = document.getElementById("create-poll-form");
-            if (!form) return;
-            const optionsList = document.getElementById("poll-options-list");
-            const addOptionBtn = document.getElementById("add-poll-option");
+            const setupPollHandlers = () => {
+        const form = document.getElementById("create-poll-form");
+        if (!form) return;
 
-            // I gestori per la ricerca e il filtro dei sondaggi sono stati spostati nella logica della pagina 'sondaggi_elenco'.
+        // NUOVO: Logica per il dropdown del target
+        const pollTypeSelect = document.getElementById('poll-type');
+        const targetCondominiContainer = document.getElementById('poll-target-condomini-container');
+        const targetGroupSelect = document.getElementById('poll-target-group');
+
+        const populatePollGroupDropdown = async () => {
+            if (!targetGroupSelect) return;
+            try {
+                const q = query(collection(db, "partialCondos"), orderBy("name"));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => {
+                    const group = doc.data();
+                    const option = document.createElement('option');
+                    option.value = group.name;
+                    option.textContent = `Scala ${group.name}`;
+                    targetGroupSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error populating poll target groups:", error);
+            }
+        };
+
+        if(pollTypeSelect && targetCondominiContainer) {
+            pollTypeSelect.addEventListener('change', () => {
+                if (pollTypeSelect.value === 'condomini') {
+                    targetCondominiContainer.classList.remove('hidden');
+                } else {
+                    targetCondominiContainer.classList.add('hidden');
+                }
+            });
+            populatePollGroupDropdown();
+        }
+        // FINE NUOVO
+
+        const optionsList = document.getElementById("poll-options-list");
+        const addOptionBtn = document.getElementById("add-poll-option");
+
+        // I gestori per la ricerca e il filtro dei sondaggi sono stati spostati nella logica della pagina 'sondaggi_elenco'.
 
             function addOptionInput(value = "") {
                 const div = document.createElement("div");
@@ -6829,20 +6872,47 @@ ${renderBottomNavigation()}
                 const deadlineISO = `${deadlineDate}T${deadlineTime}`;
                 const deadline = new Date(deadlineISO);
 
-                try {
-                    const pollsQuery = query(collection(db, "polls"), orderBy("pollNumber", "desc"), limit(1));
-                    const lastPollsSnapshot = await getDocs(pollsQuery);
-                    const lastPollNumber = lastPollsSnapshot.empty ? 0 : lastPollsSnapshot.docs[0].data().pollNumber;
-                    const newPollNumber = lastPollNumber + 1;
+                            try {
+                // --- NUOVA LOGICA DI NUMERAZIONE ANNUALE ---
+                let adminYear = null;
+                if (currentAdministrativePeriod) {
+                    adminYear = currentAdministrativePeriod.year;
+                } else {
+                    const fallbackQuery = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"), limit(1));
+                    const fallbackSnapshot = await getDocs(fallbackQuery);
+                    if (!fallbackSnapshot.empty) {
+                        adminYear = fallbackSnapshot.docs[0].data().year;
+                    } else {
+                        const currentCalYear = new Date().getFullYear();
+                        adminYear = `${currentCalYear}/${currentCalYear + 1}`;
+                    }
+                }
 
-                    const isVisibleToAdminCheckbox = document.getElementById("poll-visible-to-admin");
-                    // Se la checkbox esiste, usa il suo valore. Altrimenti (se a creare è l'admin), il sondaggio è visibile di default.
-                    const isVisibleToAdmin = isVisibleToAdminCheckbox ? isVisibleToAdminCheckbox.checked : true;
+                const pollsInYearQuery = query(
+                    collection(db, "polls"),
+                    where("administrativeYear", "==", adminYear),
+                    orderBy("pollNumber", "desc"),
+                    limit(1)
+                );
+                const lastPollSnapshot = await getDocs(pollsInYearQuery);
+                const lastPollNumber = lastPollSnapshot.empty ? 0 : lastPollSnapshot.docs[0].data().pollNumber;
+                const newPollNumber = lastPollNumber + 1;
+                // --- FINE NUOVA LOGICA ---
 
-                    const pollData = {
-                        pollNumber: newPollNumber,
-                        pollType: pollType,
-                        title: title,
+                const isVisibleToAdminCheckbox = document.getElementById("poll-visible-to-admin");
+                const isVisibleToAdmin = isVisibleToAdminCheckbox ? isVisibleToAdminCheckbox.checked : true;
+
+                let targetGroup = null;
+                if (pollType === 'condomini') {
+                    targetGroup = document.getElementById("poll-target-group").value;
+                }
+
+                const pollData = {
+                    pollNumber: newPollNumber,
+                    administrativeYear: adminYear, // Anno di riferimento
+                    pollType: pollType,
+                    targetGroup: targetGroup,
+                    title: title,
                         description: description,
                         options: options,
                         deadline: deadline,
@@ -9861,7 +9931,7 @@ ${renderBottomNavigation()}
                             <div style="background: var(--surface-color-light); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                 <div style="display:flex; justify-content:space-between; font-weight:600;"><span>N. Condomini Votanti:</span><span>${totalVoters}</span></div>
                                 <hr style="border:none; border-top: 1px solid var(--surface-color); margin: 0.75rem 0;">
-                                <div style="display:flex; justify-content:space-between; font-weight:600;"><span>Tot. Millesimi Votanti:</span><span>${totalMillesimi.toFixed(2)} ‰</span></div>
+                                <div style="display:flex; justify-content:space-between; font-weight:600;"><span>Tot. Millesimi Votanti:</span><span>${totalMillesimi.toFixed(2)} </span></div>
                             </div>
                             <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Dettaglio per Condomino:</h4>
                         `;
@@ -9871,7 +9941,7 @@ ${renderBottomNavigation()}
                                 <span>${voter.name}</span>
                                 <span style="color:var(--secondary-text); text-align:right;">
                                     <div>${voter.vote}</div>
-                                    <div style="font-size:0.8rem">${(parseFloat(voter.millesimi) || 0).toFixed(2)} ‰</div>
+                                    <div style="font-size:0.8rem">${(parseFloat(voter.millesimi) || 0).toFixed(2)} </div>
                                 </span>
                             </div>
                         `).join('');
@@ -9945,10 +10015,15 @@ ${renderBottomNavigation()}
                             if (pollType !== 'condomini' && pollType !== 'supervisor-consiglieri') {
                                 return false;
                             }
-                        } else if (userRole.startsWith('condomino')) {
-                            if (pollType !== 'condomini') {
-                                return false;
-                            }
+                                            } else if (userRole.startsWith('condomino')) {
+                        if (pollType !== 'condomini') {
+                            return false;
+                        }
+                        // Controlla se il sondaggio è per tutti o per il gruppo specifico dell'utente
+                        const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
+                        if (poll.targetGroup && poll.targetGroup !== 'Tutti' && !userGroups.includes(poll.targetGroup)) {
+                            return false;
+                        }
                         } else if (userRole !== 'amministratore') { // Evitiamo di escludere l'amministratore che ha già passato il check sopra
                             // Altri ruoli come custode, fornitore non vedono nulla
                             return false;
@@ -10045,7 +10120,14 @@ ${renderBottomNavigation()}
     }
 
                         const pollTypeLabel = poll.pollType === 'supervisor-consiglieri' ? 'Supervisor e Consiglieri' : 'Condomini';
-                        const pollTitle = poll.pollNumber ? `Sondaggio N. ${poll.pollNumber}: ${poll.title}` : poll.title;
+                        // NUOVO: Costruzione del titolo con anno di riferimento
+                    let pollTitle = poll.title;
+                    if (poll.pollNumber && poll.administrativeYear) {
+                        pollTitle = `Sondaggio N. ${poll.pollNumber} - ${poll.administrativeYear}: ${poll.title}`;
+                    } else if (poll.pollNumber) { // Fallback per sondaggi vecchi
+                        pollTitle = `Sondaggio N. ${poll.pollNumber}: ${poll.title}`;
+                    }
+                    // FINE NUOVO
                         const buttonText = hasVoted ? 'Cambia Voto' : 'Invia Voto';
 
                         const dateOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -10058,93 +10140,58 @@ ${renderBottomNavigation()}
                             <div><strong>Scade il:</strong> ${closingDate}</div>
                         </div>`;
 
-                        let optionsHtml = '';
-                        if (showVoteUI) {
-                            if (poll.multipleChoice) {
+                                            // NUOVO: Logica unificata per la visualizzazione dei sondaggi in formato tabella
+                    let optionsHtml = '';
+                    
+                    // Parte 1: Tabella dei risultati (sempre visibile)
+                    const resultsTableHtml = `
+                        <div class="data-table-container" style="margin-bottom: 1.5rem;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Opzione</th>
+                                        <th style="text-align:right;">Voti</th>
+                                        ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${optionsWithMillesimi.map(option => `
+                                        <tr>
+                                            <td>${option.text}</td>
+                                            <td style="text-align:right;">${option.votes || 0}</td>
+                                            ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    // Parte 2: Azioni di voto (visibili solo se il sondaggio è attivo per l'utente)
+                    let votingActionsHtml = '';
+                    if (showVoteUI) {
+                                                    if (poll.multipleChoice) {
                                 const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
                                 const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
                                 const optionsCheckboxes = poll.options.map((option, index) => {
-                                    const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
-const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
-const isChecked = hasVoted && previousVotes.includes(option.text);
-
-const millesimiHtml = showMillesimiResults ? `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
-        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
-` : '';
-
-return `
-<div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-        <span class="font-medium">${option.text}</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
-    ${millesimiHtml}
-    <label class="flex items-center gap-3 p-3 mt-3 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
-        <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);">
-        <span>Seleziona questa opzione</span>
-    </label>
-</div>`;
+                                    const isChecked = hasVoted && previousVotes.includes(option.text);
+                                    // MODIFICA: Aggiunto onclick al checkbox e rimosso "Vota per"
+                                    return `
+                                    <label class="flex items-center gap-3 p-3 mt-2 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
+                                        <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);" onclick="voteOnPoll('${docSnap.id}')">
+                                        <span>${option.text}</span>
+                                    </label>`;
                                 }).join('');
-                                const submitButton = `<button onclick="voteOnPoll('${docSnap.id}')" class="btn btn-primary w-full mt-4">${buttonText}</button>`;
-                                optionsHtml = `<div class="space-y-4">${optionsCheckboxes}</div>${submitButton}`;
-                            } else {
-                                optionsHtml = `<div class="space-y-4">${poll.options.map((option, index) => {
-                                    const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
-const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
-
-const millesimiHtml = showMillesimiResults ? `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
-        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
-` : '';
-
-return `
-<div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-        <span class="font-medium">${option.text}</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
-    ${millesimiHtml}
-    <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%; margin-top:0.75rem;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
-</div>`;
-                                }).join("")}</div>`;
-                            }
-                        } else {
-                            optionsHtml = `<div class="space-y-4">${poll.options.map(option => {
-                                const percentageHeadcount = totalVotes > 0 ? Math.round((option.votes || 0) / totalVotes * 100) : 0;
-const optionWithMillesimi = optionsWithMillesimi.find(o => o.text === option.text) || { millesimi: 0 };
-const percentageMillesimi = totalMillesimiVoted > 0 ? Math.round((optionWithMillesimi.millesimi / totalMillesimiVoted) * 100) : 0;
-
-const millesimiHtml = showMillesimiResults ? `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem; margin-top: 0.75rem;">
-        <span style="color:var(--secondary-text); font-size:0.9rem;">Risultato per millesimi</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageMillesimi}% (${optionWithMillesimi.millesimi.toFixed(2)} ‰)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageMillesimi}%"></div></div>
-` : '';
-
-return `
-<div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-        <span class="font-medium">${option.text}</span>
-        <span style="color:var(--secondary-text); font-size:0.9rem;">${percentageHeadcount}% (${option.votes || 0} voti)</span>
-    </div>
-    <div class="poll-option-bar"><div class="poll-option-fill" style="width: ${percentageHeadcount}%"></div></div>
-    ${millesimiHtml}
-</div>`;
-                            }).join("")}</div>`;
+                                // MODIFICA: Rimosso il pulsante di submit separato
+                                votingActionsHtml = `<div class="space-y-2">${optionsCheckboxes}</div>`;
+                            } else { // Risposta singola
+                            votingActionsHtml = `<div class="space-y-2">${poll.options.map((option, index) => `
+                                <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
+                            `).join("")}</div>`;
                         }
+                    }
 
+                    optionsHtml = resultsTableHtml + votingActionsHtml;
                         let votingInstructionHtml = '';
                         if (showVoteUI) {
                             let instructionText = poll.multipleChoice ? 'Puoi selezionare più risposte.' : 'Scegli una sola risposta.';
