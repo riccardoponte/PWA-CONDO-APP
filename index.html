@@ -11706,9 +11706,16 @@ ${renderBottomNavigation()}
                 let updatedVoters = [...poll.voters || []];
                 const voterIndex = updatedVoters.findIndex(v => v.uid === currentUser.uid);
 
-                // Se l'utente ha già votato, annulla il suo voto precedente
+                // Se l'utente ha già votato, gestisci il cambio di voto
                 if (voterIndex > -1) {
                     const oldVoteRecord = updatedVoters[voterIndex];
+                    
+                    // MODIFICA 1: Impedisce di votare nuovamente per la stessa opzione in un sondaggio a scelta singola.
+                    if (typeof optionIndex !== 'undefined' && oldVoteRecord.vote === poll.options[optionIndex].text) {
+                        // L'utente sta cliccando di nuovo sulla stessa opzione, non fare nulla.
+                        return; 
+                    }
+
                     const oldChoices = oldVoteRecord.vote.split(', ');
                     oldChoices.forEach(oldChoiceText => {
                         const optionToDecrement = updatedOptions.find(opt => opt.text === oldChoiceText);
