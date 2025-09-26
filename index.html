@@ -10184,13 +10184,14 @@ ${renderBottomNavigation()}
                                     const isChecked = hasVoted && previousVotes.includes(option.text);
                                     // MODIFICA: Aggiunto onclick al checkbox e rimosso "Vota per"
                                     return `
-                                    <label class="flex items-center gap-3 p-3 mt-2 rounded-md cursor-pointer" style="background-color: var(--surface-color-light);">
+                                    <label class="flex items-center justify-center gap-3 p-3 mt-2 rounded-md cursor-pointer" style="background-color: var(--surface-color-light); flex: 1;">
                                         <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);" onclick="voteOnPoll('${docSnap.id}')">
                                         <span>${option.text}</span>
                                     </label>`;
                                 }).join('');
                                 // MODIFICA: Rimosso il pulsante di submit separato
-                                votingActionsHtml = `<div class="space-y-2">${optionsCheckboxes}</div>`;
+                                // MODIFICA PER LAYOUT ORIZZONTALE
+                                votingActionsHtml = `<div class="flex justify-between items-center gap-4">${optionsCheckboxes}</div>`;
                             } else { // Risposta singola
     votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
         <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
