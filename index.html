@@ -6761,7 +6761,7 @@ ${renderBottomNavigation()}
                     const group = doc.data();
                     const option = document.createElement('option');
                     option.value = group.name;
-                    option.textContent = `Scala ${group.name}`;
+                    option.textContent = group.name;
                     targetGroupSelect.appendChild(option);
                 });
             } catch (error) {
@@ -10187,29 +10187,40 @@ ${renderBottomNavigation()}
                             </div>
                         `;
                     } else {
-                        // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
-                        const resultsTableHtml = `
-                            <div class="data-table-container" style="margin-bottom: 1.5rem;">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Opzione</th>
-                                            <th style="text-align:right;">Voti</th>
-                                            ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${optionsWithMillesimi.map(option => `
-                                            <tr>
+                                            // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
+                    // --- MODIFICA INIZIO: Evidenziazione opzione vincente ---
+                    let maxVotes = 0;
+                    if (isExpired && optionsWithMillesimi.length > 0) {
+                        maxVotes = Math.max(...optionsWithMillesimi.map(opt => opt.votes || 0));
+                    }
+
+                    const resultsTableHtml = `
+                        <div class="data-table-container" style="margin-bottom: 1.5rem;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Opzione</th>
+                                        <th style="text-align:right;">Voti</th>
+                                        ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${optionsWithMillesimi.map(option => {
+                                        const isWinner = isExpired && maxVotes > 0 && (option.votes || 0) === maxVotes;
+                                        const rowStyle = isWinner ? 'style="font-weight: 800; background-color: rgba(29, 185, 84, 0.2);"' : '';
+                                        return `
+                                            <tr ${rowStyle}>
                                                 <td>${option.text}</td>
                                                 <td style="text-align:right;">${option.votes || 0}</td>
                                                 ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
                                             </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    // --- MODIFICA FINE ---
 
                         let votingActionsHtml = '';
                         if (showVoteUI) { // Questo blocco ora gestisce solo la scelta singola
