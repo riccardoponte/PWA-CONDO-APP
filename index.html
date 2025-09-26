@@ -11699,18 +11699,20 @@ ${renderBottomNavigation()}
 
         const voteOnPoll = async (pollId, optionIndex) => {
             try {
-                const settingsRef = doc(db, "settings", "pollCreationAuthorization");
-                const settingsSnap = await getDoc(settingsRef);
-                const pollSetting = settingsSnap.exists() ? settingsSnap.data().setting : "option2";
-                if (!isUserAllowedToVote(userProfile.tipoUtente, pollSetting)) {
-                    return alert("Non sei autorizzato a votare in questo sondaggio.");
-                }
+                        const settingsRef = doc(db, "settings", "pollCreationAuthorization");
+        const settingsSnap = await getDoc(settingsRef);
+        const pollSetting = settingsSnap.exists() ? settingsSnap.data().setting : "option2";
 
-                const pollRef = doc(db, "polls", pollId);
-                const pollSnap = await getDoc(pollRef);
-                if (!pollSnap.exists()) return;
+        const pollRef = doc(db, "polls", pollId);
+        const pollSnap = await getDoc(pollRef);
+        if (!pollSnap.exists()) return;
 
-                const poll = pollSnap.data();
+        const poll = pollSnap.data();
+
+        // Check authorization AFTER fetching the poll to get its type
+        if (!isUserAllowedToVote(userProfile.tipoUtente, pollSetting, poll.pollType)) {
+            return alert("Non sei autorizzato a votare in questo sondaggio.");
+        }
                 if (poll.deadline && poll.deadline.toDate() < new Date()) return alert("Sondaggio scaduto.");
 
                 const updatedOptions = [...poll.options];
