@@ -9862,13 +9862,18 @@ ${renderBottomNavigation()}
             });
         };
 
-            const isUserAllowedToVote = (userType, setting) => {
+            const isUserAllowedToVote = (userType, setting, pollType) => {
         // NUOVA REGOLA: Esclude specifici ruoli dal voto, indipendentemente dalle impostazioni.
         if (['amministratore', 'fornitore', 'custode', 'adm'].includes(userType)) {
             return false;
         }
 
-        // La logica esistente continua a gestire gli utenti autorizzati.
+        // Se un sondaggio è rivolto ai condomini, i condomini devono poter votare.
+        if (pollType === 'condomini' && userType.startsWith('condomino')) {
+            return true;
+        }
+
+        // La logica esistente continua a gestire gli altri casi (es. sondaggi supervisor/consiglieri)
         const allowedRoles = {
             option1: ['supervisore', 'amministratore', 'consigliere'],
             option2: ['supervisore', 'amministratore', 'consigliere', 'condomino'],
@@ -9973,7 +9978,7 @@ ${renderBottomNavigation()}
             const settingsRef = doc(db, "settings", "pollCreationAuthorization");
             getDoc(settingsRef).then(settingsSnap => {
                 const pollSetting = settingsSnap.exists() ? settingsSnap.data().setting : 'option2';
-                const canUserVote = isUserAllowedToVote(userProfile.tipoUtente, pollSetting);
+                // La variabile canUserVote è stata spostata all'interno del loop dei sondaggi
                 const q = query(collection(db, "polls"), orderBy("createdAt", "desc"));
                 onSnapshot(q, snapshot => {
                     if (snapshot.empty) {
@@ -10093,6 +10098,7 @@ ${renderBottomNavigation()}
     const isExpired = deadline ? deadline < new Date() : false;
     const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
     const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+    const canUserVote = isUserAllowedToVote(userProfile.tipoUtente, pollSetting, poll.pollType);
     const showVoteUI = !isExpired && canUserVote;
 
     // Aggiungi calcolo millesimi
@@ -10120,13 +10126,14 @@ ${renderBottomNavigation()}
     }
 
                         const pollTypeLabel = poll.pollType === 'supervisor-consiglieri' ? 'Supervisor e Consiglieri' : 'Condomini';
-                        // NUOVO: Costruzione del titolo con anno di riferimento
-                    let pollTitle = poll.title;
+                        // NUOVO: Costruzione del titolo con anno di riferimento (MODIFICATO)
+                    let pollHeaderInfo = '';
                     if (poll.pollNumber && poll.administrativeYear) {
-                        pollTitle = `Sondaggio N. ${poll.pollNumber} - ${poll.administrativeYear}: ${poll.title}`;
+                        pollHeaderInfo = `Sondaggio N. ${poll.pollNumber} - ${poll.administrativeYear}`;
                     } else if (poll.pollNumber) { // Fallback per sondaggi vecchi
-                        pollTitle = `Sondaggio N. ${poll.pollNumber}: ${poll.title}`;
+                        pollHeaderInfo = `Sondaggio N. ${poll.pollNumber}`;
                     }
+                    const pollMainTitleText = poll.title;
                     // FINE NUOVO
                         const buttonText = hasVoted ? 'Cambia Voto' : 'Invia Voto';
 
@@ -10185,10 +10192,10 @@ ${renderBottomNavigation()}
                                 // MODIFICA: Rimosso il pulsante di submit separato
                                 votingActionsHtml = `<div class="space-y-2">${optionsCheckboxes}</div>`;
                             } else { // Risposta singola
-                            votingActionsHtml = `<div class="space-y-2">${poll.options.map((option, index) => `
-                                <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
-                            `).join("")}</div>`;
-                        }
+    votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
+        <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
+    `).join("")}</div>`;
+}
                     }
 
                     optionsHtml = resultsTableHtml + votingActionsHtml;
@@ -10216,7 +10223,10 @@ ${renderBottomNavigation()}
                             <div class="list-item" style="padding:0; margin-bottom:1rem; cursor:default;">
                                 <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg></div>
                                 <div class="list-item-content">
-                                    <div class="title">${pollTitle}</div>
+                                    <div class="title" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;">
+                                        <span style="font-size: 0.9em; color: var(--secondary-text);">${pollHeaderInfo}</span>
+                                        <span style="white-space: normal;">${pollMainTitleText}</span>
+                                    </div>
                                     <div class="subtitle">${isExpired ? "Sondaggio chiuso" : "Sondaggio attivo"} ${hasVoted ? "· Hai votato" : ""}</div>
                                 </div>
                             </div>
