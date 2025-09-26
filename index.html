@@ -9862,31 +9862,42 @@ ${renderBottomNavigation()}
             });
         };
 
-            const isUserAllowedToVote = (userType, setting, pollType) => {
-        // NUOVA REGOLA: Esclude specifici ruoli dal voto, indipendentemente dalle impostazioni.
+            const isUserAllowedToVote = (userProfile, setting, poll) => {
+        const userType = userProfile.tipoUtente;
+        const pollType = poll.pollType;
+
+        // 1. Ruoli che non possono mai votare.
         if (['amministratore', 'fornitore', 'custode', 'adm'].includes(userType)) {
             return false;
         }
 
-        // Se un sondaggio è rivolto ai condomini, i condomini devono poter votare.
-        if (pollType === 'condomini' && userType.startsWith('condomino')) {
-            return true;
+        // 2. I sondaggi specifici per supervisori e consiglieri non sono legati a un gruppo.
+        if (pollType === 'supervisor-consiglieri') {
+            return ['supervisore', 'consigliere'].includes(userType);
         }
 
-        // La logica esistente continua a gestire gli altri casi (es. sondaggi supervisor/consiglieri)
-        const allowedRoles = {
-            option1: ['supervisore', 'amministratore', 'consigliere'],
-            option2: ['supervisore', 'amministratore', 'consigliere', 'condomino'],
-            option3: ['supervisore', 'consigliere']
-        };
-        const roles = allowedRoles[setting] || allowedRoles['option2'];
+        // 3. I sondaggi per i "condomini" includono anche consiglieri e supervisori in quanto residenti.
+        // Qui viene applicato il controllo basato sul gruppo.
+        if (pollType === 'condomini') {
+            // Verifica se l'utente ha un ruolo di tipo "residente".
+            if (['condomino', 'consigliere', 'supervisore'].includes(userType)) {
+                const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
+                const targetGroup = poll.targetGroup;
 
-        // Controlla se l'utente è un condomino
-        if (userType.startsWith('condomino') && roles.includes('condomino')) {
-            return true;
+                // Se il sondaggio è per tutti ('Tutti'), possono votare.
+                if (!targetGroup || targetGroup === 'Tutti') {
+                    return true;
+                }
+                
+                // Se il sondaggio è per un gruppo specifico, l'utente deve appartenere a quel gruppo.
+                if (userGroups.includes(targetGroup)) {
+                    return true;
+                }
+            }
         }
 
-        return roles.includes(userType);
+        // 4. Se nessuna delle condizioni precedenti è soddisfatta, l'utente non può votare.
+        return false;
     };
 
         const isUserAllowedToCreatePolls = async () => {
@@ -10098,7 +10109,7 @@ ${renderBottomNavigation()}
     const isExpired = deadline ? deadline < new Date() : false;
     const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
     const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
-    const canUserVote = isUserAllowedToVote(userProfile.tipoUtente, pollSetting, poll.pollType);
+    const canUserVote = isUserAllowedToVote(userProfile, pollSetting, poll);
     const showVoteUI = !isExpired && canUserVote;
 
     // Aggiungi calcolo millesimi
@@ -11740,8 +11751,8 @@ ${renderBottomNavigation()}
 
         const poll = pollSnap.data();
 
-        // Check authorization AFTER fetching the poll to get its type
-        if (!isUserAllowedToVote(userProfile.tipoUtente, pollSetting, poll.pollType)) {
+        // Check authorization AFTER fetching the poll to get its type and target group
+        if (!isUserAllowedToVote(userProfile, pollSetting, poll)) {
             return alert("Non sei autorizzato a votare in questo sondaggio.");
         }
                 if (poll.deadline && poll.deadline.toDate() < new Date()) return alert("Sondaggio scaduto.");
