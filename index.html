@@ -10147,59 +10147,79 @@ ${renderBottomNavigation()}
                             <div><strong>Scade il:</strong> ${closingDate}</div>
                         </div>`;
 
-                                            // NUOVO: Logica unificata per la visualizzazione dei sondaggi in formato tabella
+                    // Logica unificata per la visualizzazione dei sondaggi
                     let optionsHtml = '';
-                    
-                    // Parte 1: Tabella dei risultati (sempre visibile)
-                    const resultsTableHtml = `
-                        <div class="data-table-container" style="margin-bottom: 1.5rem;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Opzione</th>
-                                        <th style="text-align:right;">Voti</th>
-                                        ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${optionsWithMillesimi.map(option => `
+
+                    // Pre-calcolo dei voti precedenti per l'utente, utile per entrambe le logiche
+                    const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
+                    const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
+
+                    // Se il sondaggio è a scelta multipla e l'utente può votare, si usa una tabella interattiva.
+                    if (showVoteUI && poll.multipleChoice) {
+                        optionsHtml = `
+                            <div class="data-table-container" style="margin-bottom: 1.5rem;">
+                                <table class="data-table">
+                                    <thead>
                                         <tr>
-                                            <td>${option.text}</td>
-                                            <td style="text-align:right;">${option.votes || 0}</td>
-                                            ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
+                                            <th>Opzione</th>
+                                            <th style="text-align:right;">Voti</th>
+                                            ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
                                         </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
+                                    </thead>
+                                    <tbody>
+                                        ${optionsWithMillesimi.map((option, index) => {
+                                            const isChecked = hasVoted && previousVotes.includes(option.text);
+                                            return `
+                                                <tr>
+                                                    <td>
+                                                        <label class="flex items-center gap-2 cursor-pointer">
+                                                            <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} onclick="voteOnPoll('${docSnap.id}')" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
+                                                            <span>${option.text}</span>
+                                                        </label>
+                                                    </td>
+                                                    <td style="text-align:right;">${option.votes || 0}</td>
+                                                    ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
+                        const resultsTableHtml = `
+                            <div class="data-table-container" style="margin-bottom: 1.5rem;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Opzione</th>
+                                            <th style="text-align:right;">Voti</th>
+                                            ${showMillesimiResults ? `<th style="text-align:right;">Millesimi</th>` : ''}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${optionsWithMillesimi.map(option => `
+                                            <tr>
+                                                <td>${option.text}</td>
+                                                <td style="text-align:right;">${option.votes || 0}</td>
+                                                ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
 
-                    // Parte 2: Azioni di voto (visibili solo se il sondaggio è attivo per l'utente)
-                    let votingActionsHtml = '';
-                    if (showVoteUI) {
-                                                    if (poll.multipleChoice) {
-                                const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
-                                const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
-                                const optionsCheckboxes = poll.options.map((option, index) => {
-                                    const isChecked = hasVoted && previousVotes.includes(option.text);
-                                    // MODIFICA: Aggiunto onclick al checkbox e rimosso "Vota per"
-                                    return `
-                                    <label class="flex items-center justify-center gap-3 p-3 mt-2 rounded-md cursor-pointer" style="background-color: var(--surface-color-light); flex: 1;">
-                                        <input type="checkbox" class="poll-option-checkbox-${docSnap.id}" value="${index}" ${isChecked ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color);" onclick="voteOnPoll('${docSnap.id}')">
-                                        <span>${option.text}</span>
-                                    </label>`;
-                                }).join('');
-                                // MODIFICA: Rimosso il pulsante di submit separato
-                                // MODIFICA PER LAYOUT ORIZZONTALE
-                                votingActionsHtml = `<div class="flex justify-between items-center gap-4">${optionsCheckboxes}</div>`;
-                            } else { // Risposta singola
-    votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
-        <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
-    `).join("")}</div>`;
-}
+                        let votingActionsHtml = '';
+                        if (showVoteUI) { // Questo blocco ora gestisce solo la scelta singola
+                            votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
+                                <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
+                            `).join("")}</div>`;
+                        }
+
+                        optionsHtml = resultsTableHtml + votingActionsHtml;
                     }
-
-                    optionsHtml = resultsTableHtml + votingActionsHtml;
                         let votingInstructionHtml = '';
                         if (showVoteUI) {
                             let instructionText = poll.multipleChoice ? 'Puoi selezionare più risposte.' : 'Scegli una sola risposta.';
