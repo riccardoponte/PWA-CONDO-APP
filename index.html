@@ -9954,7 +9954,12 @@ ${renderBottomNavigation()}
 
                         const votersListHtml = poll.voters.map(voter => `
                             <div class="voter-item">
-                                <span>${voter.name}</span>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span>${voter.name}</span>
+                                    <span style="font-size: 0.8rem; color: var(--secondary-text); text-transform: capitalize;">
+                                        Gruppo: ${voter.gruppo || 'N/D'} - ${voter.tipoUtente || 'N/D'}
+                                    </span>
+                                </div>
                                 <span style="color:var(--secondary-text); text-align:right;">
                                     <div>${voter.vote}</div>
                                     <div style="font-size:0.8rem">${(parseFloat(voter.millesimi) || 0).toFixed(2)} </div>
@@ -10199,10 +10204,19 @@ ${renderBottomNavigation()}
                         `;
                     } else {
                                             // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
-                    // --- MODIFICA INIZIO: Evidenziazione opzione vincente ---
+                    // --- MODIFICA INIZIO: Evidenziazione opzione vincente con gestione pareggio ---
                     let maxVotes = 0;
+                    let maxMillesimiInTie = -1; // Inizializzato a -1 per gestire correttamente i pareggi
                     if (isExpired && optionsWithMillesimi.length > 0) {
                         maxVotes = Math.max(...optionsWithMillesimi.map(opt => opt.votes || 0));
+                        if (maxVotes > 0) {
+                            // Controlla se c'è un pareggio nel numero di voti
+                            const tiedOptions = optionsWithMillesimi.filter(opt => (opt.votes || 0) === maxVotes);
+                            if (tiedOptions.length > 1) {
+                                // Se c'è un pareggio, trova i millesimi massimi tra le opzioni in pareggio
+                                maxMillesimiInTie = Math.max(...tiedOptions.map(opt => opt.millesimi || 0));
+                            }
+                        }
                     }
 
                     const resultsTableHtml = `
@@ -10217,7 +10231,19 @@ ${renderBottomNavigation()}
                                 </thead>
                                 <tbody>
                                     ${optionsWithMillesimi.map(option => {
-                                        const isWinner = isExpired && maxVotes > 0 && (option.votes || 0) === maxVotes;
+                                        const currentVotes = option.votes || 0;
+                                        const currentMillesimi = option.millesimi || 0;
+                                        let isWinner = false;
+                                        
+                                        // Applica la logica di vittoria
+                                        if (isExpired && maxVotes > 0 && currentVotes === maxVotes) {
+                                            if (maxMillesimiInTie !== -1) { // C'è un pareggio, vince chi ha più millesimi
+                                                isWinner = currentMillesimi === maxMillesimiInTie;
+                                            } else { // Non c'è pareggio, vince chi ha più voti
+                                                isWinner = true;
+                                            }
+                                        }
+
                                         const rowStyle = isWinner ? 'style="font-weight: 800; background-color: rgba(29, 185, 84, 0.2);"' : '';
                                         return `
                                             <tr ${rowStyle}>
@@ -11802,11 +11828,14 @@ ${renderBottomNavigation()}
 
                 // Aggiungi il nuovo record di voto
                 const userMillesimi = userProfile?.millesimiTotali || 0;
+                const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean).join(', ') || 'Nessun Gruppo';
                 updatedVoters.push({
                     uid: currentUser.uid,
                     name: `${userProfile.nome} ${userProfile.cognome}`,
                     vote: newSelectedOptionsText.join(', '),
-                    millesimi: userMillesimi
+                    millesimi: userMillesimi,
+                    gruppo: userGroups, // Aggiunto
+                    tipoUtente: userProfile.tipoUtente // Aggiunto
                 });
 
                 await updateDoc(pollRef, { options: updatedOptions, voters: updatedVoters });
