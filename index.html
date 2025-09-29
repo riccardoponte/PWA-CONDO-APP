@@ -7383,12 +7383,58 @@ ${renderBottomNavigation()}
                     submitBtn.textContent = 'Salvataggio dati...';
 
                     let reportData;
-                    await runTransaction(db, async (transaction) => {
-                        const counterDoc = await transaction.get(counterRef);
-                        const newReportNumber = (counterDoc.exists() ? counterDoc.data().lastNumber : 0) + 1;
+                    let finalReportNumber;
 
+                    await runTransaction(db, async (transaction) => {
+                        let counterRef;
+                        let newReportNumber;
+                        let adminYear;
+
+                        // Determina il periodo amministrativo
+                        let selectedPeriod = currentAdministrativePeriod;
+                        if (!selectedPeriod) {
+                            const allPeriodsQuery = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"), limit(1));
+                            const allPeriodsSnapshot = await getDocs(allPeriodsQuery);
+                            if (!allPeriodsSnapshot.empty) {
+                                selectedPeriod = { id: allPeriodsSnapshot.docs[0].id, ...allPeriodsSnapshot.docs[0].data() };
+                            }
+                        }
+
+                        // Trova il numero più alto per il periodo
+                        const existingReportsQuery = query(collection(db, "reports"), orderBy("createdAt", "desc"));
+                        const existingReportsSnapshot = await getDocs(existingReportsQuery);
+                        let highestNumber = 0;
+
+                        if (selectedPeriod && selectedPeriod.year) {
+                            adminYear = selectedPeriod.year;
+                        } else {
+                            const currentCalYear = new Date().getFullYear();
+                            adminYear = `${currentCalYear}/${currentCalYear + 1}`;
+                        }
+
+                        existingReportsSnapshot.docs.forEach(doc => {
+                            const report = doc.data();
+                            if (report.reportNumber && report.reportNumber.includes(adminYear)) {
+                                const numberMatch = report.reportNumber.match(/^#?(\d+)/);
+                                if (numberMatch) {
+                                    const num = parseInt(numberMatch[1], 10);
+                                    if (num > highestNumber) {
+                                        highestNumber = num;
+                                    }
+                                }
+                            }
+                        });
+
+                        const newReportNumberInPeriod = highestNumber + 1;
+                        newReportNumber = newReportNumberInPeriod;
+                        finalReportNumber = `#${newReportNumberInPeriod} - ${adminYear}`;
+                        
+                        const counterDocName = `reportsCounter_${adminYear.replace('/', '_')}`;
+                        counterRef = doc(db, "counters", counterDocName);
+                        
                         reportData = {
-                            reportNumber: newReportNumber,
+                            reportNumber: finalReportNumber,
+                            administrativeYear: adminYear,
                             title, description, category, priority, location, propertyInfo, interestType,
                             otherUiOwner: otherUiOwner || null,
                             communicateOwnerPhone,
@@ -7401,13 +7447,13 @@ ${renderBottomNavigation()}
                             createdAt: serverTimestamp(),
                             updatedAt: serverTimestamp(),
                             recipientType: recipient,
-                            specificRecipientId: specificRecipientId, // Campo Aggiunto
+                            specificRecipientId: specificRecipientId,
                             updates: [],
                             lastReminderAt: null,
                             reminderCount: 0,
                             fileUrls
                         };
-
+                        
                         transaction.set(counterRef, { lastNumber: newReportNumber });
                         transaction.set(newReportDocRef, reportData);
                     });
@@ -7421,7 +7467,7 @@ ${renderBottomNavigation()}
                     renderFilePreviews();
                     specificRecipientContainer.classList.add('hidden');
                     specificRecipientContainer.innerHTML = '';
-                    alert(`Segnalazione #${reportData.reportNumber} creata con successo!`);
+                    alert(`Segnalazione "${finalReportNumber}" creata con successo!`);
                 } catch (error) {
                     console.error("Errore:", error);
                     alert("Si è verificato un errore.");
@@ -10616,12 +10662,12 @@ ${renderBottomNavigation()}
             return `
             <div class="card" style="margin-bottom: 1rem; position: relative;">
                 ${periodBannerHtml}
-                ${index !== null ? `<div style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--primary); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">${index}</div>` : ''}
+    
                 <div class="list-item" style="padding:0; cursor:default;">
                     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
                     <div class="list-item-content">
                         <div class="title" style="display: flex; align-items: center; gap: 8px;">
-    <span>${report.reportNumber ? `#${report.reportNumber}:` : ''} ${report.title}</span>
+    <span>${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
     ${/* Indicatore visivo per segnalazioni modificate */''}
     ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}`) ? `
         <span style="width: 10px; height: 10px; background-color: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;" title="Segnalazione modificata"></span>
@@ -10817,7 +10863,7 @@ ${renderBottomNavigation()}
                     const searchTerm = searchInput.value.toLowerCase().trim();
                     filteredDocs = filteredDocs.filter(doc => {
                         const data = doc.data();
-                        const reportNum = data.reportNumber ? `#${data.reportNumber}` : '';
+                        const reportNum = data.reportNumber || '';
                         return `${reportNum} ${data.title} ${data.description}`.toLowerCase().includes(searchTerm);
                     });
                 }
@@ -10880,7 +10926,7 @@ ${renderBottomNavigation()}
                     const searchTerm = searchInput.value.toLowerCase().trim();
                     filteredDocs = filteredDocs.filter(doc => {
                         const data = doc.data();
-                        const reportNum = data.reportNumber ? `#${data.reportNumber}` : '';
+                        const reportNum = data.reportNumber || '';
                         return `${reportNum} ${data.title} ${data.description}`.toLowerCase().includes(searchTerm);
                     });
                 }
@@ -11361,7 +11407,7 @@ ${renderBottomNavigation()}
                     const searchTerm = searchInput.value.toLowerCase().trim();
                     filteredDocs = filteredDocs.filter(doc => {
                         const data = doc.data();
-                        const reportNum = data.reportNumber ? `#${data.reportNumber}` : '';
+                        const reportNum = data.reportNumber || '';
                         return `${reportNum} ${data.title} ${data.description}`.toLowerCase().includes(searchTerm);
                     });
                 }
