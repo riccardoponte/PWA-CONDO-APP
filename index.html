@@ -3330,7 +3330,34 @@ if (isServiceEnabledForCurrentUser('archivio')) {
 
             let menuItemsHtml = [];
 
-            // 1. Solleciti - MODIFICATO per includere 'consigliere'
+            // Ordine desiderato:
+            // Colonna Sinistra: CREA SEGNALAZIONE (sopra), SOLLECITI (sotto)
+            // Colonna Destra: SEGNALAZIONI INVIATE (sopra), SEGNALAZIONI RICEVUTE (sotto)
+            // Per ottenere questo con CSS Grid, l'ordine nel DOM deve essere:
+            // 1. CREA SEGNALAZIONE, 2. SEGNALAZIONI INVIATE, 3. SOLLECITI, 4. SEGNALAZIONI RICEVUTE
+
+            // 1. Crea una segnalazione (Posizione: alto a sinistra)
+            menuItemsHtml.push(`
+                <div onclick="navigateTo('segnalazioni_crea')" class="dashboard-item">
+                    <div class="dashboard-card">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    </div>
+                    <p>Crea Segnalazione</p>
+                </div>
+            `);
+
+            // 2. Segnalazioni inviate (Posizione: alto a destra)
+            menuItemsHtml.push(`
+                <div onclick="navigateTo('segnalazioni_utente')" class="dashboard-item" style="position: relative;">
+                    <span id="dashboard-segnalazioni-inviate-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
+                    <div class="dashboard-card">
+                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg>
+                    </div>
+                    <p>Segnalazioni Inviate</p>
+                </div>
+            `);
+
+            // 3. Solleciti (Posizione: basso a sinistra)
             if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userRole)) {
                 menuItemsHtml.push(`
                     <div onclick="navigateTo('segnalazioni_urgenti')" class="dashboard-item">
@@ -3343,43 +3370,19 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                 `);
             }
 
-            // 2. Segnalazioni ricevute
+            // 4. Segnalazioni ricevute (Posizione: basso a destra)
             if (isManager || userRole === 'condomino') {
-                // MODIFICA: Etichetta cambiata in "Segnalazioni Ricevute"
                 const label = 'Segnalazioni Ricevute';
                 menuItemsHtml.push(`
-        <div onclick="navigateTo('segnalazioni_ricevute')" class="dashboard-item">
-            <div class="dashboard-card" style="position: relative;">
-                <span id="segnalazioni-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
-                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89,3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
-            </div>
-            <p>${userProfile?.tipoUtente === 'custode' ? 'Segnalazioni Ricevute' : label}</p>
-        </div>
-    `);
+                    <div onclick="navigateTo('segnalazioni_ricevute')" class="dashboard-item">
+                        <div class="dashboard-card" style="position: relative;">
+                            <span id="segnalazioni-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89,3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,17H7V15H17V17M17,13H7V11H17V13M17,9H7V7H17V9Z"/></svg>
+                        </div>
+                        <p>${userProfile?.tipoUtente === 'custode' ? 'Segnalazioni Ricevute' : label}</p>
+                    </div>
+                `);
             }
-
-            // 3. Crea una segnalazione
-            menuItemsHtml.push(`
-                <div onclick="navigateTo('segnalazioni_crea')" class="dashboard-item">
-                    <div class="dashboard-card">
-                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                    </div>
-                    <p>Crea Segnalazione</p>
-                </div>
-            `);
-
-            // 4. Segnalazioni inviate (Segnalazioni Inviate)
-            menuItemsHtml.push(`
-                <div onclick="navigateTo('segnalazioni_utente')" class="dashboard-item" style="position: relative;">
-                    <span id="dashboard-segnalazioni-inviate-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
-                    <div class="dashboard-card">
-                        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg>
-                    </div>
-                    <p>Segnalazioni Inviate</p>
-                </div>
-            `);
-
-
 
             return `
             ${renderHeader('Segnalazioni')}
@@ -3445,10 +3448,15 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                     <option value="condomino">Singolo Condomino</option>
                 `;
             } else if (userRole === 'fornitore') {
-                // Logica specifica per il Fornitore
+                // Logica specifica per il Fornitore, ora condizionale
+                let custodeOption = '';
+                // Aggiungi l'opzione "custode" solo se l'impostazione è abilitata dall'amministratore
+                if (custodianPermissions?.canContactFornitore === true) {
+                    custodeOption = `<option value="custode">Custode</option>`;
+                }
                 recipientOptions = `
                     <option value="amministratore">Amministratore</option>
-                    <option value="custode">Custode</option>
+                    ${custodeOption}
                 `;
             } else {
                 // Default per altri utenti (es. condomino)
@@ -3514,7 +3522,13 @@ if (isServiceEnabledForCurrentUser('archivio')) {
 </div>
                             
                             <div><label class="form-label">Genere di intervento</label><select id="report-priority" required class="form-select" disabled><option value="">Seleziona prima il destinatario...</option></select></div>
-                            <div><label class="form-label">Categoria</label><select id="report-category" required class="form-select"><option value="">...</option><option value="ascensore">Ascensore</option><option value="elettrico">Elettrico</option><option value="idraulico">Idraulico</option><option value="portierato">Portierato</option><option value="posta">Posta</option><option value="pulizie">Pulizie</option><option value="raccolta-rifiuti">Raccolta rifiuti</option><option value="riscaldamento">Riscaldamento</option><option value="sicurezza">Sicurezza</option><option value="tv">TV</option><option value="altro">Altro</option></select></div>
+                            <div>
+                                <label class="form-label">Categoria</label>
+                                <select id="report-category" required class="form-select">
+                                    <option value="">Caricamento categorie...</option>
+                                    <!-- Le opzioni verranno popolate dinamicamente via JS -->
+                                </select>
+                            </div>
                             <div class="form-group">
     <label for="report-property-select" class="form-label">Unità Immobiliare (Ubicazione)</label>
     <select id="report-property-select" required class="form-select">
@@ -4617,6 +4631,12 @@ ${renderBottomNavigation()}
                         <p style="text-align: left; font-size: 1.1rem;">Periodi Amministrativi</p>
                     </div>
                 </div>
+                <div onclick="navigateTo('gestioneCategorieSegnalazioni')" class="dashboard-item">
+                    <div class="menu-list-item">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12,2L2,7V8.5C2,14.25 6.1,19.42 12,21.9C17.9,19.42 22,14.25 22,8.5V7L12,2M12,4.14L19,7.3V8.5C19,12.94 15.91,17.07 12,19.09C8.09,17.07 5,12.94 5,8.5V7.3L12,4.14M7,12H17V14H7V12Z" /></svg>
+                        <p style="text-align: left; font-size: 1.1rem;">Segnalazioni – Categoria</p>
+                    </div>
+                </div>
                 ${isServiceEnabledForCurrentUser('archivio') ? `
 <div onclick="navigateTo('gestione_archivio')" class="dashboard-item" style="position: relative;">
     <span id="dashboard-gestione-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
@@ -5373,6 +5393,125 @@ ${renderBottomNavigation()}
             `;
         };
 
+                const renderGestioneCategorieSegnalazioni = () => `
+            ${renderHeader('Gestione Categorie Segnalazioni')}
+            <main>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3 class="card-title">Aggiungi Nuova Categoria</h3>
+                    <div id="category-message" class="message-box"></div>
+                    <form id="create-category-form" class="flex gap-2">
+                        <input type="text" id="category-name" required class="form-input" placeholder="Es. Manutenzione Giardino">
+                        <button type="submit" class="btn btn-primary">Crea</button>
+                    </form>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Categorie Esistenti</h3>
+                    <div id="categories-list-container" class="list-container">
+                        <p style="color:var(--secondary-text);">Caricamento categorie...</p>
+                    </div>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const setupGestioneCategorieSegnalazioniHandlers = () => {
+            const form = document.getElementById('create-category-form');
+            form?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageBox = document.getElementById('category-message');
+                const nameInput = document.getElementById('category-name');
+                const name = nameInput.value.trim();
+
+                if (!name) return;
+
+                try {
+                    await addDoc(collection(db, "reportCategories"), {
+                        name: name,
+                        createdAt: serverTimestamp()
+                    });
+                    messageBox.className = 'message-box success';
+                    messageBox.textContent = 'Categoria creata con successo!';
+                    messageBox.style.display = 'block';
+                    form.reset();
+                    setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
+                } catch (error) {
+                    console.error("Errore creazione categoria:", error);
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.style.display = 'block';
+                }
+            });
+
+            const listContainer = document.getElementById('categories-list-container');
+            const q = query(collection(db, "reportCategories"), orderBy("name", "asc"));
+            onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessuna categoria creata.</p>';
+                    return;
+                }
+                listContainer.innerHTML = snapshot.docs.map(docSnap => {
+                    const category = docSnap.data();
+                    return `
+                    <div class="list-item" style="background: var(--surface-color-light);">
+                        <div class="list-item-content">
+                            <div class="title">${category.name}</div>
+                        </div>
+                        <div class="list-item-action flex gap-2">
+                            <button onclick="openCategoryEditModal('${docSnap.id}', '${category.name.replace(/'/g, "\\'")}')" class="btn-icon" title="Modifica Categoria">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+                            <button onclick="deleteReportCategory('${docSnap.id}')" class="btn-icon" style="background:var(--danger); color:white;">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            });
+        };
+
+        const deleteReportCategory = async (categoryId) => {
+            if (!confirm("Sei sicuro di voler eliminare questa categoria? L'azione è irreversibile.")) {
+                return;
+            }
+            try {
+                await deleteDoc(doc(db, 'reportCategories', categoryId));
+                await logActivity("report_category_deleted", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { categoryId });
+            } catch (error) {
+                console.error("Errore eliminazione categoria:", error);
+                alert(`Errore: ${error.message}`);
+            }
+        };
+
+        const openCategoryEditModal = (categoryId, currentName) => {
+            const modalContent = `
+            <form id="edit-category-form" class="space-y-4" onsubmit="updateReportCategory(event, '${categoryId}')">
+                <div class="form-group">
+                    <label for="edit-category-name" class="form-label">Nome Categoria</label>
+                    <input type="text" id="edit-category-name" required class="form-input" value="${currentName}">
+                </div>
+                <div class="flex justify-end gap-4 pt-2">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                </div>
+            </form>
+            `;
+            showModal('Modifica Categoria', modalContent);
+        };
+
+        const updateReportCategory = async (event, categoryId) => {
+            event.preventDefault();
+            const newName = document.getElementById('edit-category-name').value.trim();
+            if (!newName) return;
+            try {
+                await updateDoc(doc(db, "reportCategories", categoryId), { name: newName });
+                await logActivity("report_category_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { categoryId, newName });
+                hideModal();
+            } catch (error) {
+                console.error("Errore aggiornamento categoria:", error);
+                alert(`Errore: ${error.message}`);
+            }
+        };
+
         const renderPuliziaDati = () => `
             ${renderHeader('Pulizia Dati')}
             <main>
@@ -5992,6 +6131,10 @@ ${renderBottomNavigation()}
                     if (['supervisore', 'adm'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true) content = renderPuliziaDati();
                     else navigateTo('dashboard');
                     break;
+                case 'gestioneCategorieSegnalazioni':
+                    if (hasSupervisorAccess) content = renderGestioneCategorieSegnalazioni();
+                    else navigateTo('dashboard');
+                    break;
                 case 'statisticheCondomini':
                     if (['adm', 'amministratore', 'condomino', 'consigliere', 'supervisore'].includes(userProfile?.tipoUtente)) content = renderStatisticheCondomini();
                     else navigateTo('dashboard');
@@ -6119,6 +6262,7 @@ ${renderBottomNavigation()}
                 case 'abilitaServizi': if (userProfile?.tipoUtente === 'adm') { setupAbilitaServiziHandlers(); } break;
                 case 'cronologiaAttivita': if (userProfile?.tipoUtente === 'adm') { setupCronologiaAttivitaHandlers(); } break;
                 case 'puliziaDati': /* No specific handlers needed as logic is in onclick */ break;
+                case 'gestioneCategorieSegnalazioni': setupGestioneCategorieSegnalazioniHandlers(); break;
                 case 'statisticheCondomini': setupStatisticheCondominiHandlers(); break;
                 case 'periodiAmministrativi': setupPeriodiAmministrativiHandlers(); break; // NUOVO
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
@@ -7036,6 +7180,29 @@ ${renderBottomNavigation()}
         };
 
         const setupReportHandlers = () => {
+            const populateCategoryDropdown = async () => {
+                const categorySelect = document.getElementById("report-category");
+                if (!categorySelect) return;
+                try {
+                    const q = query(collection(db, "reportCategories"), orderBy("name"));
+                    const snapshot = await getDocs(q);
+                    if (snapshot.empty) {
+                        categorySelect.innerHTML = '<option value="">Nessuna categoria definita</option>';
+                    } else {
+                        const optionsHtml = snapshot.docs.map(doc => {
+                            const category = doc.data();
+                            return `<option value="${category.name.toLowerCase()}">${category.name}</option>`;
+                        }).join('');
+                        categorySelect.innerHTML = `<option value="">Seleziona una categoria...</option>${optionsHtml}`;
+                    }
+                } catch (error) {
+                    console.error("Errore nel caricamento delle categorie:", error);
+                    categorySelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                }
+            };
+            
+            populateCategoryDropdown();
+
             const form = document.getElementById("create-report-form");
             const propertySelect = document.getElementById("report-property-select");
             const locationInput = document.getElementById("report-location");
@@ -10909,8 +11076,16 @@ ${renderBottomNavigation()}
                     if (userRole === 'custode') {
                         return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
                     }
-                    if (['consigliere', 'fornitore'].includes(userRole)) {
+                    if (userRole === 'fornitore') {
                         return data.recipientType === userRole;
+                    }
+                    if (userRole === 'consigliere') {
+                        // Un consigliere con permessi da supervisore vede sia le segnalazioni per 'consigliere' sia quelle per 'supervisore'
+                        if (userProfile.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
+                        }
+                        // Un consigliere normale vede solo le segnalazioni per 'consigliere'
+                        return data.recipientType === 'consigliere';
                     }
                     return false; // Default a non mostrare
                 });
@@ -13173,6 +13348,9 @@ ${renderBottomNavigation()}
         window.deleteAdministrativePeriod = deleteAdministrativePeriod;
         window.openPeriodEditModal = openPeriodEditModal; // NUOVO
         window.updateAdministrativePeriod = updateAdministrativePeriod; // NUOVO
+        window.deleteReportCategory = deleteReportCategory;
+        window.openCategoryEditModal = openCategoryEditModal;
+        window.updateReportCategory = updateReportCategory;
 
         const showSupervisorWarningForConsigliere = () => {
             const modalContent = `
