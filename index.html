@@ -2478,7 +2478,7 @@
 
         const getPriorityDisplayText = t => ({
             "solo-segnalazione": "Solo segnalazione",
-            "richiesta-intervento-propria": "Richiesta d'intervento",
+            "richiesta-intervento-propria": "Richiesta d'intervento nella propria UI",
             "richiesta-intervento-danno": "Richiesta d'intervento per danno propria UI da altre parti",
             "altre-richieste": "Altre richieste",
             // Legacy support for old values
@@ -3425,7 +3425,7 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                 }
                 recipientOptions = `
                     <option value="amministratore">Amministratore</option>
-                    <option value="condomino">Singolo Condomino</option>
+                    <option value="condomini">Condomini</option>
                     <option value="consigliere">Consiglieri</option>
                     ${fornitoreOption}
                     <option value="adm">Sviluppatore</option>
@@ -3530,9 +3530,13 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                                 </select>
                             </div>
                             <div class="form-group">
-    <label for="report-location-manual" class="form-label">Unità Immobiliare (Ubicazione)</label>
-    <input type="text" id="report-location-manual" required class="form-input" placeholder="es. Interno 9, Cortile, Ingresso Principale">
+    <label for="report-property-select" class="form-label">Unità Immobiliare (Ubicazione)</label>
+    <select id="report-property-select" required class="form-select">
+        <option value="" disabled>Seleziona la tua unità...</option>
+        <!-- Le opzioni verranno popolate dinamicamente via JS -->
+    </select>
 </div>
+<input type="hidden" id="report-location"> <!-- Mantenuto per compatibilità e logica interna -->
                             
                             <!-- Campi condizionali per checkboxes comunicazione -->
                             <div id="phone-communication-checkboxes" class="hidden">
@@ -10554,22 +10558,16 @@ ${renderBottomNavigation()}
             // Logica pulsanti per il gestore
             if (canManageThisReport) {
                 if (report.status === 'aperta') {
-                    const isAdm = userProfile?.tipoUtente === 'adm';
+                    // --- MODIFICA SUPERVISORE/CONSIGLIERE: Visibilità condizionale "Prendi in Carico" ---
+                    // Il pulsante appare per tutti i manager, tranne per il supervisore se il ticket non è suo e per il consigliere.
+                    const isSupervisor = userProfile?.tipoUtente === 'supervisore';
+                    const isConsigliere = userProfile?.tipoUtente === 'consigliere';
+                    const isForSupervisor = report.recipientType === 'supervisore';
 
-                    if (isAdm) {
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta', 'Risolto da ADM.')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
-                    } else {
-                        // --- MODIFICA SUPERVISORE/CONSIGLIERE: Visibilità condizionale "Prendi in Carico" ---
-                        // Il pulsante appare per tutti i manager, tranne per il supervisore se il ticket non è suo e per il consigliere.
-                        const isSupervisor = userProfile?.tipoUtente === 'supervisore';
-                        const isConsigliere = userProfile?.tipoUtente === 'consigliere';
-                        const isForSupervisor = report.recipientType === 'supervisore';
-
-                        if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere) {
-                            primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary" style="flex:1;">Prendi in Carico</button>`;
-                        }
-                        // --- FINE MODIFICA ---
+                    if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere) {
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary" style="flex:1;">Prendi in Carico</button>`;
                     }
+                    // --- FINE MODIFICA ---
                 }
                 if (report.status === 'in-corso' && userProfile?.tipoUtente !== 'consigliere') {
                     // --- MODIFICA SUPERVISORE INIZIO: Azione "Risolta" personalizzata ---
@@ -11115,13 +11113,8 @@ ${renderBottomNavigation()}
                     }
 
                     // Logica esistente per gli altri casi
-                    if (userRole === 'supervisore') {
-                        // Il supervisore vede solo le segnalazioni destinate a lui
-                        return data.recipientType === 'supervisore';
-                    }
-                    if (userRole === 'adm') {
-                        // L'ADM vede solo le segnalazioni destinate a lui
-                        return data.recipientType === 'adm';
+                    if (['supervisore', 'adm'].includes(userRole)) {
+                        return true; // Supervisore e ADM vedono tutto (tranne quelle specifiche per altri)
                     }
                     if (userRole === 'amministratore') {
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
