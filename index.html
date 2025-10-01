@@ -770,6 +770,25 @@
             text-overflow: ellipsis;
         }
 
+        /* Modifica per rendere i titoli completamente leggibili su mobile */
+        @media (max-width: 768px) {
+            .list-item-content .title {
+                white-space: normal;
+                overflow: visible;
+                text-overflow: unset;
+                word-wrap: break-word;
+                line-height: 1.4;
+            }
+            
+            /* Stili specifici per il contenitore del titolo delle segnalazioni */
+            .list-item-content .title span {
+                white-space: normal;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
+            }
+        }
+
         .list-item-content .subtitle {
             font-size: 0.85rem;
             color: var(--secondary-text);
@@ -1362,6 +1381,7 @@
         let pollsListener = null; // NUOVA RIGA
         let reportsListener = null; // NUOVA RIGA
         let sollecitisListener = null; // NUOVA RIGA
+        let sentRemindersListener = null;
         let servicePermissions = null;
         let currentStoragePath = '';
         let selectedUploadPath = ''; // Nuova variabile per il percorso di upload scelto
@@ -1608,14 +1628,14 @@
                 } else {
                     // Default permissions if not set (all enabled for everyone)
                     servicePermissions = {
-    'all_services': { enabled: true, allowedRoles: ['tutti'] },
-    'bacheca': { enabled: true, allowedRoles: ['tutti'] },
-    'segnalazioni': { enabled: true, allowedRoles: ['tutti'] },
-    'sondaggi': { enabled: true, allowedRoles: ['tutti'] },
-    'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
-    'report': { enabled: true, allowedRoles: ['tutti'] },
-    'archivio': { enabled: true, allowedRoles: ['tutti'] }
-};
+                        'all_services': { enabled: true, allowedRoles: ['tutti'] },
+                        'bacheca': { enabled: true, allowedRoles: ['tutti'] },
+                        'segnalazioni': { enabled: true, allowedRoles: ['tutti'] },
+                        'sondaggi': { enabled: true, allowedRoles: ['tutti'] },
+                        'numeri_utili': { enabled: true, allowedRoles: ['tutti'] },
+                        'report': { enabled: true, allowedRoles: ['tutti'] },
+                        'archivio': { enabled: true, allowedRoles: ['tutti'] }
+                    };
                 }
             } catch (error) {
                 console.error("Error loading service permissions:", error);
@@ -2312,13 +2332,13 @@
 
             // Service permission check
             const serviceMap = {
-    'bacheca': 'bacheca',
-    'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni',
-    'sondaggi': 'sondaggi', 'sondaggi_crea': 'sondaggi', 'sondaggi_elenco': 'sondaggi', 'sondaggi_attivi': 'sondaggi', 'sondaggi_conclusi': 'sondaggi',
-    'infoUtili': 'numeri_utili', 'numeriUtiliImportati': 'numeri_utili', 'numeriUtiliManuali': 'numeri_utili', 'numeriUtiliRubrica': 'numeri_utili', 'numeriUtiliCustode': 'numeri_utili', 'infoUtili_amministratore': 'numeri_utili',
-    'reportPage': 'report', 'elencoCondomini': 'report',
-    'archivio': 'archivio', 'gestione_archivio': 'archivio'
-};
+                'bacheca': 'bacheca',
+                'segnalazioni': 'segnalazioni', 'segnalazioni_crea': 'segnalazioni', 'segnalazioni_ricevute': 'segnalazioni', 'segnalazioni_utente': 'segnalazioni',
+                'sondaggi': 'sondaggi', 'sondaggi_crea': 'sondaggi', 'sondaggi_elenco': 'sondaggi', 'sondaggi_attivi': 'sondaggi', 'sondaggi_conclusi': 'sondaggi',
+                'infoUtili': 'numeri_utili', 'numeriUtiliImportati': 'numeri_utili', 'numeriUtiliManuali': 'numeri_utili', 'numeriUtiliRubrica': 'numeri_utili', 'numeriUtiliCustode': 'numeri_utili', 'infoUtili_amministratore': 'numeri_utili',
+                'reportPage': 'report', 'elencoCondomini': 'report',
+                'archivio': 'archivio', 'gestione_archivio': 'archivio'
+            };
             const requiredService = serviceMap[e];
 
             // CORREZIONE: Aggiunta un'eccezione per permettere al custode di accedere alla lista condomini
@@ -2478,7 +2498,7 @@
 
         const getPriorityDisplayText = t => ({
             "solo-segnalazione": "Solo segnalazione",
-            "richiesta-intervento-propria": "Richiesta d'intervento nella propria UI",
+            "richiesta-intervento-propria": "Richiesta d'intervento",
             "richiesta-intervento-danno": "Richiesta d'intervento per danno propria UI da altre parti",
             "altre-richieste": "Altre richieste",
             // Legacy support for old values
@@ -2671,7 +2691,7 @@
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
     <span>Segnala</span>
 </a>` : ''}
-    ${['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('segnalazioni_urgenti', event)" class="nav-item ${currentPage === 'segnalazioni_urgenti' ? 'active' : ''}">
+    ${['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('solleciti_menu', event)" class="nav-item ${['solleciti_menu', 'solleciti_inviati', 'solleciti_ricevuti'].includes(currentPage) ? 'active' : ''}">
     <span id="solleciti-notification-badge" class="notification-badge hidden"></span>
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
     <span>Solleciti</span>
@@ -2713,7 +2733,7 @@
             }
             if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) {
                 dashboardItemsHtml.push(`
-        <div onclick="navigateTo('segnalazioni_urgenti')" class="dashboard-item">
+        <div onclick="navigateTo('solleciti_menu')" class="dashboard-item">
             <div class="dashboard-card" style="position: relative;">
                 <span id="dashboard-solleciti-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                 <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
@@ -2750,15 +2770,15 @@
                 `);
             }
             // Aggiunta pulsante Archivio
-if (isServiceEnabledForCurrentUser('archivio')) {
-    dashboardItemsHtml.push(`
+            if (isServiceEnabledForCurrentUser('archivio')) {
+                dashboardItemsHtml.push(`
         <div onclick="navigateTo('archivio')" class="dashboard-item" style="position: relative;">
             <span id="dashboard-archivio-badge" class="notification-badge hidden" style="position: absolute; top: 8px; right: 8px;"></span>
             <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/></svg></div>
             <p>Archivio</p>
         </div>
     `);
-}
+            }
 
 
             if (userProfile?.tipoUtente === 'amministratore') {
@@ -3360,7 +3380,7 @@ if (isServiceEnabledForCurrentUser('archivio')) {
             // 3. Solleciti (Posizione: basso a sinistra)
             if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userRole)) {
                 menuItemsHtml.push(`
-                    <div onclick="navigateTo('segnalazioni_urgenti')" class="dashboard-item">
+                    <div onclick="navigateTo('solleciti_menu')" class="dashboard-item">
                         <div class="dashboard-card" style="position: relative; border: 2px solid var(--danger);">
                             <span id="solleciti-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
@@ -3424,12 +3444,12 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                     fornitoreOption = `<option value="fornitore">Singolo Fornitore</option>`;
                 }
                 recipientOptions = `
-                    <option value="amministratore">Amministratore</option>
-                    <option value="condomini">Condomini</option>
-                    <option value="consigliere">Consiglieri</option>
-                    ${fornitoreOption}
-                    <option value="adm">Sviluppatore</option>
-                `;
+                <option value="amministratore">Amministratore</option>
+                <option value="condomino">Singolo Condomino</option>
+                <option value="consigliere">Consiglieri</option>
+                ${fornitoreOption}
+                <option value="adm">Sviluppatore</option>
+            `;
             } else if (userRole === 'consigliere') {
                 recipientOptions = `
                     <option value="amministratore">Amministratore</option>
@@ -3530,13 +3550,9 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                                 </select>
                             </div>
                             <div class="form-group">
-    <label for="report-property-select" class="form-label">Unità Immobiliare (Ubicazione)</label>
-    <select id="report-property-select" required class="form-select">
-        <option value="" disabled>Seleziona la tua unità...</option>
-        <!-- Le opzioni verranno popolate dinamicamente via JS -->
-    </select>
-</div>
-<input type="hidden" id="report-location"> <!-- Mantenuto per compatibilità e logica interna -->
+                                <label for="report-location-manual" class="form-label">Ubicazione (Es. Interno, Piano, Area Comune)</label>
+                                <input type="text" id="report-location-manual" required class="form-input" placeholder="Es. Interno 15, Piano 3">
+                            </div>
                             
                             <!-- Campi condizionali per checkboxes comunicazione -->
                             <div id="phone-communication-checkboxes" class="hidden">
@@ -3562,7 +3578,6 @@ if (isServiceEnabledForCurrentUser('archivio')) {
                             <div class="flex justify-end pt-4"><button type="submit" id="submit-report-btn" class="btn btn-primary">Invia Segnalazione</button></div>
                         </form>
                     </div>
-                    <div class="mt-4"><h2 class="section-title">Segnalazioni Recenti</h2><div id="reports-secondary-container" class="list-container"></div></div>
                 </main>
                 ${renderBottomNavigation()}
              `;
@@ -5327,14 +5342,14 @@ ${renderBottomNavigation()}
 
         const renderAbilitaServizi = () => {
             const services = [
-    { id: 'all_services', name: 'Tutti i Servizi (Generale)' },
-    { id: 'bacheca', name: 'Bacheca' },
-    { id: 'segnalazioni', name: 'Segnalazioni' },
-    { id: 'sondaggi', name: 'Sondaggi' },
-    { id: 'numeri_utili', name: 'Numeri Utili' },
-    { id: 'report', name: 'Report' },
-    { id: 'archivio', name: 'Archivio' },
-];
+                { id: 'all_services', name: 'Tutti i Servizi (Generale)' },
+                { id: 'bacheca', name: 'Bacheca' },
+                { id: 'segnalazioni', name: 'Segnalazioni' },
+                { id: 'sondaggi', name: 'Sondaggi' },
+                { id: 'numeri_utili', name: 'Numeri Utili' },
+                { id: 'report', name: 'Report' },
+                { id: 'archivio', name: 'Archivio' },
+            ];
 
             const roles = [
                 { id: 'tutti', name: 'Tutti i Ruoli' },
@@ -5393,7 +5408,7 @@ ${renderBottomNavigation()}
             `;
         };
 
-                const renderGestioneCategorieSegnalazioni = () => `
+        const renderGestioneCategorieSegnalazioni = () => `
             ${renderHeader('Gestione Categorie Segnalazioni')}
             <main>
                 <div class="card" style="margin-bottom: 2rem;">
@@ -6025,7 +6040,18 @@ ${renderBottomNavigation()}
                 case 'segnalazioni_crea': content = renderSegnalazioniCrea(); break;
 
                 case 'segnalazioni_ricevute': content = renderSegnalazioniRicevute(); break;
-                case 'segnalazioni_urgenti': content = renderSegnalazioniUrgenti(); break;
+                case 'solleciti_menu':
+                    if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) content = renderSollecitiMenu();
+                    else navigateTo('dashboard');
+                    break;
+                case 'solleciti_inviati':
+                    if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) content = renderSollecitiInviati();
+                    else navigateTo('dashboard');
+                    break;
+                case 'solleciti_ricevuti':
+                    if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) content = renderSollecitiRicevuti();
+                    else navigateTo('dashboard');
+                    break;
                 case 'segnalazioni_utente': content = renderSegnalazioniUtente(); break;
                 case 'profilo': content = renderProfilo(); break;
                 case 'infoUtili': content = renderInfoUtili(); break;
@@ -6208,10 +6234,12 @@ ${renderBottomNavigation()}
                     }
                     break;
                 case 'segnalazioni': /* No handlers needed for the menu page */ break;
-                case 'segnalazioni_crea': loadMyReports(); setupReportHandlers(); break;
+                case 'segnalazioni_crea': setupReportHandlers(); break;
 
                 case 'segnalazioni_ricevute': loadReceivedReports(); break;
-                case 'segnalazioni_urgenti': loadUrgentReports(); break;
+                case 'solleciti_menu': /* No handlers needed for menu */ break;
+                case 'solleciti_inviati': loadSollecitiInviati(); break;
+                case 'solleciti_ricevuti': loadUrgentReports(); break;
                 case 'segnalazioni_utente': loadUserReports(); break;
                 case 'profilo': setupProfileHandlers(); break;
                 case 'infoUtili': /* No handlers needed for the menu page */ break;
@@ -6281,6 +6309,7 @@ ${renderBottomNavigation()}
                 checkForNewReports();
                 checkForNewSolleciti();
                 checkForUserReportUpdates();
+                checkForSentReminderUpdates();
                 checkForNewArchivioActivity();
             }
         };
@@ -6887,48 +6916,48 @@ ${renderBottomNavigation()}
                 });
             }
         };
-            const setupPollHandlers = () => {
-        const form = document.getElementById("create-poll-form");
-        if (!form) return;
+        const setupPollHandlers = () => {
+            const form = document.getElementById("create-poll-form");
+            if (!form) return;
 
-        // NUOVO: Logica per il dropdown del target
-        const pollTypeSelect = document.getElementById('poll-type');
-        const targetCondominiContainer = document.getElementById('poll-target-condomini-container');
-        const targetGroupSelect = document.getElementById('poll-target-group');
+            // NUOVO: Logica per il dropdown del target
+            const pollTypeSelect = document.getElementById('poll-type');
+            const targetCondominiContainer = document.getElementById('poll-target-condomini-container');
+            const targetGroupSelect = document.getElementById('poll-target-group');
 
-        const populatePollGroupDropdown = async () => {
-            if (!targetGroupSelect) return;
-            try {
-                const q = query(collection(db, "partialCondos"), orderBy("name"));
-                const snapshot = await getDocs(q);
-                snapshot.forEach(doc => {
-                    const group = doc.data();
-                    const option = document.createElement('option');
-                    option.value = group.name;
-                    option.textContent = group.name;
-                    targetGroupSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Error populating poll target groups:", error);
-            }
-        };
-
-        if(pollTypeSelect && targetCondominiContainer) {
-            pollTypeSelect.addEventListener('change', () => {
-                if (pollTypeSelect.value === 'condomini') {
-                    targetCondominiContainer.classList.remove('hidden');
-                } else {
-                    targetCondominiContainer.classList.add('hidden');
+            const populatePollGroupDropdown = async () => {
+                if (!targetGroupSelect) return;
+                try {
+                    const q = query(collection(db, "partialCondos"), orderBy("name"));
+                    const snapshot = await getDocs(q);
+                    snapshot.forEach(doc => {
+                        const group = doc.data();
+                        const option = document.createElement('option');
+                        option.value = group.name;
+                        option.textContent = group.name;
+                        targetGroupSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error("Error populating poll target groups:", error);
                 }
-            });
-            populatePollGroupDropdown();
-        }
-        // FINE NUOVO
+            };
 
-        const optionsList = document.getElementById("poll-options-list");
-        const addOptionBtn = document.getElementById("add-poll-option");
+            if (pollTypeSelect && targetCondominiContainer) {
+                pollTypeSelect.addEventListener('change', () => {
+                    if (pollTypeSelect.value === 'condomini') {
+                        targetCondominiContainer.classList.remove('hidden');
+                    } else {
+                        targetCondominiContainer.classList.add('hidden');
+                    }
+                });
+                populatePollGroupDropdown();
+            }
+            // FINE NUOVO
 
-        // I gestori per la ricerca e il filtro dei sondaggi sono stati spostati nella logica della pagina 'sondaggi_elenco'.
+            const optionsList = document.getElementById("poll-options-list");
+            const addOptionBtn = document.getElementById("add-poll-option");
+
+            // I gestori per la ricerca e il filtro dei sondaggi sono stati spostati nella logica della pagina 'sondaggi_elenco'.
 
             function addOptionInput(value = "") {
                 const div = document.createElement("div");
@@ -7016,47 +7045,47 @@ ${renderBottomNavigation()}
                 const deadlineISO = `${deadlineDate}T${deadlineTime}`;
                 const deadline = new Date(deadlineISO);
 
-                            try {
-                // --- NUOVA LOGICA DI NUMERAZIONE ANNUALE ---
-                let adminYear = null;
-                if (currentAdministrativePeriod) {
-                    adminYear = currentAdministrativePeriod.year;
-                } else {
-                    const fallbackQuery = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"), limit(1));
-                    const fallbackSnapshot = await getDocs(fallbackQuery);
-                    if (!fallbackSnapshot.empty) {
-                        adminYear = fallbackSnapshot.docs[0].data().year;
+                try {
+                    // --- NUOVA LOGICA DI NUMERAZIONE ANNUALE ---
+                    let adminYear = null;
+                    if (currentAdministrativePeriod) {
+                        adminYear = currentAdministrativePeriod.year;
                     } else {
-                        const currentCalYear = new Date().getFullYear();
-                        adminYear = `${currentCalYear}/${currentCalYear + 1}`;
+                        const fallbackQuery = query(collection(db, "administrativePeriods"), orderBy("startDate", "desc"), limit(1));
+                        const fallbackSnapshot = await getDocs(fallbackQuery);
+                        if (!fallbackSnapshot.empty) {
+                            adminYear = fallbackSnapshot.docs[0].data().year;
+                        } else {
+                            const currentCalYear = new Date().getFullYear();
+                            adminYear = `${currentCalYear}/${currentCalYear + 1}`;
+                        }
                     }
-                }
 
-                const pollsInYearQuery = query(
-                    collection(db, "polls"),
-                    where("administrativeYear", "==", adminYear),
-                    orderBy("pollNumber", "desc"),
-                    limit(1)
-                );
-                const lastPollSnapshot = await getDocs(pollsInYearQuery);
-                const lastPollNumber = lastPollSnapshot.empty ? 0 : lastPollSnapshot.docs[0].data().pollNumber;
-                const newPollNumber = lastPollNumber + 1;
-                // --- FINE NUOVA LOGICA ---
+                    const pollsInYearQuery = query(
+                        collection(db, "polls"),
+                        where("administrativeYear", "==", adminYear),
+                        orderBy("pollNumber", "desc"),
+                        limit(1)
+                    );
+                    const lastPollSnapshot = await getDocs(pollsInYearQuery);
+                    const lastPollNumber = lastPollSnapshot.empty ? 0 : lastPollSnapshot.docs[0].data().pollNumber;
+                    const newPollNumber = lastPollNumber + 1;
+                    // --- FINE NUOVA LOGICA ---
 
-                const isVisibleToAdminCheckbox = document.getElementById("poll-visible-to-admin");
-                const isVisibleToAdmin = isVisibleToAdminCheckbox ? isVisibleToAdminCheckbox.checked : true;
+                    const isVisibleToAdminCheckbox = document.getElementById("poll-visible-to-admin");
+                    const isVisibleToAdmin = isVisibleToAdminCheckbox ? isVisibleToAdminCheckbox.checked : true;
 
-                let targetGroup = null;
-                if (pollType === 'condomini') {
-                    targetGroup = document.getElementById("poll-target-group").value;
-                }
+                    let targetGroup = null;
+                    if (pollType === 'condomini') {
+                        targetGroup = document.getElementById("poll-target-group").value;
+                    }
 
-                const pollData = {
-                    pollNumber: newPollNumber,
-                    administrativeYear: adminYear, // Anno di riferimento
-                    pollType: pollType,
-                    targetGroup: targetGroup,
-                    title: title,
+                    const pollData = {
+                        pollNumber: newPollNumber,
+                        administrativeYear: adminYear, // Anno di riferimento
+                        pollType: pollType,
+                        targetGroup: targetGroup,
+                        title: title,
                         description: description,
                         options: options,
                         deadline: deadline,
@@ -7200,32 +7229,12 @@ ${renderBottomNavigation()}
                     categorySelect.innerHTML = '<option value="">Errore nel caricamento</option>';
                 }
             };
-            
+
             populateCategoryDropdown();
 
             const form = document.getElementById("create-report-form");
-            const propertySelect = document.getElementById("report-property-select");
-            const locationInput = document.getElementById("report-location");
             const recipientSelect = document.getElementById("report-recipient");
             const specificRecipientContainer = document.getElementById("specific-recipient-container");
-
-            // Popola le unità immobiliari
-            if (propertySelect && locationInput) {
-                if (userProfile?.proprieta && userProfile.proprieta.length > 0) {
-                    userProfile.proprieta.forEach(prop => {
-                        const option = new Option(`Interno: ${prop.interno} (Piano: ${prop.piano ?? 'N/D'})`, `${prop.interno}|${prop.piano ?? 'N/A'}`);
-                        propertySelect.add(option);
-                    });
-                    if (userProfile.proprieta.length === 1) {
-                        propertySelect.selectedIndex = 1;
-                        const [interno, piano] = propertySelect.value.split('|');
-                        locationInput.value = `Interno ${interno}, Piano ${piano}`;
-                    }
-                } else {
-                    const parentDiv = propertySelect.parentElement;
-                    parentDiv.innerHTML = `<label for="report-location-manual" class="form-label">Ubicazione</label><input type="text" id="report-location-manual" required class="form-input" placeholder="es. Cortile, Ingresso Principale">`;
-                }
-            }
 
             const populateSpecificRecipientDropdown = async (role) => {
                 specificRecipientContainer.classList.remove('hidden');
@@ -7337,18 +7346,9 @@ ${renderBottomNavigation()}
                 const communicateOwnerPhone = document.getElementById("communicate-owner-phone").checked;
                 const communicateOtherUiPhone = document.getElementById("communicate-other-ui-phone").checked;
 
-                let location = '', propertyInfo = null;
-                const manualLocationInput = document.getElementById("report-location-manual");
-                if (manualLocationInput) {
-                    location = manualLocationInput.value;
-                } else {
-                    const selectedPropValue = propertySelect.value;
-                    if (selectedPropValue) {
-                        const [interno, piano] = selectedPropValue.split('|');
-                        location = `Interno ${interno}, Piano ${piano}`;
-                        propertyInfo = { interno, piano };
-                    }
-                }
+                const locationInput = document.getElementById("report-location-manual");
+                const location = locationInput ? locationInput.value.trim() : '';
+                const propertyInfo = null; // Non più derivato da un select
 
                 let specificRecipientId = null;
                 if (recipient === 'condomino' || recipient === 'fornitore') {
@@ -7428,10 +7428,10 @@ ${renderBottomNavigation()}
                         const newReportNumberInPeriod = highestNumber + 1;
                         newReportNumber = newReportNumberInPeriod;
                         finalReportNumber = `#${newReportNumberInPeriod} - ${adminYear}`;
-                        
+
                         const counterDocName = `reportsCounter_${adminYear.replace('/', '_')}`;
                         counterRef = doc(db, "counters", counterDocName);
-                        
+
                         reportData = {
                             reportNumber: finalReportNumber,
                             administrativeYear: adminYear,
@@ -7453,7 +7453,7 @@ ${renderBottomNavigation()}
                             reminderCount: 0,
                             fileUrls
                         };
-                        
+
                         transaction.set(counterRef, { lastNumber: newReportNumber });
                         transaction.set(newReportDocRef, reportData);
                     });
@@ -10075,43 +10075,43 @@ ${renderBottomNavigation()}
             });
         };
 
-            const isUserAllowedToVote = (userProfile, setting, poll) => {
-        const userType = userProfile.tipoUtente;
-        const pollType = poll.pollType;
+        const isUserAllowedToVote = (userProfile, setting, poll) => {
+            const userType = userProfile.tipoUtente;
+            const pollType = poll.pollType;
 
-        // 1. Ruoli che non possono mai votare.
-        if (['amministratore', 'fornitore', 'custode', 'adm'].includes(userType)) {
-            return false;
-        }
+            // 1. Ruoli che non possono mai votare.
+            if (['amministratore', 'fornitore', 'custode', 'adm'].includes(userType)) {
+                return false;
+            }
 
-        // 2. I sondaggi specifici per supervisori e consiglieri non sono legati a un gruppo.
-        if (pollType === 'supervisor-consiglieri') {
-            return ['supervisore', 'consigliere'].includes(userType);
-        }
+            // 2. I sondaggi specifici per supervisori e consiglieri non sono legati a un gruppo.
+            if (pollType === 'supervisor-consiglieri') {
+                return ['supervisore', 'consigliere'].includes(userType);
+            }
 
-        // 3. I sondaggi per i "condomini" includono anche consiglieri e supervisori in quanto residenti.
-        // Qui viene applicato il controllo basato sul gruppo.
-        if (pollType === 'condomini') {
-            // Verifica se l'utente ha un ruolo di tipo "residente".
-            if (['condomino', 'consigliere', 'supervisore'].includes(userType)) {
-                const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
-                const targetGroup = poll.targetGroup;
+            // 3. I sondaggi per i "condomini" includono anche consiglieri e supervisori in quanto residenti.
+            // Qui viene applicato il controllo basato sul gruppo.
+            if (pollType === 'condomini') {
+                // Verifica se l'utente ha un ruolo di tipo "residente".
+                if (['condomino', 'consigliere', 'supervisore'].includes(userType)) {
+                    const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
+                    const targetGroup = poll.targetGroup;
 
-                // Se il sondaggio è per tutti ('Tutti'), possono votare.
-                if (!targetGroup || targetGroup === 'Tutti') {
-                    return true;
-                }
-                
-                // Se il sondaggio è per un gruppo specifico, l'utente deve appartenere a quel gruppo.
-                if (userGroups.includes(targetGroup)) {
-                    return true;
+                    // Se il sondaggio è per tutti ('Tutti'), possono votare.
+                    if (!targetGroup || targetGroup === 'Tutti') {
+                        return true;
+                    }
+
+                    // Se il sondaggio è per un gruppo specifico, l'utente deve appartenere a quel gruppo.
+                    if (userGroups.includes(targetGroup)) {
+                        return true;
+                    }
                 }
             }
-        }
 
-        // 4. Se nessuna delle condizioni precedenti è soddisfatta, l'utente non può votare.
-        return false;
-    };
+            // 4. Se nessuna delle condizioni precedenti è soddisfatta, l'utente non può votare.
+            return false;
+        };
 
         const isUserAllowedToCreatePolls = async () => {
             if (!userProfile) return false;
@@ -10249,15 +10249,15 @@ ${renderBottomNavigation()}
                             if (pollType !== 'condomini' && pollType !== 'supervisor-consiglieri') {
                                 return false;
                             }
-                                            } else if (userRole.startsWith('condomino')) {
-                        if (pollType !== 'condomini') {
-                            return false;
-                        }
-                        // Controlla se il sondaggio è per tutti o per il gruppo specifico dell'utente
-                        const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
-                        if (poll.targetGroup && poll.targetGroup !== 'Tutti' && !userGroups.includes(poll.targetGroup)) {
-                            return false;
-                        }
+                        } else if (userRole.startsWith('condomino')) {
+                            if (pollType !== 'condomini') {
+                                return false;
+                            }
+                            // Controlla se il sondaggio è per tutti o per il gruppo specifico dell'utente
+                            const userGroups = userProfile.proprieta?.map(p => p.gruppo).filter(Boolean) || [];
+                            if (poll.targetGroup && poll.targetGroup !== 'Tutti' && !userGroups.includes(poll.targetGroup)) {
+                                return false;
+                            }
                         } else if (userRole !== 'amministratore') { // Evitiamo di escludere l'amministratore che ha già passato il check sopra
                             // Altri ruoli come custode, fornitore non vedono nulla
                             return false;
@@ -10322,48 +10322,48 @@ ${renderBottomNavigation()}
                     });
 
                     container.innerHTML = filteredPolls.map((docSnap, index) => {
-    const poll = docSnap.data();
-    const deadline = poll.deadline ? poll.deadline.toDate() : null;
-    const isExpired = deadline ? deadline < new Date() : false;
-    const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
-    const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
-    const canUserVote = isUserAllowedToVote(userProfile, pollSetting, poll);
-    const showVoteUI = !isExpired && canUserVote;
+                        const poll = docSnap.data();
+                        const deadline = poll.deadline ? poll.deadline.toDate() : null;
+                        const isExpired = deadline ? deadline < new Date() : false;
+                        const hasVoted = poll.voters && poll.voters.some(v => v.uid === currentUser.uid);
+                        const totalVotes = poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+                        const canUserVote = isUserAllowedToVote(userProfile, pollSetting, poll);
+                        const showVoteUI = !isExpired && canUserVote;
 
-    // Aggiungi calcolo millesimi
-    const showMillesimiResults = poll.pollType === 'condomini' || poll.pollType === 'supervisor-consiglieri';
-    let totalMillesimiVoted = 0;
-    const optionsWithMillesimi = poll.options.map(opt => ({ ...opt, millesimi: 0 }));
+                        // Aggiungi calcolo millesimi
+                        const showMillesimiResults = poll.pollType === 'condomini' || poll.pollType === 'supervisor-consiglieri';
+                        let totalMillesimiVoted = 0;
+                        const optionsWithMillesimi = poll.options.map(opt => ({ ...opt, millesimi: 0 }));
 
-    if (showMillesimiResults && poll.voters && poll.voters.length > 0) {
-        // Calcola il totale dei millesimi di tutti i partecipanti al voto
-        totalMillesimiVoted = poll.voters.reduce((sum, voter) => sum + (parseFloat(voter.millesimi) || 0), 0);
-        
-        // Distribuisce i millesimi a ogni opzione in base ai voti espressi
-        poll.voters.forEach(voter => {
-            const voterMillesimi = parseFloat(voter.millesimi) || 0;
-            if (voter.vote) { // Assicurati che l'utente abbia votato
-                const voterChoices = voter.vote.split(', ');
-                voterChoices.forEach(choiceText => {
-                    const option = optionsWithMillesimi.find(o => o.text === choiceText);
-                    if (option) {
-                        option.millesimi += voterMillesimi;
-                    }
-                });
-            }
-        });
-    }
+                        if (showMillesimiResults && poll.voters && poll.voters.length > 0) {
+                            // Calcola il totale dei millesimi di tutti i partecipanti al voto
+                            totalMillesimiVoted = poll.voters.reduce((sum, voter) => sum + (parseFloat(voter.millesimi) || 0), 0);
+
+                            // Distribuisce i millesimi a ogni opzione in base ai voti espressi
+                            poll.voters.forEach(voter => {
+                                const voterMillesimi = parseFloat(voter.millesimi) || 0;
+                                if (voter.vote) { // Assicurati che l'utente abbia votato
+                                    const voterChoices = voter.vote.split(', ');
+                                    voterChoices.forEach(choiceText => {
+                                        const option = optionsWithMillesimi.find(o => o.text === choiceText);
+                                        if (option) {
+                                            option.millesimi += voterMillesimi;
+                                        }
+                                    });
+                                }
+                            });
+                        }
 
                         const pollTypeLabel = poll.pollType === 'supervisor-consiglieri' ? 'Supervisor e Consiglieri' : 'Condomini';
                         // NUOVO: Costruzione del titolo con anno di riferimento (MODIFICATO)
-                    let pollHeaderInfo = '';
-                    if (poll.pollNumber && poll.administrativeYear) {
-                        pollHeaderInfo = `Sondaggio N. ${poll.pollNumber} - ${poll.administrativeYear}`;
-                    } else if (poll.pollNumber) { // Fallback per sondaggi vecchi
-                        pollHeaderInfo = `Sondaggio N. ${poll.pollNumber}`;
-                    }
-                    const pollMainTitleText = poll.title;
-                    // FINE NUOVO
+                        let pollHeaderInfo = '';
+                        if (poll.pollNumber && poll.administrativeYear) {
+                            pollHeaderInfo = `Sondaggio N. ${poll.pollNumber} - ${poll.administrativeYear}`;
+                        } else if (poll.pollNumber) { // Fallback per sondaggi vecchi
+                            pollHeaderInfo = `Sondaggio N. ${poll.pollNumber}`;
+                        }
+                        const pollMainTitleText = poll.title;
+                        // FINE NUOVO
                         const buttonText = hasVoted ? 'Cambia Voto' : 'Invia Voto';
 
                         const dateOptions = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -10376,16 +10376,16 @@ ${renderBottomNavigation()}
                             <div><strong>Scade il:</strong> ${closingDate}</div>
                         </div>`;
 
-                    // Logica unificata per la visualizzazione dei sondaggi
-                    let optionsHtml = '';
+                        // Logica unificata per la visualizzazione dei sondaggi
+                        let optionsHtml = '';
 
-                    // Pre-calcolo dei voti precedenti per l'utente, utile per entrambe le logiche
-                    const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
-                    const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
+                        // Pre-calcolo dei voti precedenti per l'utente, utile per entrambe le logiche
+                        const voterRecord = poll.voters.find(v => v.uid === currentUser.uid);
+                        const previousVotes = hasVoted && voterRecord ? voterRecord.vote.split(', ') : [];
 
-                    // Se il sondaggio è a scelta multipla e l'utente può votare, si usa una tabella interattiva.
-                    if (showVoteUI && poll.multipleChoice) {
-                        optionsHtml = `
+                        // Se il sondaggio è a scelta multipla e l'utente può votare, si usa una tabella interattiva.
+                        if (showVoteUI && poll.multipleChoice) {
+                            optionsHtml = `
                             <div class="data-table-container" style="margin-bottom: 1.5rem;">
                                 <table class="data-table">
                                     <thead>
@@ -10397,8 +10397,8 @@ ${renderBottomNavigation()}
                                     </thead>
                                     <tbody>
                                         ${optionsWithMillesimi.map((option, index) => {
-                                            const isChecked = hasVoted && previousVotes.includes(option.text);
-                                            return `
+                                const isChecked = hasVoted && previousVotes.includes(option.text);
+                                return `
                                                 <tr>
                                                     <td>
                                                         <label class="flex items-center gap-2 cursor-pointer">
@@ -10410,29 +10410,29 @@ ${renderBottomNavigation()}
                                                     ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
                                                 </tr>
                                             `;
-                                        }).join('')}
+                            }).join('')}
                                     </tbody>
                                 </table>
                             </div>
                         `;
-                    } else {
-                                            // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
-                    // --- MODIFICA INIZIO: Evidenziazione opzione vincente con gestione pareggio ---
-                    let maxVotes = 0;
-                    let maxMillesimiInTie = -1; // Inizializzato a -1 per gestire correttamente i pareggi
-                    if (isExpired && optionsWithMillesimi.length > 0) {
-                        maxVotes = Math.max(...optionsWithMillesimi.map(opt => opt.votes || 0));
-                        if (maxVotes > 0) {
-                            // Controlla se c'è un pareggio nel numero di voti
-                            const tiedOptions = optionsWithMillesimi.filter(opt => (opt.votes || 0) === maxVotes);
-                            if (tiedOptions.length > 1) {
-                                // Se c'è un pareggio, trova i millesimi massimi tra le opzioni in pareggio
-                                maxMillesimiInTie = Math.max(...tiedOptions.map(opt => opt.millesimi || 0));
+                        } else {
+                            // Altrimenti (scelta singola o solo visualizzazione), si usa la tabella statica + pulsanti (se necessario).
+                            // --- MODIFICA INIZIO: Evidenziazione opzione vincente con gestione pareggio ---
+                            let maxVotes = 0;
+                            let maxMillesimiInTie = -1; // Inizializzato a -1 per gestire correttamente i pareggi
+                            if (isExpired && optionsWithMillesimi.length > 0) {
+                                maxVotes = Math.max(...optionsWithMillesimi.map(opt => opt.votes || 0));
+                                if (maxVotes > 0) {
+                                    // Controlla se c'è un pareggio nel numero di voti
+                                    const tiedOptions = optionsWithMillesimi.filter(opt => (opt.votes || 0) === maxVotes);
+                                    if (tiedOptions.length > 1) {
+                                        // Se c'è un pareggio, trova i millesimi massimi tra le opzioni in pareggio
+                                        maxMillesimiInTie = Math.max(...tiedOptions.map(opt => opt.millesimi || 0));
+                                    }
+                                }
                             }
-                        }
-                    }
 
-                    const resultsTableHtml = `
+                            const resultsTableHtml = `
                         <div class="data-table-container" style="margin-bottom: 1.5rem;">
                             <table class="data-table">
                                 <thead>
@@ -10444,43 +10444,43 @@ ${renderBottomNavigation()}
                                 </thead>
                                 <tbody>
                                     ${optionsWithMillesimi.map(option => {
-                                        const currentVotes = option.votes || 0;
-                                        const currentMillesimi = option.millesimi || 0;
-                                        let isWinner = false;
-                                        
-                                        // Applica la logica di vittoria
-                                        if (isExpired && maxVotes > 0 && currentVotes === maxVotes) {
-                                            if (maxMillesimiInTie !== -1) { // C'è un pareggio, vince chi ha più millesimi
-                                                isWinner = currentMillesimi === maxMillesimiInTie;
-                                            } else { // Non c'è pareggio, vince chi ha più voti
-                                                isWinner = true;
-                                            }
-                                        }
+                                const currentVotes = option.votes || 0;
+                                const currentMillesimi = option.millesimi || 0;
+                                let isWinner = false;
 
-                                        const rowStyle = isWinner ? 'style="font-weight: 800; background-color: rgba(29, 185, 84, 0.2);"' : '';
-                                        return `
+                                // Applica la logica di vittoria
+                                if (isExpired && maxVotes > 0 && currentVotes === maxVotes) {
+                                    if (maxMillesimiInTie !== -1) { // C'è un pareggio, vince chi ha più millesimi
+                                        isWinner = currentMillesimi === maxMillesimiInTie;
+                                    } else { // Non c'è pareggio, vince chi ha più voti
+                                        isWinner = true;
+                                    }
+                                }
+
+                                const rowStyle = isWinner ? 'style="font-weight: 800; background-color: rgba(29, 185, 84, 0.2);"' : '';
+                                return `
                                             <tr ${rowStyle}>
                                                 <td>${option.text}</td>
                                                 <td style="text-align:right;">${option.votes || 0}</td>
                                                 ${showMillesimiResults ? `<td style="text-align:right;">${option.millesimi.toFixed(2)}</td>` : ''}
                                             </tr>
                                         `;
-                                    }).join('')}
+                            }).join('')}
                                 </tbody>
                             </table>
                         </div>
                     `;
-                    // --- MODIFICA FINE ---
+                            // --- MODIFICA FINE ---
 
-                        let votingActionsHtml = '';
-                        if (showVoteUI) { // Questo blocco ora gestisce solo la scelta singola
-                            votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
+                            let votingActionsHtml = '';
+                            if (showVoteUI) { // Questo blocco ora gestisce solo la scelta singola
+                                votingActionsHtml = `<div class="flex flex-col gap-2">${poll.options.map((option, index) => `
                                 <button onclick="voteOnPoll('${docSnap.id}', ${index})" class="btn btn-secondary" style="width:100%;">${hasVoted ? 'Vota di nuovo per' : 'Vota per'} "${option.text}"</button>
                             `).join("")}</div>`;
-                        }
+                            }
 
-                        optionsHtml = resultsTableHtml + votingActionsHtml;
-                    }
+                            optionsHtml = resultsTableHtml + votingActionsHtml;
+                        }
                         let votingInstructionHtml = '';
                         if (showVoteUI) {
                             let instructionText = poll.multipleChoice ? 'Puoi selezionare più risposte.' : 'Scegli una sola risposta.';
@@ -10550,9 +10550,14 @@ ${renderBottomNavigation()}
             let primaryActionButtonsHtml = '';
             let forwardButtonHtml = '';
             let updateButtonHtml = '';
-            // Logica pulsante "Rispondi" per il condomino nella vista delle segnalazioni ricevute
-            if (userProfile?.tipoUtente === 'condomino' && currentPage === 'segnalazioni_ricevute' && report.status !== 'chiusa') {
-                primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Rispondi</button>`;
+            // Logica pulsanti per il condomino nelle segnalazioni
+            if (userProfile?.tipoUtente === 'condomino' && report.status !== 'chiusa') {
+                // Pulsante Aggiorna per il condomino
+                primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Aggiorna</button>`;
+                // Pulsante Marca come Risolta per il condomino (solo se la segnalazione è in corso)
+                if (report.status === 'in-corso') {
+                    primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                }
             }
 
             // Logica pulsanti per il gestore
@@ -10564,25 +10569,30 @@ ${renderBottomNavigation()}
                     const isConsigliere = userProfile?.tipoUtente === 'consigliere';
                     const isForSupervisor = report.recipientType === 'supervisore';
 
-                    if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere) {
+                    if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere && userProfile?.tipoUtente !== 'adm') {
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary" style="flex:1;">Prendi in Carico</button>`;
                     }
                     // --- FINE MODIFICA ---
                 }
-                if (report.status === 'in-corso' && userProfile?.tipoUtente !== 'consigliere') {
-                    // --- MODIFICA SUPERVISORE INIZIO: Azione "Risolta" personalizzata ---
+                if (report.status === 'in-corso') {
+                    // --- MODIFICA SUPERVISORE/CONSIGLIERE INIZIO: Azione "Risolta" personalizzata ---
                     if (userProfile?.tipoUtente === 'supervisore') {
-                        // Per il supervisore, l'azione aggiunge un commento specifico.
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta', 'Risolto da Supervisore.')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        // Per il supervisore, l'azione richiede motivazioni tramite modal.
+                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                    } else if (userProfile?.tipoUtente === 'consigliere') {
+                        // Per il consigliere, l'azione richiede motivazioni tramite modal.
+                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
                     } else {
                         // Gli altri ruoli usano l'azione standard.
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
                     }
-                    // --- MODIFICA SUPERVISORE FINE ---
+                    // --- MODIFICA SUPERVISORE/CONSIGLIERE FINE ---
                 }
                 if (userProfile?.tipoUtente === 'amministratore') {
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="flex:1; background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
+                        // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
+                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
                     }
                     // NUOVA LOGICA: Pulsante per chiudere ticket risolti
                     if (report.status === 'risolta') {
@@ -10590,19 +10600,60 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                if (userProfile?.tipoUtente === 'custode' && (report.status === 'aperta' || report.status === 'in-corso')) {
-                    forwardButtonHtml = `<button onclick="forwardReportToAdmin('${reportId}')" class="btn btn-secondary" style="width: 100%; background-color: var(--accent-color-dark); color: white;">Inoltra ad Amministratore</button>`;
+                if (userProfile?.tipoUtente === 'custode') {
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        forwardButtonHtml = `<button onclick="forwardReportToAdmin('${reportId}')" class="btn btn-secondary" style="width: 100%; background-color: var(--accent-color-dark); color: white;">Inoltra ad Amministratore</button>`;
+                    }
+                    // Pulsante Marca come Risolta per il custode nelle segnalazioni ricevute
+                    if (currentPage === 'segnalazioni_ricevute' && report.status === 'in-corso') {
+                        primaryActionButtonsHtml += `<button onclick="openCustodeResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                    }
+                }
+
+                if (userProfile?.tipoUtente === 'fornitore') {
+                    // Pulsante Marca come Risolta per il fornitore nelle segnalazioni ricevute
+                    if (currentPage === 'segnalazioni_ricevute' && report.status === 'in-corso') {
+                        primaryActionButtonsHtml += `<button onclick="openFornitoreResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                    }
+                }
+
+                // NUOVA LOGICA: Pulsante "Marca come Risolta" per ADM
+                if (userProfile?.tipoUtente === 'adm' && (report.status === 'aperta' || report.status === 'in-corso')) {
+                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
                 }
 
                 // Pulsante Aggiorna separato - andrà in una riga separata
                 if (report.status !== 'chiusa') {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE: Pulsante Aggiorna personalizzato ---
                     if (userProfile?.tipoUtente === 'supervisore') {
-                        // Il supervisore ha un pulsante specifico per aggiungere commenti.
-                        updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Supervisor</button>`;
+                        // Il supervisore ha pulsanti specifici nelle segnalazioni ricevute
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        } else if (currentPage !== 'segnalazioni_utente') {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Supervisor</button>`;
+                        }
+                        // Altrimenti, non mostrare nessun pulsante di aggiornamento/commento.
                     } else if (userProfile?.tipoUtente === 'consigliere') {
-                        // Il consigliere ha un pulsante specifico per i commenti.
-                        updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Consigliere</button>`;
+                        // Il consigliere ha pulsanti specifici nelle segnalazioni ricevute
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        } else {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Consigliere</button>`;
+                        }
+                    } else if (userProfile?.tipoUtente === 'custode') {
+                        // Il custode ha pulsanti specifici nelle segnalazioni ricevute
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        } else {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Custode</button>`;
+                        }
+                    } else if (userProfile?.tipoUtente === 'fornitore') {
+                        // Il fornitore ha pulsanti specifici nelle segnalazioni ricevute
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        } else {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Fornitore</button>`;
+                        }
                     } else {
                         // Gli altri ruoli mantengono il pulsante standard.
                         updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
@@ -10611,8 +10662,8 @@ ${renderBottomNavigation()}
                 }
             }
 
-            // Logica pulsanti per il creatore (solo se è un "condomino")
-            if (isCreator && userProfile?.tipoUtente === 'condomino') {
+            // Logica pulsanti per il creatore (condomino, adm, amministratore, supervisore, consigliere, custode e fornitore)
+            if (isCreator && (userProfile?.tipoUtente === 'condomino' || userProfile?.tipoUtente === 'adm' || userProfile?.tipoUtente === 'amministratore' || userProfile?.tipoUtente === 'supervisore' || userProfile?.tipoUtente === 'consigliere' || userProfile?.tipoUtente === 'custode' || userProfile?.tipoUtente === 'fornitore')) {
                 if (report.status === 'aperta' || report.status === 'in-corso') {
                     primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary" style="flex:1;">Sollecita</button>`;
                 }
@@ -10666,8 +10717,8 @@ ${renderBottomNavigation()}
                 <div class="list-item" style="padding:0; cursor:default;">
                     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
                     <div class="list-item-content">
-                        <div class="title" style="display: flex; align-items: center; gap: 8px;">
-    <span>${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
+                        <div class="title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+    <span style="flex: 1; min-width: 0;">${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
     ${/* Indicatore visivo per segnalazioni modificate */''}
     ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}`) ? `
         <span style="width: 10px; height: 10px; background-color: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;" title="Segnalazione modificata"></span>
@@ -11113,8 +11164,13 @@ ${renderBottomNavigation()}
                     }
 
                     // Logica esistente per gli altri casi
-                    if (['supervisore', 'adm'].includes(userRole)) {
-                        return true; // Supervisore e ADM vedono tutto (tranne quelle specifiche per altri)
+                    if (userRole === 'supervisore') {
+                        // Il Supervisore ora vede solo le segnalazioni a lui destinate.
+                        return data.recipientType === 'supervisore';
+                    }
+                    // MODIFICA: L'account ADM vede solo le segnalazioni in cui è il destinatario esplicito.
+                    if (userRole === 'adm') {
+                        return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
@@ -11149,8 +11205,30 @@ ${renderBottomNavigation()}
             });
         };
 
-        const renderSegnalazioniUrgenti = () => `
-            ${renderHeader('Solleciti ricevuti')}
+        const renderSollecitiMenu = () => `
+            ${renderHeader('Solleciti')}
+            <main>
+                <div class="dashboard-grid">
+                    <div onclick="navigateTo('solleciti_inviati')" class="dashboard-item">
+                        <div class="dashboard-card" style="position: relative;">
+                            <span id="solleciti-inviati-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
+                        </div>
+                        <p>Solleciti Inviati</p>
+                    </div>
+                    <div onclick="navigateTo('solleciti_ricevuti')" class="dashboard-item">
+                        <div class="dashboard-card" style="position: relative;">
+                            <span id="solleciti-menu-notification-badge" class="notification-badge hidden" style="top: 8px; right: 8px;"></span>
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 12H5V5h14v9z"/></svg>
+                        </div>
+                        <p>Solleciti Ricevuti</p>
+                    </div>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+        const renderSollecitiRicevuti = () => `
+            ${renderHeader('Solleciti Ricevuti')}
             <main>
                 ${renderCurrentPeriodBanner()}
                 <div id="ticket-counters" class="grid grid-cols-3 gap-2" style="margin-bottom: 1rem;">
@@ -11184,6 +11262,80 @@ ${renderBottomNavigation()}
             ${renderBottomNavigation()}
         `;
 
+        const renderSollecitiInviati = () => `
+            ${renderHeader('Solleciti Inviati')}
+            <main>
+                <div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="form-group" style="flex-grow: 1; margin-bottom: 0;">
+                            <input type="text" id="report-search-input" placeholder="Cerca per titolo, numero o descrizione..." class="form-input">
+                        </div>
+                        <div class="form-group" style="flex-shrink: 0; min-width: 150px; margin-bottom: 0;">
+                            <select id="report-status-filter" class="form-select">
+                                <option value="all">Tutti gli stati</option>
+                                <option value="aperta">Aperta</option>
+                                <option value="in-corso">In Corso</option>
+                                <option value="risolta">Risolta</option>
+                                <option value="chiusa">Chiusa</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                    Elenco delle segnalazioni che hai sollecitato.
+                </p>
+                <div id="user-solleciti-list" class="list-container"></div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const loadSollecitiInviati = () => {
+            const container = document.getElementById('user-solleciti-list');
+            if (!container) return;
+            // Reset notifiche per i solleciti inviati
+            localStorage.setItem(`lastSeenSollecitiInviati_${currentUser.uid}`, Date.now());
+            updateNotificationUI('solleciti-inviati', 0);
+
+            const searchInput = document.getElementById('report-search-input');
+            const statusFilter = document.getElementById('report-status-filter');
+
+            const renderFiltered = (docs) => {
+                let filteredDocs = docs;
+                const searchTerm = searchInput?.value.toLowerCase().trim() || '';
+                const status = statusFilter?.value || 'all';
+
+                if (searchTerm) {
+                    filteredDocs = filteredDocs.filter(doc => {
+                        const data = doc.data();
+                        const reportNum = data.reportNumber || '';
+                        return `${reportNum} ${data.title} ${data.description}`.toLowerCase().includes(searchTerm);
+                    });
+                }
+                if (status !== 'all') {
+                    filteredDocs = filteredDocs.filter(doc => doc.data().status === status);
+                }
+
+                if (filteredDocs.length === 0) {
+                    container.innerHTML = `<div class="card"><p style="color:var(--secondary-text);">Nessun sollecito inviato trovato.</p></div>`;
+                } else {
+                    container.innerHTML = filteredDocs.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("");
+                }
+            };
+
+            const q = query(
+                collection(db, "reports"),
+                where("createdById", "==", currentUser.uid),
+                where("isUrgent", "==", true),
+                orderBy("createdAt", "desc")
+            );
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                renderFiltered(snapshot.docs);
+
+                if (searchInput) searchInput.oninput = () => renderFiltered(snapshot.docs);
+                if (statusFilter) statusFilter.onchange = () => renderFiltered(snapshot.docs);
+            });
+        };
         const loadUrgentReports = () => {
             const mainContainer = document.getElementById('reports-main-container');
             if (!mainContainer) return;
@@ -11209,36 +11361,41 @@ ${renderBottomNavigation()}
             const urgentQuery = query(collection(db, "reports"), where("isUrgent", "==", true), orderBy("createdAt", "desc"));
 
             onSnapshot(urgentQuery, (snapshot) => {
-                let relevantDocs = [];
+                const relevantDocs = snapshot.docs.filter(doc => {
+                    const data = doc.data();
 
-                // Filter urgent tickets based on user role - same logic as loadReceivedReports
-                if (['amministratore', 'supervisore', 'adm'].includes(userRole)) {
+                    // Se c'è un destinatario specifico, solo lui può vederlo
+                    if (data.specificRecipientId) {
+                        return data.specificRecipientId === currentUser.uid;
+                    }
+
+                    // Logica di visibilità basata sul ruolo
+                    if (userRole === 'supervisore') {
+                        return data.recipientType === 'supervisore';
+                    }
+                    // MODIFICA: L'account ADM vede solo i solleciti relativi a segnalazioni a lui destinate.
+                    if (userRole === 'adm') {
+                        return data.recipientType === 'adm';
+                    }
                     if (userRole === 'amministratore') {
-                        // Administrators see urgent reports assigned to them + tickets they forwarded
-                        relevantDocs = snapshot.docs.filter(doc => {
-                            const data = doc.data();
-                            return data.recipientType === 'amministratore' || // Direct assignments
-                                (data.forwardedByUserId === currentUser.uid) || // Tickets they forwarded
-                                (data.originalRecipient === 'amministratore' && data.forwardedBy); // Tickets forwarded back to admin
-                        });
-                    } else {
-                        // Supervisore and ADM see all urgent reports
-                        relevantDocs = snapshot.docs;
+                        return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
                     }
-                }
-                else if (['custode', 'consigliere', 'fornitore'].includes(userRole)) {
                     if (userRole === 'custode') {
-                        // Custode sees urgent tickets assigned to them AND tickets they forwarded
-                        relevantDocs = snapshot.docs.filter(doc => {
-                            const data = doc.data();
-                            return data.recipientType === userRole ||
-                                (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
-                        });
-                    } else {
-                        // Consigliere and Fornitore only see urgent tickets assigned directly to them
-                        relevantDocs = snapshot.docs.filter(doc => doc.data().recipientType === userRole);
+                        return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
                     }
-                }
+                    if (userRole === 'fornitore') {
+                        return data.recipientType === userRole;
+                    }
+                    if (userRole === 'consigliere') {
+                        // Un consigliere con permessi speciali vede anche quelle del supervisore
+                        if (userProfile.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
+                        }
+                        // Un consigliere normale vede solo le sue
+                        return data.recipientType === 'consigliere';
+                    }
+                    return false;
+                });
 
                 handleFilteredReports(relevantDocs, 'solleciti urgenti');
             });
@@ -11338,7 +11495,7 @@ ${renderBottomNavigation()}
             localStorage.setItem(`lastSeenSegnalazioniInviate_${currentUser.uid}`, Date.now());
             updateNotificationUI('segnalazioni-inviate', 0);
 
-            const userReportsQuery = query(collection(db, "reports"), where("createdById", "==", currentUser.uid), orderBy("createdAt", "desc"));
+            const userReportsQuery = query(collection(db, "reports"), where("createdById", "==", currentUser.uid));;
 
             onSnapshot(userReportsQuery, async (snapshot) => {
                 let docsForHandler = snapshot.docs;
@@ -11386,11 +11543,18 @@ ${renderBottomNavigation()}
 
             if (!activeContainer || !closedContainer) return;
 
+            // Ordina i documenti per data di creazione (dal più recente al più vecchio)
+            const sortedDocs = [...docs].sort((a, b) => {
+                const timeA = a.data().createdAt?.toMillis() || 0;
+                const timeB = b.data().createdAt?.toMillis() || 0;
+                return timeB - timeA;
+            });
+
             // Aggiorna contatori
             if (counterContainer) {
-                const openCount = docs.filter(doc => doc.data().status === 'aperta').length;
-                const inProgressCount = docs.filter(doc => doc.data().status === 'in-corso').length;
-                const totalCount = docs.length;
+                const openCount = sortedDocs.filter(doc => doc.data().status === 'aperta').length;
+                const inProgressCount = sortedDocs.filter(doc => doc.data().status === 'in-corso').length;
+                const totalCount = sortedDocs.length;
                 counterContainer.innerHTML = `
                     <div class="card" style="padding: 0.75rem; text-align: center;"><div class="page-title" style="font-size: 1.5rem; color: var(--danger);">${openCount}</div><div class="page-subtitle" style="text-transform: none;">Richieste aperte n.${openCount}</div></div>
                     <div class="card" style="padding: 0.75rem; text-align: center;"><div class="page-title" style="font-size: 1.5rem; color: var(--warning);">${inProgressCount}</div><div class="page-subtitle" style="text-transform: none;">Richieste in corso n.${inProgressCount}</div></div>
@@ -11988,20 +12152,20 @@ ${renderBottomNavigation()}
 
         const voteOnPoll = async (pollId, optionIndex) => {
             try {
-                        const settingsRef = doc(db, "settings", "pollCreationAuthorization");
-        const settingsSnap = await getDoc(settingsRef);
-        const pollSetting = settingsSnap.exists() ? settingsSnap.data().setting : "option2";
+                const settingsRef = doc(db, "settings", "pollCreationAuthorization");
+                const settingsSnap = await getDoc(settingsRef);
+                const pollSetting = settingsSnap.exists() ? settingsSnap.data().setting : "option2";
 
-        const pollRef = doc(db, "polls", pollId);
-        const pollSnap = await getDoc(pollRef);
-        if (!pollSnap.exists()) return;
+                const pollRef = doc(db, "polls", pollId);
+                const pollSnap = await getDoc(pollRef);
+                if (!pollSnap.exists()) return;
 
-        const poll = pollSnap.data();
+                const poll = pollSnap.data();
 
-        // Check authorization AFTER fetching the poll to get its type and target group
-        if (!isUserAllowedToVote(userProfile, pollSetting, poll)) {
-            return alert("Non sei autorizzato a votare in questo sondaggio.");
-        }
+                // Check authorization AFTER fetching the poll to get its type and target group
+                if (!isUserAllowedToVote(userProfile, pollSetting, poll)) {
+                    return alert("Non sei autorizzato a votare in questo sondaggio.");
+                }
                 if (poll.deadline && poll.deadline.toDate() < new Date()) return alert("Sondaggio scaduto.");
 
                 const updatedOptions = [...poll.options];
@@ -12011,11 +12175,11 @@ ${renderBottomNavigation()}
                 // Se l'utente ha già votato, gestisci il cambio di voto
                 if (voterIndex > -1) {
                     const oldVoteRecord = updatedVoters[voterIndex];
-                    
+
                     // MODIFICA 1: Impedisce di votare nuovamente per la stessa opzione in un sondaggio a scelta singola.
                     if (typeof optionIndex !== 'undefined' && oldVoteRecord.vote === poll.options[optionIndex].text) {
                         // L'utente sta cliccando di nuovo sulla stessa opzione, non fare nulla.
-                        return; 
+                        return;
                     }
 
                     const oldChoices = oldVoteRecord.vote.split(', ');
@@ -12290,6 +12454,209 @@ ${renderBottomNavigation()}
                     alert("Si è verificato un errore.");
                 }
             });
+        };
+
+        const openAdmResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="adm-resolution-form" class="space-y-4" onsubmit="handleAdmResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleAdmResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta da ADM. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openAdminResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="admin-resolution-form" class="space-y-4" onsubmit="handleAdminResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-admin" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-admin" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleAdminResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-admin').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dall'Amministratore. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openSupervisorResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="supervisor-resolution-form" class="space-y-4" onsubmit="handleSupervisorResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-supervisor" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-supervisor" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleSupervisorResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-supervisor').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dal Supervisore. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openConsigliereResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="consigliere-resolution-form" class="space-y-4" onsubmit="handleConsigliereResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-consigliere" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-consigliere" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleConsigliereResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-consigliere').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dal Consigliere. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openCondominoResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="condomino-resolution-form" class="space-y-4" onsubmit="handleCondominoResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-condomino" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-condomino" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleCondominoResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-condomino').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dal Condomino. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openCustodeResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="custode-resolution-form" class="space-y-4" onsubmit="handleCustodeResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-custode" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-custode" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleCustodeResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-custode').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dal Custode. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
+        };
+
+        const openFornitoreResolutionModal = (reportId) => {
+            const modalContent = `
+                <form id="fornitore-resolution-form" class="space-y-4" onsubmit="handleFornitoreResolution(event, '${reportId}')">
+                    <p class="form-label" style="color:var(--secondary-text);">Per marcare la segnalazione come risolta, è obbligatorio inserire una motivazione.</p>
+                    <div>
+                        <label for="resolution-text-fornitore" class="form-label">Motivazione della risoluzione</label>
+                        <textarea id="resolution-text-fornitore" rows="4" required class="form-textarea" placeholder="Descrivi come è stato risolto il problema..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-2">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">Annulla</button>
+                        <button type="submit" class="btn btn-primary">Conferma Risoluzione</button>
+                    </div>
+                </form>
+            `;
+            showModal('Motivazione Risoluzione', modalContent);
+        };
+
+        const handleFornitoreResolution = async (event, reportId) => {
+            event.preventDefault();
+            const justification = document.getElementById('resolution-text-fornitore').value.trim();
+            if (!justification) {
+                alert('Per favore, fornisci una motivazione.');
+                return;
+            }
+            const updateText = `Segnalazione risolta dal Fornitore. Motivazione: "${justification}"`;
+            await updateReportStatus(reportId, 'risolta', updateText);
+            hideModal();
         };
 
         const sendReportReminder = async (reportId) => {
@@ -13096,7 +13463,7 @@ ${renderBottomNavigation()}
         };
 
         const checkForNewReports = () => {
-            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm"].includes(userProfile?.tipoUtente)) return;
+            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm", "condomino"].includes(userProfile?.tipoUtente)) return;
             reportsListener && reportsListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenReport_${currentUser.uid}`), 10);
@@ -13125,6 +13492,35 @@ ${renderBottomNavigation()}
         };
 
         const checkForNewSolleciti = () => {
+            const checkForSentReminderUpdates = () => {
+                if (!currentUser) return;
+                sentRemindersListener && sentRemindersListener();
+
+                let lastSeen = parseInt(localStorage.getItem(`lastSeenSollecitiInviati_${currentUser.uid}`), 10);
+                if (!lastSeen) {
+                    lastSeen = Date.now();
+                    localStorage.setItem(`lastSeenSollecitiInviati_${currentUser.uid}`, lastSeen);
+                }
+                const lastSeenDate = new Date(lastSeen);
+
+                const q = query(
+                    collection(db, "reports"),
+                    where("createdById", "==", currentUser.uid),
+                    where("isUrgent", "==", true), // Solo quelle che l'utente ha sollecitato
+                    where("updatedAt", ">", lastSeenDate)
+                );
+
+                sentRemindersListener = onSnapshot(q, snapshot => {
+                    const updatedByOthers = snapshot.docs.filter(doc => {
+                        const report = doc.data();
+                        const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
+                        const userFullName = `${userProfile?.nome} ${userProfile?.cognome}`;
+                        return lastUpdate && lastUpdate.by !== userFullName;
+                    });
+
+                    updateNotificationUI('solleciti-inviati', updatedByOthers.length);
+                });
+            };
             if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) return;
             sollecitisListener && sollecitisListener();
 
@@ -13397,6 +13793,20 @@ ${renderBottomNavigation()}
         window.deleteReportCategory = deleteReportCategory;
         window.openCategoryEditModal = openCategoryEditModal;
         window.updateReportCategory = updateReportCategory;
+        window.openAdmResolutionModal = openAdmResolutionModal;
+        window.handleAdmResolution = handleAdmResolution;
+        window.openAdminResolutionModal = openAdminResolutionModal;
+        window.handleAdminResolution = handleAdminResolution;
+        window.openSupervisorResolutionModal = openSupervisorResolutionModal;
+        window.handleSupervisorResolution = handleSupervisorResolution;
+        window.openConsigliereResolutionModal = openConsigliereResolutionModal;
+        window.handleConsigliereResolution = handleConsigliereResolution;
+        window.openCondominoResolutionModal = openCondominoResolutionModal;
+        window.handleCondominoResolution = handleCondominoResolution;
+        window.openCustodeResolutionModal = openCustodeResolutionModal;
+        window.handleCustodeResolution = handleCustodeResolution;
+        window.openFornitoreResolutionModal = openFornitoreResolutionModal;
+        window.handleFornitoreResolution = handleFornitoreResolution;
 
         const showSupervisorWarningForConsigliere = () => {
             const modalContent = `
@@ -13544,6 +13954,10 @@ ${renderBottomNavigation()}
                 if (sollecitisListener) {
                     sollecitisListener();
                     sollecitisListener = null;
+                }
+                if (sentRemindersListener) {
+                    sentRemindersListener();
+                    sentRemindersListener = null;
                 }
 
                 currentUser = null;
