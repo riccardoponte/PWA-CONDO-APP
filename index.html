@@ -11144,13 +11144,8 @@ ${renderBottomNavigation()}
                 }
             };
 
-            const q = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(1));
-            getDocs(q).then(snapshot => {
-                if (!snapshot.empty) {
-                    localStorage.setItem(`lastSeenReport_${currentUser.uid}`, snapshot.docs[0].data().createdAt.toMillis());
-                    updateNotificationUI('segnalazioni', 0);
-                }
-            });
+            localStorage.setItem(`lastSeenReport_${currentUser.uid}`, Date.now());
+            updateNotificationUI('segnalazioni', 0);
 
             const baseQuery = query(collection(db, "reports"), orderBy("createdAt", "desc"));
             onSnapshot(baseQuery, (snapshot) => {
