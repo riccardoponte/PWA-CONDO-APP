@@ -3550,8 +3550,8 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="report-location-manual" class="form-label">Ubicazione (Es. Interno, Piano, Area Comune)</label>
-                                <input type="text" id="report-location-manual" required class="form-input" placeholder="Es. Interno 15, Piano 3">
+                                <label for="report-location-manual" class="form-label">Ubicazione (*Facoltativo* Es. Interno, Piano, Area Comune)</label>
+                                <input type="text" id="report-location-manual" class="form-input" placeholder="Es. Interno 15, Piano 3">
                             </div>
                             
                             <!-- Campi condizionali per checkboxes comunicazione -->
@@ -7362,7 +7362,7 @@ ${renderBottomNavigation()}
                     specificRecipientId = specificSelect.value;
                 }
 
-                if (!title || !description || !category || !priority || !location || !recipient) {
+                if (!title || !description || !category || !priority || !recipient) {
                     alert("Compila tutti i campi obbligatori.");
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Invia Segnalazione';
@@ -10561,7 +10561,7 @@ ${renderBottomNavigation()}
             }
 
             // Logica pulsanti per il gestore
-            if (canManageThisReport) {
+            if (canManageThisReport && !isCreatorView) {
                 if (report.status === 'aperta') {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE: Visibilità condizionale "Prendi in Carico" ---
                     // Il pulsante appare per tutti i manager, tranne per il supervisore se il ticket non è suo e per il consigliere.
@@ -10667,6 +10667,27 @@ ${renderBottomNavigation()}
                 if (report.status === 'aperta' || report.status === 'in-corso') {
                     primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary" style="flex:1;">Sollecita</button>`;
                 }
+
+                // Aggiunta pulsanti "Aggiorna" e "Marca come Risolta" per i creatori non-condomini (i condomini li hanno già da un altro blocco)
+                if (userProfile?.tipoUtente !== 'condomino' && report.status !== 'chiusa') {
+                    primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Aggiorna</button>`;
+                    
+                    // CORREZIONE: Mostra "Marca come Risolta" per stati 'aperta' e 'in-corso'
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        let resolutionModalFunction = '';
+                        switch (userProfile?.tipoUtente) {
+                            case 'supervisore': resolutionModalFunction = `openSupervisorResolutionModal('${reportId}')`; break;
+                            case 'consigliere': resolutionModalFunction = `openConsigliereResolutionModal('${reportId}')`; break;
+                            case 'custode': resolutionModalFunction = `openCustodeResolutionModal('${reportId}')`; break;
+                            case 'fornitore': resolutionModalFunction = `openFornitoreResolutionModal('${reportId}')`; break;
+                            case 'amministratore': resolutionModalFunction = `openAdminResolutionModal('${reportId}')`; break;
+                            case 'adm': resolutionModalFunction = `openAdmResolutionModal('${reportId}')`; break;
+                            default: resolutionModalFunction = `alert('Funzione non disponibile.')`; break;
+                        }
+                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                    }
+                }
+
                 if (report.status === 'risolta') {
                     primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary" style="flex:1;">Conferma Risoluzione</button>`;
                     primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white; flex:1;">Non Risolto</button>`;
@@ -10735,7 +10756,7 @@ ${renderBottomNavigation()}
                 </div>
                 <p class="form-label" style="padding-left: 64px; color: var(--secondary-text); margin-top: 0.75rem;">Inviata da: <strong>${report.createdByUserType ? (report.createdByUserType.charAt(0).toUpperCase() + report.createdByUserType.slice(1)) : report.createdBy}</strong></p>
                 ${report.forwardedBy ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inoltrata da: <strong>${report.forwardedBy}</strong> (${report.originalRecipient}) → Attualmente gestita da: <strong>${report.recipientType.charAt(0).toUpperCase() + report.recipientType.slice(1)}</strong></p>` : ''}
-                ${isCreatorView && userProfile?.tipoUtente === 'amministratore' && report.specificRecipientName ? `
+                ${isCreatorView && report.specificRecipientName ? `
                 <p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">Inviata a: <strong>${report.specificRecipientName}</strong></p>
                 ` : ''}
                 ${report.communicateOwnerPhone && report.createdByPhone ? `<p class="form-label" style="padding-left: 64px; color: var(--accent-color); margin-top: 0.5rem;">📞 Telefono condomino: <strong>${report.createdByPhone}</strong></p>` : ''}
@@ -11127,8 +11148,8 @@ ${renderBottomNavigation()}
                 }
 
                 if (shouldShowControls) {
-                    const activeTickets = filteredDocs.filter(doc => doc.data().status !== 'chiusa' && doc.data().status !== 'risolta');
-                    const closedTickets = filteredDocs.filter(doc => doc.data().status === 'chiusa' || doc.data().status === 'risolta');
+                    const activeTickets = filteredDocs.filter(doc => ['aperta', 'in-corso'].includes(doc.data().status));
+                    const closedTickets = filteredDocs.filter(doc => ['risolta', 'chiusa'].includes(doc.data().status));
 
                     activeContainer.innerHTML = activeTickets.length > 0
                         ? activeTickets.map((doc, index) => renderReportCardHTML(doc.data(), doc.id, index + 1)).join("")
@@ -13458,12 +13479,12 @@ ${renderBottomNavigation()}
         };
 
         const checkForNewReports = () => {
-            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm", "condomino"].includes(userProfile?.tipoUtente)) return;
+            // Rimosso "condomino" da questo controllo, poiché le sue notifiche sono gestite da checkForUserReportUpdates
+            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm"].includes(userProfile?.tipoUtente)) return;
             reportsListener && reportsListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenReport_${currentUser.uid}`), 10);
 
-            // Se non c'è un timestamp salvato, inizializza con il timestamp corrente per evitare notifiche per vecchi report
             if (!lastSeen) {
                 lastSeen = Date.now();
                 localStorage.setItem(`lastSeenReport_${currentUser.uid}`, lastSeen);
@@ -13471,17 +13492,50 @@ ${renderBottomNavigation()}
 
             const lastSeenDate = new Date(lastSeen);
 
-            let q;
-            if (['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile.tipoUtente)) {
-                // Supervisore, Admin, Amministratore e Consigliere vedono le notifiche per tutte le nuove e aggiornate segnalazioni
-                q = query(collection(db, "reports"), where("updatedAt", ">", lastSeenDate));
-            } else {
-                // Gli altri ruoli manageriali vedono solo quelle a loro destinate che sono state aggiornate
-                q = query(collection(db, "reports"), where("recipientType", "==", userProfile.tipoUtente), where("updatedAt", ">", lastSeenDate));
-            }
+            // La query ora è più generica e il filtraggio fine viene fatto dopo
+            const q = query(collection(db, "reports"), where("updatedAt", ">", lastSeenDate));
 
             reportsListener = onSnapshot(q, snapshot => {
-                const unreadCount = snapshot.size;
+                const userRole = userProfile.tipoUtente;
+
+                // Applica la stessa logica di visibilità della pagina "Segnalazioni Ricevute"
+                const relevantDocs = snapshot.docs.filter(doc => {
+                    const data = doc.data();
+
+                    // Escludi le segnalazioni create dall'utente corrente per non auto-notificarsi
+                    if (data.createdById === currentUser.uid) {
+                        return false;
+                    }
+
+                    if (data.specificRecipientId) {
+                        return data.specificRecipientId === currentUser.uid;
+                    }
+
+                    if (userRole === 'supervisore') {
+                        return data.recipientType === 'supervisore';
+                    }
+                    if (userRole === 'adm') {
+                        return data.recipientType === 'adm';
+                    }
+                    if (userRole === 'amministratore') {
+                        return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                    }
+                    if (userRole === 'custode') {
+                        return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
+                    }
+                    if (userRole === 'fornitore') {
+                        return data.recipientType === userRole;
+                    }
+                    if (userRole === 'consigliere') {
+                        if (userProfile.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
+                        }
+                        return data.recipientType === 'consigliere';
+                    }
+                    return false;
+                });
+
+                const unreadCount = relevantDocs.length;
                 updateNotificationUI('segnalazioni', unreadCount);
             });
         };
