@@ -383,6 +383,39 @@
             width: 100%;
         }
 
+        /* Responsive Report Actions Container */
+        .report-actions-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-left: 64px;
+            /* Align with content */
+        }
+
+        .report-actions-container .btn {
+            flex: 1;
+            min-width: 120px;
+            /* Minimum width to prevent too narrow buttons */
+        }
+
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .report-actions-container {
+                padding-left: 0;
+                /* Remove left padding on mobile */
+                flex-direction: column;
+                /* Stack buttons vertically on mobile */
+            }
+
+            .report-actions-container .btn {
+                flex: none;
+                width: 100%;
+                /* Full width buttons on mobile */
+                min-width: unset;
+            }
+        }
+
         /* Form */
         .form-group {
             margin-bottom: 1rem;
@@ -779,7 +812,7 @@
                 word-wrap: break-word;
                 line-height: 1.4;
             }
-            
+
             /* Stili specifici per il contenitore del titolo delle segnalazioni */
             .list-item-content .title span {
                 white-space: normal;
@@ -10553,10 +10586,10 @@ ${renderBottomNavigation()}
             // Logica pulsanti per il condomino nelle segnalazioni
             if (userProfile?.tipoUtente === 'condomino' && report.status !== 'chiusa') {
                 // Pulsante Aggiorna per il condomino
-                primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Aggiorna</button>`;
-                // Pulsante Marca come Risolta per il condomino (solo se la segnalazione è in corso)
-                if (report.status === 'in-corso') {
-                    primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                // Pulsante Marca come Risolta per il condomino
+                if (report.status === 'aperta' || report.status === 'in-corso') {
+                    primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
                 }
             }
 
@@ -10570,33 +10603,33 @@ ${renderBottomNavigation()}
                     const isForSupervisor = report.recipientType === 'supervisore';
 
                     if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere && userProfile?.tipoUtente !== 'adm') {
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary" style="flex:1;">Prendi in Carico</button>`;
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
                     }
                     // --- FINE MODIFICA ---
                 }
-                if (report.status === 'in-corso') {
+                if (report.status === 'aperta' || report.status === 'in-corso') {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE INIZIO: Azione "Risolta" personalizzata ---
                     if (userProfile?.tipoUtente === 'supervisore') {
                         // Per il supervisore, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
                     } else if (userProfile?.tipoUtente === 'consigliere') {
                         // Per il consigliere, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
                     } else {
                         // Gli altri ruoli usano l'azione standard.
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn btn-primary">Marca come Risolta</button>`;
                     }
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE FINE ---
                 }
                 if (userProfile?.tipoUtente === 'amministratore') {
                     if (report.status === 'aperta' || report.status === 'in-corso') {
-                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="flex:1; background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
                         // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
-                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
                     }
                     // NUOVA LOGICA: Pulsante per chiudere ticket risolti
                     if (report.status === 'risolta') {
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa dall\\'amministratore.')" class="btn btn-primary" style="flex:1;">Chiudi Segnalazione</button>`;
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa dall\\'amministratore.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
                     }
                 }
 
@@ -10604,22 +10637,15 @@ ${renderBottomNavigation()}
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         forwardButtonHtml = `<button onclick="forwardReportToAdmin('${reportId}')" class="btn btn-secondary" style="width: 100%; background-color: var(--accent-color-dark); color: white;">Inoltra ad Amministratore</button>`;
                     }
-                    // Pulsante Marca come Risolta per il custode nelle segnalazioni ricevute
-                    if (currentPage === 'segnalazioni_ricevute' && report.status === 'in-corso') {
-                        primaryActionButtonsHtml += `<button onclick="openCustodeResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
-                    }
                 }
 
                 if (userProfile?.tipoUtente === 'fornitore') {
-                    // Pulsante Marca come Risolta per il fornitore nelle segnalazioni ricevute
-                    if (currentPage === 'segnalazioni_ricevute' && report.status === 'in-corso') {
-                        primaryActionButtonsHtml += `<button onclick="openFornitoreResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
-                    }
+                    // No specific buttons needed here - handled by general creator logic
                 }
 
                 // NUOVA LOGICA: Pulsante "Marca come Risolta" per ADM
                 if (userProfile?.tipoUtente === 'adm' && (report.status === 'aperta' || report.status === 'in-corso')) {
-                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
                 }
 
                 // Pulsante Aggiorna separato - andrà in una riga separata
@@ -10665,13 +10691,13 @@ ${renderBottomNavigation()}
             // Logica pulsanti per il creatore (condomino, adm, amministratore, supervisore, consigliere, custode e fornitore)
             if (isCreator && (userProfile?.tipoUtente === 'condomino' || userProfile?.tipoUtente === 'adm' || userProfile?.tipoUtente === 'amministratore' || userProfile?.tipoUtente === 'supervisore' || userProfile?.tipoUtente === 'consigliere' || userProfile?.tipoUtente === 'custode' || userProfile?.tipoUtente === 'fornitore')) {
                 if (report.status === 'aperta' || report.status === 'in-corso') {
-                    primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary" style="flex:1;">Sollecita</button>`;
+                    primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
                 }
 
                 // Aggiunta pulsanti "Aggiorna" e "Marca come Risolta" per i creatori non-condomini (i condomini li hanno già da un altro blocco)
                 if (userProfile?.tipoUtente !== 'condomino' && report.status !== 'chiusa') {
-                    primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="flex:1;">Aggiorna</button>`;
-                    
+                    primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+
                     // CORREZIONE: Mostra "Marca come Risolta" per stati 'aperta' e 'in-corso'
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         let resolutionModalFunction = '';
@@ -10684,13 +10710,13 @@ ${renderBottomNavigation()}
                             case 'adm': resolutionModalFunction = `openAdmResolutionModal('${reportId}')`; break;
                             default: resolutionModalFunction = `alert('Funzione non disponibile.')`; break;
                         }
-                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn btn-primary" style="flex:1;">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn btn-primary">Marca come Risolta</button>`;
                     }
                 }
 
                 if (report.status === 'risolta') {
-                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary" style="flex:1;">Conferma Risoluzione</button>`;
-                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white; flex:1;">Non Risolto</button>`;
+                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary">Conferma Risoluzione</button>`;
+                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white;">Non Risolto</button>`;
                 }
             }
 
@@ -10824,9 +10850,9 @@ ${renderBottomNavigation()}
                 <!-- FINE NUOVA SEZIONE -->
 
                 ${updatesHtml}
-                ${primaryActionButtonsHtml ? `<div class="flex flex-wrap gap-2 mt-4">${primaryActionButtonsHtml}</div>` : ''}
-                ${forwardButtonHtml ? `<div class="mt-2">${forwardButtonHtml}</div>` : ''}
-                ${updateButtonHtml ? `<div class="mt-2">${updateButtonHtml}</div>` : ''}
+                ${primaryActionButtonsHtml ? `<div class="report-actions-container">${primaryActionButtonsHtml}</div>` : ''}
+                ${forwardButtonHtml ? `<div class="report-actions-container">${forwardButtonHtml}</div>` : ''}
+                ${updateButtonHtml ? `<div class="report-actions-container">${updateButtonHtml}</div>` : ''}
             </div>`;
         };
 
@@ -11516,34 +11542,32 @@ ${renderBottomNavigation()}
             onSnapshot(userReportsQuery, async (snapshot) => {
                 let docsForHandler = snapshot.docs;
 
-                // Se l'utente è amministratore, arricchiamo i dati con il nome del destinatario
-                if (userProfile?.tipoUtente === 'amministratore') {
-                    const recipientIds = snapshot.docs
-                        .map(doc => doc.data().specificRecipientId)
-                        .filter(id => id); // Filtra ID nulli o vuoti
+                // Arricchiamo i dati con il nome del destinatario per TUTTI gli utenti
+                const recipientIds = snapshot.docs
+                    .map(doc => doc.data().specificRecipientId)
+                    .filter(id => id); // Filtra ID nulli o vuoti
 
-                    if (recipientIds.length > 0) {
-                        const uniqueRecipientIds = [...new Set(recipientIds)];
-                        const recipientsSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "in", uniqueRecipientIds)));
+                if (recipientIds.length > 0) {
+                    const uniqueRecipientIds = [...new Set(recipientIds)];
+                    const recipientsSnapshot = await getDocs(query(collection(db, "users"), where("__name__", "in", uniqueRecipientIds)));
 
-                        const recipientsMap = new Map();
-                        recipientsSnapshot.forEach(doc => {
-                            const user = doc.data();
-                            recipientsMap.set(doc.id, `${user.nome} ${user.cognome}`);
-                        });
+                    const recipientsMap = new Map();
+                    recipientsSnapshot.forEach(doc => {
+                        const user = doc.data();
+                        recipientsMap.set(doc.id, `${user.nome} ${user.cognome}`);
+                    });
 
-                        // Crea un nuovo array di "doc" fittizi con i dati arricchiti
-                        docsForHandler = snapshot.docs.map(doc => {
-                            const originalData = doc.data();
-                            const recipientName = recipientsMap.get(originalData.specificRecipientId);
+                    // Crea un nuovo array di "doc" fittizi con i dati arricchiti
+                    docsForHandler = snapshot.docs.map(doc => {
+                        const originalData = doc.data();
+                        const recipientName = recipientsMap.get(originalData.specificRecipientId);
 
-                            if (recipientName) {
-                                const augmentedData = { ...originalData, specificRecipientName: recipientName };
-                                return { id: doc.id, data: () => augmentedData };
-                            }
-                            return doc; // Restituisce il doc originale se non c'è un destinatario specifico
-                        });
-                    }
+                        if (recipientName) {
+                            const augmentedData = { ...originalData, specificRecipientName: recipientName };
+                            return { id: doc.id, data: () => augmentedData };
+                        }
+                        return doc; // Restituisce il doc originale se non c'è un destinatario specifico
+                    });
                 }
 
                 handleUserReports(docsForHandler);
