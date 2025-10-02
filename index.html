@@ -10589,7 +10589,7 @@ ${renderBottomNavigation()}
                 primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
                 // Pulsante Marca come Risolta per il condomino
                 if (report.status === 'aperta' || report.status === 'in-corso') {
-                    primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
+                    primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                 }
             }
 
@@ -10611,13 +10611,13 @@ ${renderBottomNavigation()}
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE INIZIO: Azione "Risolta" personalizzata ---
                     if (userProfile?.tipoUtente === 'supervisore') {
                         // Per il supervisore, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     } else if (userProfile?.tipoUtente === 'consigliere') {
                         // Per il consigliere, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
-                    } else {
-                        // Gli altri ruoli usano l'azione standard.
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn btn-primary">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    } else if (!['amministratore', 'adm'].includes(userProfile?.tipoUtente)) {
+                        // Gli altri ruoli (es. custode, fornitore) usano l'azione standard.
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     }
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE FINE ---
                 }
@@ -10625,7 +10625,7 @@ ${renderBottomNavigation()}
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
                         // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
-                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     }
                     // NUOVA LOGICA: Pulsante per chiudere ticket risolti
                     if (report.status === 'risolta') {
@@ -10645,7 +10645,7 @@ ${renderBottomNavigation()}
 
                 // NUOVA LOGICA: Pulsante "Marca come Risolta" per ADM
                 if (userProfile?.tipoUtente === 'adm' && (report.status === 'aperta' || report.status === 'in-corso')) {
-                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn btn-primary">Marca come Risolta</button>`;
+                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                 }
 
                 // Pulsante Aggiorna separato - andrà in una riga separata
@@ -10710,7 +10710,7 @@ ${renderBottomNavigation()}
                             case 'adm': resolutionModalFunction = `openAdmResolutionModal('${reportId}')`; break;
                             default: resolutionModalFunction = `alert('Funzione non disponibile.')`; break;
                         }
-                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn btn-primary">Marca come Risolta</button>`;
+                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     }
                 }
 
