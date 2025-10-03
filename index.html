@@ -5284,8 +5284,8 @@ ${renderBottomNavigation()}
             if (!listContainer || !form) return;
 
             try {
-                // MODIFICA: La query ora cerca utenti che sono 'amministratore', 'consigliere' o 'adm'.
-                const allUsersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "in", ["amministratore", "consigliere", "adm"])));
+                // MODIFICA: La query ora cerca utenti che sono 'amministratore', 'consigliere', 'adm' o 'supervisore'.
+                const allUsersSnapshot = await getDocs(query(collection(db, "users"), where("tipoUtente", "in", ["amministratore", "consigliere", "adm", "supervisore"])));
 
                 const usersDocs = allUsersSnapshot.docs
                     .sort((a, b) => {
@@ -11215,6 +11215,10 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
+                        // Amministratore con funzioni supervisore può vedere anche segnalazioni destinate al supervisore
+                        if (userProfile?.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                        }
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
                     }
                     if (userRole === 'custode') {
@@ -11420,6 +11424,10 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
+                        // Amministratore con funzioni supervisore può vedere anche solleciti per segnalazioni destinate al supervisore
+                        if (userProfile?.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                        }
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
                     }
                     if (userRole === 'custode') {
@@ -13542,6 +13550,10 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
+                        // Amministratore con funzioni supervisore può vedere anche segnalazioni destinate al supervisore
+                        if (userProfile?.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                        }
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
                     }
                     if (userRole === 'custode') {
