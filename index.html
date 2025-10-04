@@ -10629,7 +10629,10 @@ ${renderBottomNavigation()}
                     }
                     // NUOVA LOGICA: Pulsante per chiudere ticket risolti
                     if (report.status === 'risolta') {
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa dall\\'amministratore.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
+                        // Hide "Close Report" button if the creator ('adm') has marked it as resolved.
+                        if (report.createdByUserType !== 'adm') {
+                            primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa dall\\'amministratore.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
+                        }
                     }
                 }
 
@@ -10643,13 +10646,10 @@ ${renderBottomNavigation()}
                     // No specific buttons needed here - handled by general creator logic
                 }
 
-                // NUOVA LOGICA: Pulsante "Marca come Risolta" per ADM
-                if (userProfile?.tipoUtente === 'adm' && (report.status === 'aperta' || report.status === 'in-corso')) {
-                    primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
-                }
+                
 
                 // Pulsante Aggiorna separato - andrà in una riga separata
-                if (report.status !== 'chiusa') {
+                if (report.status !== 'chiusa' && !isCreator) {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE: Pulsante Aggiorna personalizzato ---
                     if (userProfile?.tipoUtente === 'supervisore') {
                         // Il supervisore ha pulsanti specifici nelle segnalazioni ricevute
@@ -10681,8 +10681,11 @@ ${renderBottomNavigation()}
                             updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Fornitore</button>`;
                         }
                     } else {
-                        // Gli altri ruoli mantengono il pulsante standard.
-                        updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        // Gli altri ruoli (come l'amministratore) mantengono il pulsante standard,
+                        // ma nascondiamo "Aggiorna" se la segnalazione dell'ADM è già risolta.
+                        if (!(userProfile?.tipoUtente === 'amministratore' && report.status === 'risolta' && report.createdByUserType === 'adm')) {
+                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
+                        }
                     }
                     // --- FINE MODIFICA ---
                 }
@@ -10715,8 +10718,12 @@ ${renderBottomNavigation()}
                 }
 
                 if (report.status === 'risolta') {
-                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary">Conferma Risoluzione</button>`;
-                    primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white;">Non Risolto</button>`;
+                    if (userProfile?.tipoUtente === 'adm' && currentPage === 'segnalazioni_utente' && report.recipientType === 'amministratore') {
+                        primaryActionButtonsHtml += `<button onclick="openJustificationModal('${reportId}')" class="btn btn-primary">Riapri Segnalazione</button>`;
+                    } else {
+                        primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary">Conferma Risoluzione</button>`;
+                        primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white;">Non Risolto</button>`;
+                    }
                 }
             }
 
@@ -10767,7 +10774,7 @@ ${renderBottomNavigation()}
                         <div class="title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
     <span style="flex: 1; min-width: 0;">${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
     ${/* Indicatore visivo per segnalazioni modificate */''}
-    ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}`) ? `
+    ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}` && !['risolta', 'chiusa'].includes(report.status)) ? `
         <span style="width: 10px; height: 10px; background-color: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;" title="Segnalazione modificata"></span>
         <style> @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } } </style>
     ` : ''}
@@ -11424,11 +11431,12 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'adm';
                     }
                     if (userRole === 'amministratore') {
-                        // Amministratore con funzioni supervisore può vedere anche solleciti per segnalazioni destinate al supervisore
+                        // Amministratore with supervisor functions can also see supervisor's urgent tickets
                         if (userProfile?.canAccessSupervisorFunctions === true) {
-                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore';
                         }
-                        return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
+                        // Otherwise, only see their own
+                        return data.recipientType === 'amministratore';
                     }
                     if (userRole === 'custode') {
                         return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
@@ -13619,17 +13627,52 @@ ${renderBottomNavigation()}
 
             const lastSeenDate = new Date(lastSeen);
 
-            // Query per solleciti urgenti - segnalazioni con priorità alta che sono ancora aperte
+            // Query for reports marked as urgent (solleciti) that the user should be notified about
             const q = query(
                 collection(db, "reports"),
-                where("priority", "in", ["alta", "richiesta-intervento-danno"]),
-                where("status", "in", ["aperta", "in-corso"]),
+                where("isUrgent", "==", true),
                 where("updatedAt", ">", lastSeenDate)
             );
 
             sollecitisListener = onSnapshot(q, snapshot => {
-                const unreadCount = snapshot.size;
-                updateNotificationUI('solleciti', unreadCount);
+                const userRole = userProfile.tipoUtente;
+                const relevantDocs = snapshot.docs.filter(doc => {
+                    const data = doc.data();
+                    
+                    // Do not notify the user for their own actions (e.g., if they created the ticket)
+                    if (data.createdById === currentUser.uid) {
+                        return false;
+                    }
+
+                    // If a specific recipient is set, only they should be notified
+                    if (data.specificRecipientId) {
+                        return data.specificRecipientId === currentUser.uid;
+                    }
+
+                    // Role-based visibility for notifications
+                    if (userRole === 'amministratore') {
+                        if (userProfile?.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'amministratore' || data.recipientType === 'supervisore';
+                        }
+                        return data.recipientType === 'amministratore';
+                    }
+                    if (userRole === 'supervisore') {
+                        return data.recipientType === 'supervisore';
+                    }
+                    if (userRole === 'consigliere') {
+                        if (userProfile.canAccessSupervisorFunctions === true) {
+                            return data.recipientType === 'consigliere' || data.recipientType === 'supervisore';
+                        }
+                        return data.recipientType === 'consigliere';
+                    }
+                    if (userRole === 'adm') {
+                        return data.recipientType === 'adm';
+                    }
+                    
+                    return false; // Other roles are not notified about received solleciti by default
+                });
+                
+                updateNotificationUI('solleciti', relevantDocs.length);
             });
         };
 
