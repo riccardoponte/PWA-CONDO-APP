@@ -10675,7 +10675,10 @@ ${renderBottomNavigation()}
                 }
 
                 if (userProfile?.tipoUtente === 'fornitore') {
-                    // No specific buttons needed here - handled by general creator logic
+                    if (report.status === 'aperta') {
+                        // Add "Non presa in carico" button for fornitore
+                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
+                    }
                 }
 
 
