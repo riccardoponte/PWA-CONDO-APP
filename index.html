@@ -2702,6 +2702,11 @@
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
             <span>Segnala</span>
         </a>
+        <a href="#" onclick="navigateTo('solleciti_menu', event)" class="nav-item ${['solleciti_menu', 'solleciti_inviati', 'solleciti_ricevuti'].includes(currentPage) ? 'active' : ''}">
+            <span id="solleciti-notification-badge" class="notification-badge hidden"></span>
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>Solleciti</span>
+        </a>
         <a href="#" onclick="navigateTo('infoUtili', event)" class="nav-item ${currentPage === 'infoUtili' ? 'active' : ''}">
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z" /></svg>
             <span>Info</span>
@@ -2724,7 +2729,7 @@
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
     <span>Segnala</span>
 </a>` : ''}
-    ${['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('solleciti_menu', event)" class="nav-item ${['solleciti_menu', 'solleciti_inviati', 'solleciti_ricevuti'].includes(currentPage) ? 'active' : ''}">
+    ${['supervisore', 'adm', 'amministratore', 'consigliere', 'condomino', 'fornitore', 'custode'].includes(userProfile?.tipoUtente) ? `<a href="#" onclick="navigateTo('solleciti_menu', event)" class="nav-item ${['solleciti_menu', 'solleciti_inviati', 'solleciti_ricevuti'].includes(currentPage) ? 'active' : ''}">
     <span id="solleciti-notification-badge" class="notification-badge hidden"></span>
     <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
     <span>Solleciti</span>
@@ -3450,76 +3455,57 @@
 
         const renderSegnalazioniCrea = () => {
             const userRole = userProfile?.tipoUtente;
-            let recipientOptions;
 
-            if (userRole === 'amministratore') {
-                recipientOptions = `
-                    <option value="supervisore">Supervisor</option>
-                    <option value="condomino">Singolo Condomino</option>
-                    <option value="fornitore">Singolo Fornitore</option>
-                    <option value="custode">Custode</option>
-                    <option value="consigliere">Consiglieri</option>
-                    <option value="adm">Sviluppatore</option>
-                `;
-            } else if (userRole === 'adm') {
-                recipientOptions = `
-                    <option value="supervisore">Supervisor</option>
-                    <option value="amministratore">Amministratore</option>
-                    <option value="condomino">Singolo Condomino</option>
-                    <option value="fornitore">Singolo Fornitore</option>
-                    <option value="custode">Custode</option>
-                    <option value="consigliere">Consiglieri</option>
-                `;
-            } else if (userRole === 'custode') {
-                let fornitoreOption = '';
-                // Aggiungi l'opzione "fornitore" solo se l'impostazione è abilitata
-                if (custodianPermissions?.canContactFornitore === true) {
-                    fornitoreOption = `<option value="fornitore">Singolo Fornitore</option>`;
-                }
-                recipientOptions = `
-                <option value="amministratore">Amministratore</option>
-                <option value="condomino">Singolo Condomino</option>
-                <option value="consigliere">Consiglieri</option>
-                ${fornitoreOption}
-                <option value="adm">Sviluppatore</option>
-            `;
-            } else if (userRole === 'consigliere') {
-                recipientOptions = `
-                    <option value="amministratore">Amministratore</option>
-                    <option value="custode">Custode</option>
-                    <option value="consigliere">Consiglieri</option>
-                    <option value="adm">Sviluppatore</option>
-                    <option value="supervisore">Supervisor</option>
-                    <option value="condomino">Singolo Condomino</option>
-                `;
-            } else if (userRole === 'supervisore') {
-                recipientOptions = `
-                    <option value="amministratore">Amministratore</option>
-                    <option value="custode">Custode</option>
-                    <option value="consigliere">Consiglieri</option>
-                    <option value="adm">Sviluppatore</option>
-                    <option value="condomino">Singolo Condomino</option>
-                `;
-            } else if (userRole === 'fornitore') {
-                // Logica specifica per il Fornitore, ora condizionale
-                let custodeOption = '';
-                // Aggiungi l'opzione "custode" solo se l'impostazione è abilitata dall'amministratore
-                if (custodianPermissions?.canContactFornitore === true) {
-                    custodeOption = `<option value="custode">Custode</option>`;
-                }
-                recipientOptions = `
-                    <option value="amministratore">Amministratore</option>
-                    ${custodeOption}
-                `;
-            } else {
-                // Default per altri utenti (es. condomino)
-                recipientOptions = `
-                    <option value="amministratore">Amministratore</option>
-                    <option value="custode">Custode</option>
-                    <option value="consigliere">Consiglieri</option>
-                    <option value="adm">Sviluppatore</option>
-                `;
+            // Define all possible options in a structured way
+            const allRecipientOptions = [
+                { value: 'adm', text: 'Sviluppatore' },
+                { value: 'amministratore', text: 'Amministratore' },
+                { value: 'condomino', text: 'Singolo Condomino' },
+                { value: 'consigliere', text: 'Consiglieri' },
+                { value: 'custode', text: 'Custode' },
+                { value: 'fornitore', text: 'Singolo Fornitore' },
+                { value: 'supervisore', text: 'Supervisor' }
+            ];
+
+            let allowedValues = [];
+
+            // Determine allowed recipients based on user role
+            switch (userRole) {
+                case 'amministratore':
+                    allowedValues = ['supervisore', 'condomino', 'fornitore', 'custode', 'consigliere', 'adm'];
+                    break;
+                case 'adm':
+                    allowedValues = ['supervisore', 'amministratore', 'condomino', 'fornitore', 'custode', 'consigliere'];
+                    break;
+                case 'custode':
+                    allowedValues = ['amministratore', 'condomino', 'consigliere', 'adm'];
+                    if (custodianPermissions?.canContactFornitore === true) {
+                        allowedValues.push('fornitore');
+                    }
+                    break;
+                case 'consigliere':
+                    allowedValues = ['amministratore', 'custode', 'consigliere', 'adm', 'supervisore', 'condomino'];
+                    break;
+                case 'supervisore':
+                    allowedValues = ['amministratore', 'custode', 'consigliere', 'adm', 'condomino'];
+                    break;
+                case 'fornitore':
+                    allowedValues = ['amministratore'];
+                    if (custodianPermissions?.canContactFornitore === true) {
+                        allowedValues.push('custode');
+                    }
+                    break;
+                default: // Default for 'condomino' and others
+                    allowedValues = ['amministratore', 'custode', 'consigliere', 'adm'];
+                    break;
             }
+
+            // Filter, sort alphabetically by display text, and generate HTML
+            const recipientOptions = allRecipientOptions
+                .filter(option => allowedValues.includes(option.value))
+                .sort((a, b) => a.text.localeCompare(b.text))
+                .map(option => `<option value="${option.value}">${option.text}</option>`)
+                .join('');
 
             const formRecipientField = `
             <div>
@@ -10584,12 +10570,16 @@ ${renderBottomNavigation()}
             let forwardButtonHtml = '';
             let updateButtonHtml = '';
             // Logica pulsanti per il condomino nelle segnalazioni
-            if (userProfile?.tipoUtente === 'condomino' && report.status !== 'chiusa' && report.status !== 'risolta') {
+            if (userProfile?.tipoUtente === 'condomino' && report.status !== 'chiusa' && report.status !== 'risolta' && !report.returnedToCreator) {
                 // Pulsante Aggiorna per il condomino
                 primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
                 // Pulsante Marca come Risolta per il condomino
                 if (report.status === 'aperta' || report.status === 'in-corso') {
                     primaryActionButtonsHtml += `<button onclick="openCondominoResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                }
+                // Pulsante Non presa in carico per il condomino
+                if (report.status === 'aperta') {
+                    primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
                 }
             }
 
@@ -10602,33 +10592,20 @@ ${renderBottomNavigation()}
                     const isConsigliere = userProfile?.tipoUtente === 'consigliere';
                     const isForSupervisor = report.recipientType === 'supervisore';
 
-                    if ((!isSupervisor || (isSupervisor && isForSupervisor)) && !isConsigliere && userProfile?.tipoUtente !== 'adm' && userProfile?.tipoUtente !== 'custode') {
+                    if (!isSupervisor && !isConsigliere && userProfile?.tipoUtente !== 'adm' && userProfile?.tipoUtente !== 'custode' && userProfile?.tipoUtente !== 'fornitore') {
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
                     }
                     // --- FINE MODIFICA ---
                 }
                 if (report.status === 'aperta' || report.status === 'in-corso') {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE INIZIO: Azione "Risolta" personalizzata ---
-                    if (userProfile?.tipoUtente === 'supervisore') {
-                        // Per il supervisore, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
-                    } else if (userProfile?.tipoUtente === 'consigliere') {
-                        // Per il consigliere, l'azione richiede motivazioni tramite modal.
-                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
-                    } else if (!['amministratore', 'adm', 'custode'].includes(userProfile?.tipoUtente)) {
-                        // Gli altri ruoli (es. fornitore) usano l'azione standard.
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'risolta')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
-                    }
+                } else if (!['amministratore', 'adm', 'custode', 'supervisore'].includes(userProfile?.tipoUtente)) {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE FINE ---
                 }
                 if (userProfile?.tipoUtente === 'amministratore') {
                     if (report.status === 'aperta') {
-                        // Check if report comes from 'adm' user type
-                        if (report.createdByUserType === 'adm') {
-                            primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
-                        } else {
-                            primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
-                        }
+                        // For 'amministratore', always show "Non presa in carico" instead of "Riassegna" for open tickets
+                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
                     }
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
@@ -10643,40 +10620,112 @@ ${renderBottomNavigation()}
                     }
                 }
 
-                if (userProfile?.tipoUtente === 'supervisore') {
+                if (userProfile?.tipoUtente === 'adm') {
+                    // ADM has a specific button order and capabilities
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        // 1. Update (Aggiorna)
+                        primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                        // 2. Mark as Resolved (Marca come risolta)
+                        primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    }
                     if (report.status === 'aperta') {
-                        // Add "Non presa in carico" button for supervisore
+                        // 3. Take Charge (Prendi in carico)
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
+                        // 4. Not Taken in Charge (Non presa in carico)
+                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
+                        // 5. Reassign (Riassegna)
+                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">Riassegna</button>`;
+                    }
+                    // Logic for resolved/closed tickets for ADM
+                    if (report.status === 'risolta') {
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa da ADM.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
+                    }
+                }
+
+                if (userProfile?.tipoUtente === 'supervisore') {
+                    // Supervisor has a specific button order and capabilities
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        // 1. Update (Aggiorna)
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                        } else if (currentPage !== 'segnalazioni_utente') {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Commento da Supervisor</button>`;
+                        }
+                        // 2. Mark as Resolved (Marca come risolta)
+                        primaryActionButtonsHtml += `<button onclick="openSupervisorResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    }
+                    if (report.status === 'aperta') {
+                        // 3. Take Charge (Prendi in carico) - only if the report is for the supervisor
+                        if (report.recipientType === 'supervisore') {
+                            primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
+                        }
+                        // 4. Not Taken in Charge (Non presa in carico)
                         primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
                     }
                 }
 
                 if (userProfile?.tipoUtente === 'consigliere') {
+                    // Consigliere has a specific button order and capabilities
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        // 1. Update (Aggiorna)
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                        } else {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Commento da Consigliere</button>`;
+                        }
+                        // 2. Mark as Resolved (Marca come risolta)
+                        primaryActionButtonsHtml += `<button onclick="openConsigliereResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    }
                     if (report.status === 'aperta') {
-                        // Add "Prendi in Carico" button for consigliere
+                        // 3. Take Charge (Prendi in carico)
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
-                        // Add "Non presa in carico" button for consigliere
+                        // 4. Not Taken in Charge (Non presa in carico)
                         primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
                     }
                 }
 
                 if (userProfile?.tipoUtente === 'custode') {
-                    if (report.status === 'aperta') {
-                        // Add "Prendi in Carico" button for custode
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
-                        // Add "Non presa in carico" button for custode
-                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
-                        // Keep the existing "Inoltra ad Amministratore" button
-                        forwardButtonHtml = `<button onclick="forwardReportToAdmin('${reportId}')" class="btn btn-secondary" style="width: 100%; background-color: var(--accent-color-dark); color: white;">Inoltra ad Amministratore</button>`;
-                    }
+                    // Custode-specific button logic with defined order
                     if (report.status === 'aperta' || report.status === 'in-corso') {
-                        // Add "Marca come Risolta" button for custode
+                        // 1. Update (Aggiorna)
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                        } else {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Commento da Custode</button>`;
+                        }
+                        // 2. Mark as Resolved (Marca come risolta)
                         primaryActionButtonsHtml += `<button onclick="openCustodeResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    }
+                    if (report.status === 'aperta') {
+                        // 3. Take Charge (Prendi in carico)
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
+                        // 4. Not Taken in Charge (Non presa in carico)
+                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
+                        // 5. Forward to Administrator (Inoltra ad Amministratore)
+                        primaryActionButtonsHtml += `<button onclick="forwardReportToAdmin('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">Inoltra ad Amministratore</button>`;
                     }
                 }
 
                 if (userProfile?.tipoUtente === 'fornitore') {
+                    // Supplier-specific button logic with defined order
+                    if (report.status !== 'chiusa' && report.status !== 'risolta') {
+                        // 1. Update (Aggiorna)
+                        if (currentPage === 'segnalazioni_ricevute') {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
+                        } else {
+                            primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Commento da Fornitore</button>`;
+                        }
+                    }
+
+                    if (report.status === 'aperta' || report.status === 'in-corso') {
+                        // 2. Mark as Resolved (Marca come risolta)
+                        primaryActionButtonsHtml += `<button onclick="openFornitoreResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                    }
+
                     if (report.status === 'aperta') {
-                        // Add "Non presa in carico" button for fornitore
+                        // 3. Take Charge (Prendi in carico)
+                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
+                        // 4. Not Taken in Charge (Non presa in carico)
                         primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
                     }
                 }
@@ -10686,36 +10735,10 @@ ${renderBottomNavigation()}
                 // Pulsante Aggiorna separato - andrà in una riga separata
                 if (report.status !== 'chiusa' && report.status !== 'risolta' && !isCreator) {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE: Pulsante Aggiorna personalizzato ---
-                    if (userProfile?.tipoUtente === 'supervisore') {
-                        // Il supervisore ha pulsanti specifici nelle segnalazioni ricevute
-                        if (currentPage === 'segnalazioni_ricevute') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
-                        } else if (currentPage !== 'segnalazioni_utente') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Supervisor</button>`;
-                        }
-                        // Altrimenti, non mostrare nessun pulsante di aggiornamento/commento.
-                    } else if (userProfile?.tipoUtente === 'consigliere') {
-                        // Il consigliere ha pulsanti specifici nelle segnalazioni ricevute
-                        if (currentPage === 'segnalazioni_ricevute') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
-                        } else {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Consigliere</button>`;
-                        }
-                    } else if (userProfile?.tipoUtente === 'custode') {
-                        // Il custode ha pulsanti specifici nelle segnalazioni ricevute
-                        if (currentPage === 'segnalazioni_ricevute') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
-                        } else {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Custode</button>`;
-                        }
-                    } else if (userProfile?.tipoUtente === 'fornitore') {
-                        // Il fornitore ha pulsanti specifici nelle segnalazioni ricevute
-                        if (currentPage === 'segnalazioni_ricevute') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
-                        } else {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Commento da Fornitore</button>`;
-                        }
-                    } else {
+                    if (userProfile?.tipoUtente === 'custode') {
+
+
+                    } else if (userProfile?.tipoUtente === 'amministratore') {
                         // Gli altri ruoli (come l'amministratore) mantengono il pulsante standard,
                         // ma nascondiamo "Aggiorna" se la segnalazione è già risolta o chiusa.
                         if (report.status !== 'risolta' && report.status !== 'chiusa') {
@@ -10726,16 +10749,14 @@ ${renderBottomNavigation()}
                 }
             }
 
-            // Logica pulsanti per il creatore (condomino, adm, amministratore, supervisore, consigliere, custode e fornitore)
-            if (isCreator && (userProfile?.tipoUtente === 'condomino' || userProfile?.tipoUtente === 'adm' || userProfile?.tipoUtente === 'amministratore' || userProfile?.tipoUtente === 'supervisore' || userProfile?.tipoUtente === 'consigliere' || userProfile?.tipoUtente === 'custode' || userProfile?.tipoUtente === 'fornitore')) {
-
-                // Special case: Creator whose report was returned by amministratore or supervisore
+            // Logica pulsanti per il creatore
+            if (isCreator) {
+                // Caso speciale: la segnalazione è stata restituita al creatore.
+                // Questa logica deve funzionare indipendentemente dalla pagina visualizzata (inviate o ricevute).
                 if (report.returnedToCreator && report.status === 'aperta') {
-                    // Show specific buttons: Sollecita, Aggiorna, Marca come risolta, Riassegna
                     primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
                     primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
-
-                    // Use appropriate resolution modal based on user type
+                    
                     let resolutionModalFunction = '';
                     switch (userProfile?.tipoUtente) {
                         case 'supervisore': resolutionModalFunction = `openSupervisorResolutionModal('${reportId}')`; break;
@@ -10749,42 +10770,30 @@ ${renderBottomNavigation()}
                     }
                     primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Riassegna</button>`;
-                } else {
-                    // Normal creator logic
+                }
+                // Logica normale per le segnalazioni inviate (non restituite), visibile solo nella pagina 'segnalazioni_utente'.
+                else if (currentPage === 'segnalazioni_utente') {
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
                     }
 
-                    // Aggiunta pulsanti "Aggiorna" e "Marca come Risolta" per i creatori non-condomini (i condomini li hanno già da un altro blocco)
-                    if (userProfile?.tipoUtente !== 'condomino' && report.status !== 'chiusa' && report.status !== 'risolta') {
+                    if (userProfile?.tipoUtente !== 'condomino' && (report.status === 'aperta' || report.status === 'in-corso')) {
                         primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
-
-                        // CORREZIONE: Mostra "Marca come Risolta" per stati 'aperta' e 'in-corso'
-                        if (report.status === 'aperta' || report.status === 'in-corso') {
-                            let resolutionModalFunction = '';
-                            switch (userProfile?.tipoUtente) {
-                                case 'supervisore': resolutionModalFunction = `openSupervisorResolutionModal('${reportId}')`; break;
-                                case 'consigliere': resolutionModalFunction = `openConsigliereResolutionModal('${reportId}')`; break;
-                                case 'custode': resolutionModalFunction = `openCustodeResolutionModal('${reportId}')`; break;
-                                case 'fornitore': resolutionModalFunction = `openFornitoreResolutionModal('${reportId}')`; break;
-                                case 'amministratore': resolutionModalFunction = `openAdminResolutionModal('${reportId}')`; break;
-                                case 'adm': resolutionModalFunction = `openAdmResolutionModal('${reportId}')`; break;
-                                default: resolutionModalFunction = `alert('Funzione non disponibile.')`; break;
-                            }
-                            primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                        let resolutionModalFunction = '';
+                        switch (userProfile?.tipoUtente) {
+                            case 'supervisore': resolutionModalFunction = `openSupervisorResolutionModal('${reportId}')`; break;
+                            case 'consigliere': resolutionModalFunction = `openConsigliereResolutionModal('${reportId}')`; break;
+                            case 'custode': resolutionModalFunction = `openCustodeResolutionModal('${reportId}')`; break;
+                            case 'fornitore': resolutionModalFunction = `openFornitoreResolutionModal('${reportId}')`; break;
+                            case 'amministratore': resolutionModalFunction = `openAdminResolutionModal('${reportId}')`; break;
+                            case 'adm': resolutionModalFunction = `openAdmResolutionModal('${reportId}')`; break;
+                            default: resolutionModalFunction = `alert('Funzione non disponibile.')`; break;
                         }
+                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunction}" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     }
-                }
 
-                // Logic for resolved and closed reports
-                if (report.status === 'risolta' || report.status === 'chiusa') {
-                    // Show "Riapri Segnalazione" for creators viewing their own reports
-                    if (isCreator && currentPage === 'segnalazioni_utente') {
+                    if (report.status === 'risolta' || report.status === 'chiusa') {
                         primaryActionButtonsHtml += `<button onclick="openJustificationModal('${reportId}')" class="btn btn-primary">Riapri Segnalazione</button>`;
-                    } else if (report.status === 'risolta') {
-                        // For non-creators viewing resolved reports, show confirmation buttons
-                        primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', true)" class="btn btn-primary">Conferma Risoluzione</button>`;
-                        primaryActionButtonsHtml += `<button onclick="confirmReportResolution('${reportId}', false)" class="btn" style="background:var(--danger); color:white;">Non Risolto</button>`;
                     }
                 }
             }
@@ -11291,7 +11300,7 @@ ${renderBottomNavigation()}
                         return data.recipientType === 'amministratore' || (data.forwardedByUserId === currentUser.uid) || (data.originalRecipient === 'amministratore' && data.forwardedBy);
                     }
                     if (userRole === 'custode') {
-                        return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
+                        return data.recipientType === 'custode';
                     }
                     if (userRole === 'fornitore') {
                         return data.recipientType === userRole;
@@ -12931,6 +12940,71 @@ ${renderBottomNavigation()}
         };
 
         const openReassignmentModal = (reportId) => {
+            let reassignOptionsHtml = '';
+            if (userProfile?.tipoUtente === 'adm') {
+                // Specific, sorted list for ADM
+                reassignOptionsHtml = `
+        <option value="amministratore">Amministratore</option>
+        <option value="condomino">Condomino</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="custode">Custode</option>
+        <option value="fornitore">Fornitore</option>
+        <option value="supervisore">Supervisore</option>
+    `;
+            } else if (userProfile?.tipoUtente === 'amministratore') {
+                // Expanded, sorted list for Amministratore
+                reassignOptionsHtml = `
+        <option value="condomino">Condomino</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="custode">Custode</option>
+        <option value="fornitore">Fornitore</option>
+        <option value="supervisore">Supervisore</option>
+        <option value="adm">Sviluppatore</option>
+    `;
+            } else if (userProfile?.tipoUtente === 'supervisore') {
+                // Expanded, sorted list for Supervisore
+                reassignOptionsHtml = `
+        <option value="amministratore">Amministratore</option>
+        <option value="condomino">Condomino</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="custode">Custode</option>
+        <option value="adm">Sviluppatore</option>
+    `;
+            } else if (userProfile?.tipoUtente === 'consigliere') {
+                // Expanded, sorted list for Consigliere
+                reassignOptionsHtml = `
+        <option value="amministratore">Amministratore</option>
+        <option value="condomino">Condomino</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="custode">Custode</option>
+        <option value="supervisore">Supervisore</option>
+        <option value="adm">Sviluppatore</option>
+    `;
+            } else if (userProfile?.tipoUtente === 'custode') {
+                // New specific list for Custode
+                reassignOptionsHtml = `
+        <option value="amministratore">Amministratore</option>
+        <option value="condomino">Condomino</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="fornitore">Fornitore</option>
+        <option value="adm">Sviluppatore</option>
+    `;
+            } else if (userProfile?.tipoUtente === 'fornitore') {
+                // New specific list for Fornitore
+                reassignOptionsHtml = `
+        <option value="amministratore">Amministratore</option>
+        <option value="custode">Custode</option>
+    `;
+            } else {
+                // Updated options for condomino and other default roles
+                reassignOptionsHtml = `
+        <option value="adm">Sviluppatore</option>
+        <option value="amministratore">Amministratore</option>
+        <option value="consigliere">Consigliere</option>
+        <option value="custode">Custode</option>
+    `;
+            }
+
             const modalContent = `
                 <form id="report-reassignment-form" class="space-y-4">
                     <input type="hidden" id="reassign-report-id" value="${reportId}">
@@ -12938,8 +13012,7 @@ ${renderBottomNavigation()}
                         <label for="reassign-to" class="form-label">Riassegna a:</label>
                         <select id="reassign-to" required class="form-select">
                             <option value="">Seleziona un ruolo...</option>
-                            <option value="custode">Custode</option>
-                            <option value="fornitore">Fornitore</option>
+                            ${reassignOptionsHtml}
                         </select>
                     </div>
                     
@@ -13797,7 +13870,7 @@ ${renderBottomNavigation()}
                     updateNotificationUI('solleciti-inviati', updatedByOthers.length);
                 });
             };
-            if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere'].includes(userProfile?.tipoUtente)) return;
+            if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere', 'custode', 'fornitore'].includes(userProfile?.tipoUtente)) return;
             sollecitisListener && sollecitisListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenSolleciti_${currentUser.uid}`), 10);
@@ -13850,6 +13923,14 @@ ${renderBottomNavigation()}
                     }
                     if (userRole === 'adm') {
                         return data.recipientType === 'adm';
+                    }
+                    if (userRole === 'custode') {
+                        // Il custode viene notificato per i ticket a lui destinati o che ha inoltrato
+                        return data.recipientType === 'custode' || (data.recipientType === 'amministratore' && data.forwardedBy && data.originalRecipient === 'custode');
+                    }
+                    if (userRole === 'fornitore') {
+                        // Il fornitore viene notificato solo per i ticket a lui destinati
+                        return data.recipientType === 'fornitore';
                     }
 
                     return false; // Other roles are not notified about received solleciti by default
