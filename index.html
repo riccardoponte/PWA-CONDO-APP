@@ -2699,9 +2699,10 @@
             <span>Bacheca</span>
         </a>
         <a href="#" onclick="navigateTo('segnalazioni', event)" class="nav-item ${currentPage === 'segnalazioni' ? 'active' : ''}">
-            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
-            <span>Segnala</span>
-        </a>
+    <span id="segnalazioni-notification-badge" class="notification-badge hidden"></span>
+    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,2L13.09,8.26L22,9L13.09,9.74L12,16L10.91,9.74L2,9L10.91,8.26L12,2Z"/></svg>
+    <span>Segnala</span>
+</a>
         <a href="#" onclick="navigateTo('solleciti_menu', event)" class="nav-item ${['solleciti_menu', 'solleciti_inviati', 'solleciti_ricevuti'].includes(currentPage) ? 'active' : ''}">
             <span id="solleciti-notification-badge" class="notification-badge hidden"></span>
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
@@ -11277,6 +11278,11 @@ ${renderBottomNavigation()}
                 let relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
 
+                    // MODIFICA: Escludi le segnalazioni restituite al creatore da questa vista.
+                    if (data.returnedToCreator === true) {
+                        return false;
+                    }
+
                     // NUOVA LOGICA DI FILTRAGGIO
                     if (data.specificRecipientId) {
                         // Se c'è un destinatario specifico, solo lui può vederlo
@@ -13016,6 +13022,8 @@ ${renderBottomNavigation()}
                         </select>
                     </div>
                     
+                    <div id="specific-reassign-recipient-container" class="form-group hidden" style="margin-top: 1rem;"></div>
+
                     <!-- Opzione condivisione contatti (visibile solo per fornitore) -->
                     <div id="contact-sharing-option" class="form-group hidden">
                         <div style="padding: 1rem; background: var(--surface-color-light); border-radius: var(--radius-sm); border-left: 4px solid var(--accent-color);">
@@ -13041,31 +13049,69 @@ ${renderBottomNavigation()}
             `;
             showModal('Riassegna Segnalazione', modalContent);
 
-            // Add event listener to show/hide contact sharing option
             const reassignSelect = document.getElementById('reassign-to');
             const contactSharingOption = document.getElementById('contact-sharing-option');
+            const specificRecipientContainer = document.getElementById('specific-reassign-recipient-container');
+
+            const populateSpecificRecipientDropdown = async (role) => {
+                specificRecipientContainer.classList.remove('hidden');
+                specificRecipientContainer.innerHTML = `<p style="color: var(--secondary-text);">Caricamento...</p>`;
+                try {
+                    const q = query(collection(db, "users"), where("tipoUtente", "==", role));
+                    const snapshot = await getDocs(q);
+                    if (snapshot.empty) {
+                        specificRecipientContainer.innerHTML = `<p style="color: var(--warning);">Nessun utente di tipo "${role}" trovato.</p>`;
+                        return;
+                    }
+                    const sortedDocs = snapshot.docs.sort((a, b) => (a.data().cognome || '').localeCompare(b.data().cognome || ''));
+                    const label = role === 'condomino' ? 'Seleziona Condomino Specifico' : 'Seleziona Fornitore Specifico';
+                    const options = sortedDocs.map(doc => `<option value="${doc.id}">${doc.data().cognome} ${doc.data().nome}</option>`).join('');
+                    specificRecipientContainer.innerHTML = `
+                        <label for="specific-reassign-select" class="form-label">${label}</label>
+                        <select id="specific-reassign-select" required class="form-select"><option value="">Seleziona...</option>${options}</select>
+                    `;
+                } catch (error) {
+                    specificRecipientContainer.innerHTML = `<p class="message-box error" style="display:block;">Errore nel caricamento.</p>`;
+                }
+            };
 
             reassignSelect.addEventListener('change', function () {
-                if (this.value === 'fornitore') {
-                    contactSharingOption.classList.remove('hidden');
-                } else {
-                    contactSharingOption.classList.add('hidden');
+                const selectedRole = this.value;
+                contactSharingOption.classList.toggle('hidden', selectedRole !== 'fornitore');
+                if (selectedRole !== 'fornitore') {
                     document.getElementById('share-contacts-checkbox').checked = false;
+                }
+
+                if (selectedRole === 'condomino' || selectedRole === 'fornitore') {
+                    populateSpecificRecipientDropdown(selectedRole);
+                } else {
+                    specificRecipientContainer.classList.add('hidden');
+                    specificRecipientContainer.innerHTML = '';
                 }
             });
 
             document.getElementById('report-reassignment-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const newRecipient = document.getElementById('reassign-to').value;
+                const newRecipientRole = document.getElementById('reassign-to').value;
                 const comment = document.getElementById('reassign-comment').value.trim();
                 const shareContacts = document.getElementById('share-contacts-checkbox').checked;
-                if (!newRecipient) return;
+                if (!newRecipientRole) return;
 
-                await reassignReport(reportId, newRecipient, comment, shareContacts);
+                let specificRecipientId = null;
+                const specificSelect = document.getElementById('specific-reassign-select');
+                if (specificSelect) {
+                    specificRecipientId = specificSelect.value;
+                    if ((newRecipientRole === 'condomino' || newRecipientRole === 'fornitore') && !specificRecipientId) {
+                        alert(`Per favore, seleziona un ${newRecipientRole} specifico.`);
+                        return;
+                    }
+                }
+
+                await reassignReport(reportId, newRecipientRole, specificRecipientId, comment, shareContacts);
             });
         };
 
-        const reassignReport = async (reportId, newRecipient, comment, shareContacts = false) => {
+        const reassignReport = async (reportId, newRecipient, specificRecipientId, comment, shareContacts = false) => {
             try {
                 const reportRef = doc(db, "reports", reportId);
                 let updateText = `Riassegnato a: ${newRecipient}.`;
@@ -13084,6 +13130,7 @@ ${renderBottomNavigation()}
 
                 const updateData = {
                     recipientType: newRecipient,
+                    specificRecipientId: specificRecipientId || null, // Add the specific ID
                     status: 'aperta', // Il ticket viene riaperto per il nuovo destinatario
                     updates: arrayUnion(newUpdate),
                     updatedAt: serverTimestamp(),
@@ -13107,7 +13154,8 @@ ${renderBottomNavigation()}
 
                 await logActivity("report_reassigned", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
                     reportId: reportId,
-                    newRecipient: newRecipient
+                    newRecipient: newRecipient,
+                    specificRecipientId: specificRecipientId
                 });
 
                 hideModal();
@@ -13776,7 +13824,7 @@ ${renderBottomNavigation()}
 
         const checkForNewReports = () => {
             // Rimosso "condomino" da questo controllo, poiché le sue notifiche sono gestite da checkForUserReportUpdates
-            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm"].includes(userProfile?.tipoUtente)) return;
+            if (!currentUser || !["amministratore", "custode", "consigliere", "fornitore", "supervisore", "adm", "condomino"].includes(userProfile?.tipoUtente)) return;
             reportsListener && reportsListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenReport_${currentUser.uid}`), 10);
@@ -13797,6 +13845,11 @@ ${renderBottomNavigation()}
                 // Applica la stessa logica di visibilità della pagina "Segnalazioni Ricevute"
                 const relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
+
+                    // MODIFICA: Escludi le segnalazioni restituite al creatore dalle notifiche "ricevute".
+                    if (data.returnedToCreator === true) {
+                        return false;
+                    }
 
                     // Escludi le segnalazioni create dall'utente corrente per non auto-notificarsi
                     if (data.createdById === currentUser.uid) {
@@ -13870,7 +13923,7 @@ ${renderBottomNavigation()}
                     updateNotificationUI('solleciti-inviati', updatedByOthers.length);
                 });
             };
-            if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere', 'custode', 'fornitore'].includes(userProfile?.tipoUtente)) return;
+            if (!currentUser || !['supervisore', 'adm', 'amministratore', 'consigliere', 'custode', 'fornitore', 'condomino'].includes(userProfile?.tipoUtente)) return;
             sollecitisListener && sollecitisListener();
 
             let lastSeen = parseInt(localStorage.getItem(`lastSeenSolleciti_${currentUser.uid}`), 10);
