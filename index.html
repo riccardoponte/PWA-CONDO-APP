@@ -13129,13 +13129,18 @@ ${renderBottomNavigation()}
                 };
 
                 const updateData = {
-                    recipientType: newRecipient,
-                    specificRecipientId: specificRecipientId || null, // Add the specific ID
-                    status: 'aperta', // Il ticket viene riaperto per il nuovo destinatario
-                    updates: arrayUnion(newUpdate),
-                    updatedAt: serverTimestamp(),
-                    reassignedBy: currentUser.uid // Always track who reassigned
-                };
+    recipientType: newRecipient,
+    specificRecipientId: specificRecipientId || null, // Add the specific ID
+    status: 'aperta', // Il ticket viene riaperto per il nuovo destinatario
+    updates: arrayUnion(newUpdate),
+    updatedAt: serverTimestamp(),
+    reassignedBy: currentUser.uid, // Always track who reassigned
+    // NUOVA LOGICA: Reset dello stato "restituito al creatore"
+    returnedToCreator: false,
+    returnedBy: null,
+    returnReason: null,
+    originalRecipientBeforeReturn: null
+};
 
                 // Add contact sharing setting if assigning to fornitore
                 if (newRecipient === 'fornitore') {
