@@ -10585,7 +10585,7 @@ ${renderBottomNavigation()}
             }
 
             // Logica pulsanti per il gestore
-            if (canManageThisReport && !isCreatorView) {
+            if (canManageThisReport && !isCreatorView && currentPage !== 'solleciti_inviati') {
                 if (report.status === 'aperta') {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE: Visibilità condizionale "Prendi in Carico" ---
                     // Il pulsante appare per tutti i manager, tranne per il supervisore se il ticket non è suo e per il consigliere.
@@ -10754,7 +10754,7 @@ ${renderBottomNavigation()}
             if (isCreator) {
                 // Caso speciale: la segnalazione è stata restituita al creatore.
                 // Questa logica deve funzionare indipendentemente dalla pagina visualizzata (inviate o ricevute).
-                if (report.returnedToCreator && report.status === 'aperta') {
+                if (report.returnedToCreator && report.status === 'aperta' && currentPage === 'segnalazioni_utente') {
                     primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
                     primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
                     
