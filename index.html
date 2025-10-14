@@ -1725,7 +1725,7 @@
                 console.error("Errore nel logging dell'attività:", error);
             }
         };
-        const register = async (t, e, o) => { const a = await createUserWithEmailAndPassword(auth, t, e); const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0); return await setDoc(doc(db, "users", a.user.uid), { nome: o.nome, cognome: o.cognome, email: t, tipoUtente: o.tipoUtente, proprieta: o.proprieta || [], telefono: o.telefono || "", millesimiTotali: totalMillesimi, createdAt: (new Date).toISOString(), allowCustodeViewPhone: o.allowCustodeViewPhone, allowFornitoreViewPhone: o.allowFornitoreViewPhone, allowAdminViewContacts: o.allowAdminViewContacts, privacyAccepted: o.privacyAccepted || false }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a };
+        const register = async (t, e, o) => { const a = await createUserWithEmailAndPassword(auth, t, e); const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0); return await setDoc(doc(db, "users", a.user.uid), { nome: o.nome, cognome: o.cognome, email: t, tipoUtente: o.tipoUtente, proprieta: o.proprieta || [], telefono: o.telefono || "", millesimiTotali: totalMillesimi, createdAt: (new Date).toISOString(), allowCustodeViewPhone: o.allowCustodeViewPhone, allowFornitoreViewPhone: o.allowFornitoreViewPhone, allowAdminViewContacts: o.allowAdminViewContacts, privacyAccepted: o.privacyAccepted || false, isValidated: false }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a };
 
         const adminCreateUser = async (email, password, profileData) => {
             const tempAppName = `user-creation-${Date.now()}`;
@@ -1745,7 +1745,8 @@
                     proprieta: profileData.proprieta || [],
                     telefono: profileData.telefono || "",
                     millesimiTotali: totalMillesimi,
-                    createdAt: (new Date).toISOString()
+                    createdAt: (new Date).toISOString(),
+                    isValidated: true // Gli utenti creati dall'admin sono pre-approvati
                 });
 
                 await logActivity("user_created_by_admin", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, {
@@ -1826,6 +1827,19 @@
                 </div>
             </main>
             ${renderBottomNavigation()}
+        `;
+
+        const renderPendingValidationPage = () => `
+            <div style="background-color: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; padding: 2rem;">
+                <svg fill="currentColor" viewBox="0 0 24 24" style="width: 64px; height: 64px; color: var(--warning); margin-bottom: 1.5rem;">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem;">In attesa di convalida dell'account</h1>
+                <p style="color: var(--secondary-text); max-width: 400px; margin-bottom: 2rem;">
+                    La tua registrazione è stata completata, ma un amministratore deve ancora approvare il tuo account. Riceverai una notifica non appena il tuo account sarà attivo.
+                </p>
+                <button onclick="logout()" class="btn btn-secondary">Esci</button>
+            </div>
         `;
 
         const setupAbilitaCustodeHandlers = async () => {
@@ -2384,7 +2398,7 @@
             }
 
             // --- NUOVA LOGICA DI AUTORIZZAZIONE ROBUSTA ---
-            const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'orariCustode', 'periodiAmministrativi'];
+            const supervisorePages = ['userManagement', 'gestioneGruppi', 'importazione', 'orariCustode', 'periodiAmministrativi', 'convalidaCondomini'];
             const admOnlyPages = ['abilitaServizi', 'cronologiaAttivita', 'gestoreFunzioniSupervisore'];
             const amministratoreOnlyPages = ['funzioniAmministratore', 'creaFornitore', 'abilitaCustode'];
 
@@ -4695,12 +4709,18 @@ ${renderBottomNavigation()}
                     </div>
                 </div>
                 ` : ''}
-                <div onclick="navigateTo('puliziaDati')" class="dashboard-item">
-                    <div class="menu-list-item">
-                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 16h4v2h-4v-2zm0-8h7v2h-7V8zm0 4h6v2h-6v-2zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12V5z"/></svg>
-                        <p style="text-align: left; font-size: 1.1rem;">Pulizia Dati</p>
-                    </div>
-                </div>
+                <div onclick="navigateTo('convalidaCondomini')" class="dashboard-item">
+<div class="menu-list-item">
+<svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+<p style="text-align: left; font-size: 1.1rem;">Convalida Condomini</p>
+</div>
+</div>
+<div onclick="navigateTo('puliziaDati')" class="dashboard-item">
+<div class="menu-list-item">
+<svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M15 16h4v2h-4v-2zm0-8h7v2h-7V8zm0 4h6v2h-6v-2zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12V5z"/></svg>
+<p style="text-align: left; font-size: 1.1rem;">Pulizia Dati</p>
+</div>
+</div>
             </div>
         </main>
         ${renderBottomNavigation()}
@@ -6201,6 +6221,10 @@ ${renderBottomNavigation()}
                     if (userProfile?.tipoUtente === 'amministratore') content = renderCreaFornitore();
                     else navigateTo('dashboard');
                     break;
+                case 'convalidaCondomini':
+                    if (hasSupervisorAccess) content = renderConvalidaCondomini();
+                    else navigateTo('dashboard');
+                    break;
                 case 'abilitaCustode':
                     if (userProfile?.tipoUtente === 'amministratore') content = renderAbilitaCustode();
                     else navigateTo('dashboard');
@@ -6316,6 +6340,7 @@ ${renderBottomNavigation()}
                 case 'gestoreFunzioniSupervisore': if (userProfile?.tipoUtente === 'adm') setupGestoreFunzioniSupervisoreHandlers(); break;
                 case 'funzioniAmministratore': /* Nessun handler specifico per la pagina menu */ break;
                 case 'creaFornitore': if (userProfile?.tipoUtente === 'amministratore') setupCreaFornitoreHandlers(); break;
+                case 'convalidaCondomini': if (hasSupervisorAccess) setupConvalidaCondominiHandlers(); break;
                 case 'abilitaCustode': if (userProfile?.tipoUtente === 'amministratore') setupAbilitaCustodeHandlers(); break;
                 case 'archivio':
                 case 'gestione_archivio':
@@ -11278,15 +11303,9 @@ ${renderBottomNavigation()}
                 let relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
 
-                    // MODIFICA: Escludi le segnalazioni restituite al creatore da questa vista.
-                    if (data.returnedToCreator === true) {
+                    // Non notificare per le segnalazioni create dall'utente, a meno che non gli siano state restituite.
+                    if (data.createdById === currentUser.uid && data.returnedToCreator !== true) {
                         return false;
-                    }
-
-                    // NUOVA LOGICA DI FILTRAGGIO
-                    if (data.specificRecipientId) {
-                        // Se c'è un destinatario specifico, solo lui può vederlo
-                        return data.specificRecipientId === currentUser.uid;
                     }
 
                     // Logica esistente per gli altri casi
@@ -12818,6 +12837,102 @@ ${renderBottomNavigation()}
             showModal('Motivazione Risoluzione', modalContent);
         };
 
+        const renderConvalidaCondomini = () => `
+            ${renderHeader('Convalida Condomini')}
+            <main>
+                <div class="card">
+                    <h3 class="card-title">Utenti in Attesa di Convalida</h3>
+                    <p class="form-label" style="margin-bottom: 1.5rem; color: var(--secondary-text);">
+                        Spunta la casella per convalidare la registrazione di un utente e consentirgli l'accesso all'applicazione. Salva le modifiche per applicarle.
+                    </p>
+                    <div id="validation-message" class="message-box"></div>
+                    <form id="validation-form">
+                        <div id="validation-list-container" class="list-container" style="margin-bottom: 1.5rem;">
+                            <p style="color:var(--secondary-text);">Caricamento utenti...</p>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="btn btn-primary">Salva Modifiche</button>
+                        </div>
+                    </form>
+                </div>
+            </main>
+            ${renderBottomNavigation()}
+        `;
+
+        const setupConvalidaCondominiHandlers = async () => {
+            const listContainer = document.getElementById('validation-list-container');
+            const form = document.getElementById('validation-form');
+            if (!listContainer || !form) return;
+
+            try {
+                const q = query(collection(db, "users"), where("tipoUtente", "==", "condomino"), orderBy("createdAt", "desc"));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    listContainer.innerHTML = '<p style="color:var(--secondary-text);">Nessun condomino registrato.</p>';
+                    return;
+                }
+
+                listContainer.innerHTML = snapshot.docs.map(doc => {
+                    const user = doc.data();
+                    const userId = doc.id;
+                    const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT') : 'N/D';
+
+                    return `
+                    <div class="list-item" style="background: var(--surface-color-light);">
+                        <label class="flex items-center gap-4 w-full cursor-pointer">
+                             <input type="checkbox" class="validation-checkbox" data-id="${userId}" ${user.isValidated ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
+                            <div class="list-item-content">
+                                <div class="title">${user.cognome} ${user.nome}</div>
+                                <div class="subtitle">${user.email} - Tel: ${user.telefono || 'N/D'} - Registrato il: ${registrationDate}</div>
+                            </div>
+                        </label>
+                    </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error("Errore nel caricamento degli utenti da convalidare:", error);
+                listContainer.innerHTML = `<div class="message-box error" style="display:block;">Errore: ${error.message}</div>`;
+            }
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageBox = document.getElementById('validation-message');
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Salvataggio...';
+
+                try {
+                    const batch = writeBatch(db);
+                    const checkboxes = form.querySelectorAll('.validation-checkbox');
+
+                    checkboxes.forEach(cb => {
+                        const userId = cb.dataset.id;
+                        const isValidated = cb.checked;
+                        const userRef = doc(db, 'users', userId);
+                        batch.update(userRef, { isValidated: isValidated });
+                    });
+
+                    await batch.commit();
+                    await logActivity("user_validation_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`);
+
+                    messageBox.className = 'message-box success';
+                    messageBox.textContent = 'Stato di convalida aggiornato con successo!';
+                    messageBox.style.display = 'block';
+                    setTimeout(() => { messageBox.style.display = 'none'; }, 3000);
+
+                } catch (error) {
+                    messageBox.className = 'message-box error';
+                    messageBox.textContent = `Errore: ${error.message}`;
+                    messageBox.style.display = 'block';
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Salva Modifiche';
+                }
+            });
+        };
+
         const handleFornitoreResolution = async (event, reportId) => {
             event.preventDefault();
             const justification = document.getElementById('resolution-text-fornitore').value.trim();
@@ -13317,14 +13432,22 @@ ${renderBottomNavigation()}
                 let itemsHtml = '';
 
                 res.prefixes.forEach(folderRef => {
+                    if (userProfile?.tipoUtente === 'amministratore' && folderRef.name !== 'Archivio Amministratore') {
+                        return; 
+                    }
                     const displayName = folderRef.name.replace(/__SLASH__/g, '/'); // Decodifica per visualizzazione
-                    const managementActions = canManage ? `
+                    let managementActions = '';
+                    // Mostra i pulsanti di gestione solo se l'utente è autorizzato E non si trova nella cartella dell'amministratore (a meno che non sia l'amministratore stesso)
+                    const canDeleteFolder = canManage && folderRef.name !== 'Archivio Amministratore' && (userProfile?.tipoUtente === 'amministratore' || !folderRef.fullPath.startsWith('Archivio Amministratore/'));
+                    if (canDeleteFolder) {
+                        managementActions = `
                         <div class="list-item-action flex gap-2">
                             <button onclick="event.stopPropagation(); handleDeleteItem('${folderRef.fullPath}', true)" class="btn-icon" title="Elimina Cartella" style="background:var(--danger); color:white;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
-                    ` : '';
+                        `;
+                    }
                     itemsHtml += `
                     <div class="list-item">
                         ${canManage ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${folderRef.fullPath}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
@@ -13338,7 +13461,8 @@ ${renderBottomNavigation()}
 
                 res.items.forEach(itemRef => {
                     if (itemRef.name === '.placeholder') return;
-                    const managementActions = canManage ? `
+                    const canDeleteItem = canManage && (userProfile?.tipoUtente === 'amministratore' || !currentStoragePath.startsWith('Archivio Amministratore/'));
+                    const managementActions = canDeleteItem ? `
                         <div class="list-item-action">
                             <button onclick="event.stopPropagation(); handleDeleteItem('${itemRef.fullPath}', false)" class="btn-icon" title="Elimina File" style="background:var(--danger); color:white;">
                                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -13431,6 +13555,10 @@ ${renderBottomNavigation()}
         };
 
         const openUploadModal = async () => {
+            if (userProfile?.tipoUtente === 'amministratore') {
+                selectUploadPath('Archivio Amministratore/');
+                return;
+            }
             showModal('Seleziona Cartella di Destinazione', '<p>Caricamento struttura cartelle...</p>');
 
             const getFolderTree = async (path = '') => {
@@ -13441,6 +13569,10 @@ ${renderBottomNavigation()}
             };
 
             const renderFolderTree = (node, level = 0) => {
+                const isAmministratore = userProfile?.tipoUtente === 'amministratore';
+                const isAdminFolder = node.name === 'Archivio Amministratore';
+                const buttonDisabled = isAdminFolder && !isAmministratore;
+
                 let html = `
                     <div class="list-item" style="padding-left: ${level * 1.5}rem; background-color: var(--surface-color-light); margin-bottom: 0.5rem; flex-wrap: wrap; row-gap: 0.5rem; align-items: center;">
                         <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
@@ -13448,11 +13580,19 @@ ${renderBottomNavigation()}
                             <div class="title" style="white-space: normal; word-break: break-word;">${node.name || 'Archivio'}</div>
                         </div>
                         <div class="list-item-action" style="margin-left: auto;">
-                            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="selectUploadPath('${node.path}')">Carica qui</button>
+                            <button class="btn btn-primary" style="padding: 0.4rem 0.8rem;" onclick="selectUploadPath('${node.path}')" ${buttonDisabled ? 'disabled' : ''}>Carica qui</button>
                         </div>
                     </div>
                 `;
                 node.children.forEach(child => {
+                    // Se non sei admin, nascondi la cartella "Archivio Amministratore"
+                    if (!isAmministratore && child.name === 'Archivio Amministratore') {
+                        return;
+                    }
+                    // L'admin continua a vedere solo la sua cartella
+                    if (isAmministratore && child.name !== 'Archivio Amministratore') {
+                        return;
+                    }
                     html += renderFolderTree(child, level + 1);
                 });
                 return html;
@@ -13576,13 +13716,23 @@ ${renderBottomNavigation()}
                     selectedPath = path;
 
                     // Aggiorna breadcrumbs
-                    const pathSegments = path.split('/').filter(Boolean);
-                    let breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('')" style="cursor: pointer;">Archivio</div>`;
-                    let currentPath = '';
+                    let breadcrumbsHtml = '';
+                    let pathSegments = path.split('/').filter(Boolean);
+                    let currentPathForBreadcrumbs = '';
+
+                    if (userProfile?.tipoUtente === 'amministratore') {
+                        breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('Archivio Amministratore/')" style="cursor: pointer;">Archivio Amministratore</div>`;
+                        currentPathForBreadcrumbs = 'Archivio Amministratore/';
+                        // Ricalcola i segmenti relativi alla root dell'amministratore
+                        pathSegments = path.startsWith(currentPathForBreadcrumbs) ? path.substring(currentPathForBreadcrumbs.length).split('/').filter(Boolean) : [];
+                    } else {
+                        breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('')" style="cursor: pointer;">Archivio</div>`;
+                    }
+
                     pathSegments.forEach(segment => {
-                        currentPath += segment + '/';
+                        currentPathForBreadcrumbs += segment + '/';
                         const displaySegment = segment.replace(/__SLASH__/g, '/');
-                        breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="loadFoldersInModal('${currentPath}')" style="cursor: pointer;">${displaySegment}</div>`;
+                        breadcrumbsHtml += `<div style="color:var(--secondary-text); align-self:center;">/</div><div class="chip active" onclick="loadFoldersInModal('${currentPathForBreadcrumbs}')" style="cursor: pointer;">${displaySegment}</div>`;
                     });
                     breadcrumbsContainer.innerHTML = breadcrumbsHtml;
 
@@ -13594,20 +13744,32 @@ ${renderBottomNavigation()}
 
                         let foldersHtml = '';
                         res.prefixes.forEach(folderRef => {
-                            const displayName = folderRef.name.replace(/__SLASH__/g, '/');
-                            foldersHtml += `
-                                <div class="list-item" onclick="loadFoldersInModal('${path}${folderRef.name}/')" style="cursor: pointer;">
-                                    <div class="list-item-icon">
-                                        <svg fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                                        </svg>
-                                    </div>
-                                    <div class="list-item-content">
-                                        <div class="title">${displayName}</div>
-                                    </div>
+const isAmministratore = userProfile?.tipoUtente === 'amministratore';
+const isAdminFolder = folderRef.name === 'Archivio Amministratore';
+
+// Se non sei admin, nascondi la cartella dell'amministratore
+                        if (!isAmministratore && isAdminFolder) {
+                            return;
+                        }
+                        // L'admin vede solo la sua cartella
+                        if (isAmministratore && !isAdminFolder) {
+                            return;
+                        }
+
+                        const displayName = folderRef.name.replace(/__SLASH__/g, '/');
+                        foldersHtml += `
+                            <div class="list-item" onclick="loadFoldersInModal('${path}${folderRef.name}/')" style="cursor: pointer;">
+                                <div class="list-item-icon">
+                                    <svg fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                                    </svg>
                                 </div>
-                            `;
-                        });
+                                <div class="list-item-content">
+                                    <div class="title">${displayName}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
 
                         if (foldersHtml === '') {
                             folderList.innerHTML = `<p style="color:var(--secondary-text);">Nessuna sottocartella disponibile.</p>`;
@@ -13637,7 +13799,8 @@ ${renderBottomNavigation()}
                 };
 
                 // Carica le cartelle iniziali
-                loadFoldersInModal('');
+                const initialPath = userProfile?.tipoUtente === 'amministratore' ? 'Archivio Amministratore/' : '';
+                loadFoldersInModal(initialPath);
 
                 // Rendi loadFoldersInModal globale per i breadcrumbs
                 window.loadFoldersInModal = loadFoldersInModal;
@@ -14048,22 +14211,23 @@ ${renderBottomNavigation()}
             );
 
             onSnapshot(q, snapshot => {
-                // Filtra solo i report che sono stati aggiornati da altri (non dall'utente stesso)
+                // Filtra solo i report che sono stati aggiornati da altri o che sono stati restituiti al creatore
                 const updatedByOthers = snapshot.docs.filter(doc => {
                     const report = doc.data();
-                    const lastUpdate = report.updates && report.updates.length > 0 ?
-                        report.updates[report.updates.length - 1] : null;
-
-                    // Se c'è un aggiornamento e non è stato fatto dall'utente corrente, o se lo status è cambiato
+                    const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
                     const userFullName = `${userProfile?.nome} ${userProfile?.cognome}`;
-                    const wasUpdatedByOthers = lastUpdate && lastUpdate.by !== userFullName;
-                    const statusChanged = report.status !== 'aperta'; // Considera cambiamenti di stato
 
-                    return wasUpdatedByOthers || statusChanged;
+                    // La notifica scatta se l'ultimo aggiornamento non è dell'utente corrente,
+                    // OPPURE se la segnalazione è stata esplicitamente restituita.
+                    const wasUpdatedByOthers = lastUpdate && lastUpdate.by !== userFullName;
+                    const wasReturnedToCreator = report.returnedToCreator === true;
+
+                    return wasUpdatedByOthers || wasReturnedToCreator;
                 });
 
                 const unreadCount = updatedByOthers.length;
-                updateNotificationUI('segnalazioni-inviate', unreadCount);
+                // CORREZIONE: Aggiorna il badge principale 'segnalazioni' invece di quello secondario 'segnalazioni-inviate'
+                updateNotificationUI('segnalazioni', unreadCount);
             });
         };
 
@@ -14384,9 +14548,15 @@ ${renderBottomNavigation()}
                     currentPage = 'dashboard';
                 }
 
-                // Imposta lo stato iniziale senza creare una nuova voce di cronologia
-                history.replaceState({ page: currentPage }, '', `#${currentPage}`);
-                await renderCurrentPage();
+                // NUOVO: Controllo di convalida account
+                if (userProfile && userProfile.tipoUtente === 'condomino' && !userProfile.isValidated) {
+                    // L'utente è un condomino ma non è ancora stato convalidato
+                    document.getElementById('app').innerHTML = renderPendingValidationPage();
+                } else {
+                    // L'utente è convalidato o non è un condomino, procede normalmente
+                    history.replaceState({ page: currentPage }, '', `#${currentPage}`);
+                    await renderCurrentPage();
+                }
 
             } else {
                 // L'utente non è loggato o ha appena fatto logout
