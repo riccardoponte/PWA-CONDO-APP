@@ -990,6 +990,28 @@
             border-bottom: none;
         }
 
+        /* Stili per il modal a schermo intero delle segnalazioni restituite */
+        .modal-overlay.fullscreen-notification {
+            padding: 0;
+            align-items: stretch;
+        }
+
+        .modal-overlay.fullscreen-notification .modal-content {
+            max-width: 100%;
+            max-height: 100vh;
+            height: 100vh;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .modal-overlay.fullscreen-notification .modal-content {
+                padding: 1.5rem;
+            }
+        }
+
         /* Modifica 3: Stili per il modal di selezione cartella */
         #folder-selection-modal .modal-content {
             max-width: 600px;
@@ -1539,14 +1561,20 @@
         const modalBody = document.getElementById('modal-body');
         const modalCloseBtn = document.getElementById('modal-close-btn');
 
-        const showModal = (title, contentHtml) => {
+        const showModal = (title, contentHtml, isFullscreen = false) => {
             modalTitle.textContent = title;
             modalBody.innerHTML = contentHtml;
+            if (isFullscreen) {
+                modalContainer.classList.add('fullscreen-notification');
+            } else {
+                modalContainer.classList.remove('fullscreen-notification');
+            }
             modalContainer.classList.remove('hidden');
         };
 
         const hideModal = () => {
             modalContainer.classList.add('hidden');
+            modalContainer.classList.remove('fullscreen-notification');
         };
         const showPrivacyPolicy = () => {
             const policyTitle = 'Informativa sul Trattamento dei Dati Personali';
@@ -4955,7 +4983,7 @@ ${renderBottomNavigation()}
         `;
 
         const renderArchivio = () => {
-            const canManage = ['supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente) || userProfile?.canAccessSupervisorFunctions === true;
+            const canManage = ['consigliere', 'amministratore'].includes(userProfile?.tipoUtente);
             const managementButtons = canManage ? `
                 <div class="flex gap-4">
                     <button onclick="openUploadModal()" class="btn btn-primary" style="flex:1;">
@@ -10632,6 +10660,8 @@ ${renderBottomNavigation()}
                     if (report.status === 'aperta') {
                         // For 'amministratore', always show "Non presa in carico" instead of "Riassegna" for open tickets
                         primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
+                        // Pulsante Inoltra aggiunto come da richiesta
+                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">Inoltra</button>`;
                     }
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
@@ -10782,7 +10812,7 @@ ${renderBottomNavigation()}
                 if (report.returnedToCreator && report.status === 'aperta' && currentPage === 'segnalazioni_utente') {
                     primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
                     primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
-                    
+
                     let resolutionModalFunction = '';
                     switch (userProfile?.tipoUtente) {
                         case 'supervisore': resolutionModalFunction = `openSupervisorResolutionModal('${reportId}')`; break;
@@ -10864,16 +10894,36 @@ ${renderBottomNavigation()}
             return `
             <div class="card" style="margin-bottom: 1rem; position: relative;">
                 ${periodBannerHtml}
+                ${/* Banner per segnalazioni restituite */''}
+                ${report.returnedToCreator === true ? `
+                    <div style="background: linear-gradient(135deg, var(--warning) 0%, #d39e00 100%); color: var(--bg-color); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; border-left: 4px solid #c69500;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.25rem;">⚠️ Segnalazione Non Presa in Carico</div>
+                                <div style="font-size: 0.9rem; opacity: 0.95;">Questa segnalazione ti è stata restituita. Motivo: <strong>${report.returnReason || 'Non specificato'}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
     
                 <div class="list-item" style="padding:0; cursor:default;">
                     <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></div>
                     <div class="list-item-content">
                         <div class="title" style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
     <span style="flex: 1; min-width: 0;">${report.reportNumber ? `${report.reportNumber}: ` : ''}${report.title}</span>
+    ${/* Badge per segnalazioni restituite al creatore */''}
+    ${report.returnedToCreator === true ? `
+        <span style="background-color: var(--warning); color: var(--bg-color); padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; animation: pulse 1.5s infinite;" title="Non presa in carico">
+            ⚠️ NON PRESA IN CARICO
+        </span>
+        <style> @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } } </style>
+    ` : ''}
     ${/* Indicatore visivo per segnalazioni modificate */''}
-    ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}` && !['risolta', 'chiusa'].includes(report.status)) ? `
+    ${(report.updates && report.updates.length > 0 && report.updates[report.updates.length - 1].by !== `${userProfile?.nome} ${userProfile?.cognome}` && !['risolta', 'chiusa'].includes(report.status) && !report.returnedToCreator) ? `
         <span style="width: 10px; height: 10px; background-color: var(--danger); border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;" title="Segnalazione modificata"></span>
-        <style> @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } } </style>
     ` : ''}
 </div>
                         <div class="subtitle" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.25rem;">
@@ -11303,8 +11353,8 @@ ${renderBottomNavigation()}
                 let relevantDocs = snapshot.docs.filter(doc => {
                     const data = doc.data();
 
-                    // Non notificare per le segnalazioni create dall'utente, a meno che non gli siano state restituite.
-                    if (data.createdById === currentUser.uid && data.returnedToCreator !== true) {
+                    // Escludi le segnalazioni create dall'utente corrente (devono apparire solo in "Segnalazioni Inviate")
+                    if (data.createdById === currentUser.uid) {
                         return false;
                     }
 
@@ -11337,6 +11387,9 @@ ${renderBottomNavigation()}
                         }
                         // Un consigliere normale vede solo le segnalazioni per 'consigliere'
                         return data.recipientType === 'consigliere';
+                    }
+                    if (userRole === 'condomino') {
+                        return data.recipientType === 'condomino';
                     }
                     return false; // Default a non mostrare
                 });
@@ -11548,6 +11601,9 @@ ${renderBottomNavigation()}
                         // Un consigliere normale vede solo le sue
                         return data.recipientType === 'consigliere';
                     }
+                    if (userRole === 'condomino') {
+                        return data.recipientType === 'condomino';
+                    }
                     return false;
                 });
 
@@ -11639,6 +11695,63 @@ ${renderBottomNavigation()}
             </main>
             ${renderBottomNavigation()}
         `;
+
+        const showReturnedReportsModal = (returnedReports) => {
+            const reportsListHtml = returnedReports.map(doc => {
+                const report = doc.data();
+                const reportNumber = report.reportNumber || 'N/A';
+                const title = report.title || 'Senza titolo';
+                const returnReason = report.returnReason || 'Nessun motivo specificato';
+                const returnedBy = report.returnedBy || 'Sconosciuto';
+
+                return `
+                    <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                            <div style="background: var(--warning); color: var(--bg-color); padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
+                                #${reportNumber}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${title}</div>
+                                <div style="color: var(--secondary-text); font-size: 0.9rem;">Non presa in carico</div>
+                            </div>
+                        </div>
+                        <div style="background: var(--surface-color); padding: 0.75rem; border-radius: var(--radius-sm); margin-top: 0.5rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem; color: var(--warning);">Motivo:</div>
+                            <div style="color: var(--primary-text);">${returnReason}</div>
+                        </div>
+                        <div style="margin-top: 0.75rem; text-align: center;">
+                            <button onclick="hideModal(); setTimeout(() => { viewReportDetail('${doc.id}'); }, 100);" class="btn btn-primary" style="width: 100%;">
+                                Visualizza Segnalazione
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const modalContent = `
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 1rem; background: var(--warning); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <svg fill="white" viewBox="0 0 24 24" style="width: 48px; height: 48px;">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                    </div>
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Segnalazioni Non Prese in Carico</h2>
+                    <p style="color: var(--secondary-text); font-size: 1rem;">
+                        ${returnedReports.length === 1 ? 'Una segnalazione è stata' : `${returnedReports.length} segnalazioni sono state`} restituita a te perché non ${returnedReports.length === 1 ? 'è stata presa' : 'sono state prese'} in carico.
+                    </p>
+                </div>
+                <div style="flex: 1; overflow-y: auto; margin-bottom: 1rem;">
+                    ${reportsListHtml}
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="hideModal()" class="btn btn-secondary" style="width: 100%; max-width: 400px;">
+                        Chiudi
+                    </button>
+                </div>
+            `;
+
+            showModal('', modalContent, true);
+        };
 
         const loadUserReports = () => {
             const activeContainer = document.getElementById('user-reports-active');
@@ -13244,18 +13357,18 @@ ${renderBottomNavigation()}
                 };
 
                 const updateData = {
-    recipientType: newRecipient,
-    specificRecipientId: specificRecipientId || null, // Add the specific ID
-    status: 'aperta', // Il ticket viene riaperto per il nuovo destinatario
-    updates: arrayUnion(newUpdate),
-    updatedAt: serverTimestamp(),
-    reassignedBy: currentUser.uid, // Always track who reassigned
-    // NUOVA LOGICA: Reset dello stato "restituito al creatore"
-    returnedToCreator: false,
-    returnedBy: null,
-    returnReason: null,
-    originalRecipientBeforeReturn: null
-};
+                    recipientType: newRecipient,
+                    specificRecipientId: specificRecipientId || null, // Add the specific ID
+                    status: 'aperta', // Il ticket viene riaperto per il nuovo destinatario
+                    updates: arrayUnion(newUpdate),
+                    updatedAt: serverTimestamp(),
+                    reassignedBy: currentUser.uid, // Always track who reassigned
+                    // NUOVA LOGICA: Reset dello stato "restituito al creatore"
+                    returnedToCreator: false,
+                    returnedBy: null,
+                    returnReason: null,
+                    originalRecipientBeforeReturn: null
+                };
 
                 // Add contact sharing setting if assigning to fornitore
                 if (newRecipient === 'fornitore') {
@@ -13344,10 +13457,10 @@ ${renderBottomNavigation()}
                     status: 'aperta', // Reopen the report
                     updates: arrayUnion(newUpdate),
                     updatedAt: serverTimestamp(),
-                    returnedToCreator: true,
                     returnedBy: currentUser.uid,
                     returnReason: reason,
-                    originalRecipientBeforeReturn: reportData.recipientType // Store who had it before returning
+                    originalRecipientBeforeReturn: reportData.recipientType, // Store who had it before returning
+                    returnedToCreator: true // Flag to trigger notification for creator
                 };
 
                 await updateDoc(reportRef, updateData);
@@ -13427,18 +13540,31 @@ ${renderBottomNavigation()}
             try {
                 const listRef = ref(storage, path);
                 const res = await listAll(listRef);
-                const canManage = ['supervisore', 'adm', 'amministratore'].includes(userProfile?.tipoUtente);
+                const canManage = ['amministratore', 'consigliere'].includes(userProfile?.tipoUtente);
 
                 let itemsHtml = '';
 
                 res.prefixes.forEach(folderRef => {
+                    // Amministratore vede solo la sua cartella
                     if (userProfile?.tipoUtente === 'amministratore' && folderRef.name !== 'Archivio Amministratore') {
-                        return; 
+                        return;
                     }
                     const displayName = folderRef.name.replace(/__SLASH__/g, '/'); // Decodifica per visualizzazione
                     let managementActions = '';
                     // Mostra i pulsanti di gestione solo se l'utente è autorizzato E non si trova nella cartella dell'amministratore (a meno che non sia l'amministratore stesso)
-                    const canDeleteFolder = canManage && folderRef.name !== 'Archivio Amministratore' && (userProfile?.tipoUtente === 'amministratore' || !folderRef.fullPath.startsWith('Archivio Amministratore/'));
+                    let canDeleteFolder = false; // Inizia negando il permesso
+                    const userRole = userProfile?.tipoUtente;
+
+                    if (userRole === 'amministratore' && folderRef.fullPath.startsWith('Archivio Amministratore/')) {
+                        canDeleteFolder = true;
+                    } else if (userRole === 'consigliere' && folderRef.fullPath.startsWith('Archivio Consigliere/')) {
+                        canDeleteFolder = true;
+                    }
+
+                    // Manteniamo la protezione per non eliminare le cartelle radice
+                    if (folderRef.name === 'Archivio Amministratore' || folderRef.name === 'Archivio Consigliere') {
+                        canDeleteFolder = false;
+                    }
                     if (canDeleteFolder) {
                         managementActions = `
                         <div class="list-item-action flex gap-2">
@@ -13448,9 +13574,11 @@ ${renderBottomNavigation()}
                         </div>
                         `;
                     }
+                    // Consigliere può vedere la cartella ma non modificarla se è Archivio Amministratore
+                    const showCheckbox = canManage && !(userProfile?.tipoUtente === 'consigliere' && folderRef.fullPath.startsWith('Archivio Amministratore'));
                     itemsHtml += `
                     <div class="list-item">
-                        ${canManage ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${folderRef.fullPath}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                        ${showCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${folderRef.fullPath}" data-type="folder" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
                         <div onclick="handleFolderClick('${folderRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
                             <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
                             <div class="list-item-content"><div class="title">${displayName}</div></div>
@@ -13461,7 +13589,14 @@ ${renderBottomNavigation()}
 
                 res.items.forEach(itemRef => {
                     if (itemRef.name === '.placeholder') return;
-                    const canDeleteItem = canManage && (userProfile?.tipoUtente === 'amministratore' || !currentStoragePath.startsWith('Archivio Amministratore/'));
+                    let canDeleteItem = false; // Inizia negando il permesso
+                    const userRole = userProfile?.tipoUtente;
+
+                    if (userRole === 'amministratore' && currentStoragePath.startsWith('Archivio Amministratore/')) {
+                        canDeleteItem = true;
+                    } else if (userRole === 'consigliere' && currentStoragePath.startsWith('Archivio Consigliere/')) {
+                        canDeleteItem = true;
+                    }
                     const managementActions = canDeleteItem ? `
                         <div class="list-item-action">
                             <button onclick="event.stopPropagation(); handleDeleteItem('${itemRef.fullPath}', false)" class="btn-icon" title="Elimina File" style="background:var(--danger); color:white;">
@@ -13469,9 +13604,11 @@ ${renderBottomNavigation()}
                             </button>
                         </div>
                     ` : '';
+                    // Consigliere non può selezionare file dentro Archivio Amministratore
+                    const showFileCheckbox = canManage && !(userProfile?.tipoUtente === 'consigliere' && currentStoragePath.startsWith('Archivio Amministratore/'));
                     itemsHtml += `
                     <div class="list-item">
-                         ${canManage ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${itemRef.fullPath}" data-type="file" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
+                         ${showFileCheckbox ? `<input type="checkbox" class="archive-item-checkbox" onchange="updateArchiveSelection()" data-path="${itemRef.fullPath}" data-type="file" style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0; margin-right: 1rem;">` : ''}
                         <div onclick="handleDownloadFile('${itemRef.fullPath}', '${itemRef.name}')" style="display: flex; align-items: center; gap: 1rem; flex-grow: 1; cursor: pointer;">
                             <div class="list-item-icon"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
                             <div class="list-item-content"><div class="title">${itemRef.name}</div></div>
@@ -13559,6 +13696,7 @@ ${renderBottomNavigation()}
                 selectUploadPath('Archivio Amministratore/');
                 return;
             }
+            // Consigliere vede il modal per scegliere tra le cartelle disponibili
             showModal('Seleziona Cartella di Destinazione', '<p>Caricamento struttura cartelle...</p>');
 
             const getFolderTree = async (path = '') => {
@@ -13570,8 +13708,11 @@ ${renderBottomNavigation()}
 
             const renderFolderTree = (node, level = 0) => {
                 const isAmministratore = userProfile?.tipoUtente === 'amministratore';
-                const isAdminFolder = node.name === 'Archivio Amministratore';
-                const buttonDisabled = isAdminFolder && !isAmministratore;
+                const isConsigliere = userProfile?.tipoUtente === 'consigliere';
+                const isAdminFolder = node.name === 'Archivio Amministratore' || node.path.startsWith('Archivio Amministratore/');
+                const isConsigliereFolder = node.name === 'Archivio Consigliere' || node.path.startsWith('Archivio Consigliere/');
+                // Consigliere può vedere Archivio Amministratore ma non caricare, Amministratore non può caricare in Archivio Consigliere
+                const buttonDisabled = (isAdminFolder && !isAmministratore) || (isConsigliereFolder && !isConsigliere) || (isAdminFolder && isConsigliere);
 
                 let html = `
                     <div class="list-item" style="padding-left: ${level * 1.5}rem; background-color: var(--surface-color-light); margin-bottom: 0.5rem; flex-wrap: wrap; row-gap: 0.5rem; align-items: center;">
@@ -13585,12 +13726,12 @@ ${renderBottomNavigation()}
                     </div>
                 `;
                 node.children.forEach(child => {
-                    // Se non sei admin, nascondi la cartella "Archivio Amministratore"
-                    if (!isAmministratore && child.name === 'Archivio Amministratore') {
-                        return;
-                    }
                     // L'admin continua a vedere solo la sua cartella
                     if (isAmministratore && child.name !== 'Archivio Amministratore') {
+                        return;
+                    }
+                    // Il consigliere nel modal di upload vede solo Archivio Consigliere
+                    if (isConsigliere && child.name === 'Archivio Amministratore') {
                         return;
                     }
                     html += renderFolderTree(child, level + 1);
@@ -13725,6 +13866,12 @@ ${renderBottomNavigation()}
                         currentPathForBreadcrumbs = 'Archivio Amministratore/';
                         // Ricalcola i segmenti relativi alla root dell'amministratore
                         pathSegments = path.startsWith(currentPathForBreadcrumbs) ? path.substring(currentPathForBreadcrumbs.length).split('/').filter(Boolean) : [];
+                    } else if (userProfile?.tipoUtente === 'consigliere') {
+                        // Consigliere nel modal parte da Archivio Consigliere
+                        breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('Archivio Consigliere/')" style="cursor: pointer;">Archivio Consigliere</div>`;
+                        currentPathForBreadcrumbs = 'Archivio Consigliere/';
+                        // Ricalcola i segmenti relativi alla root del consigliere
+                        pathSegments = path.startsWith(currentPathForBreadcrumbs) ? path.substring(currentPathForBreadcrumbs.length).split('/').filter(Boolean) : [];
                     } else {
                         breadcrumbsHtml = `<div class="chip active" onclick="loadFoldersInModal('')" style="cursor: pointer;">Archivio</div>`;
                     }
@@ -13744,20 +13891,22 @@ ${renderBottomNavigation()}
 
                         let foldersHtml = '';
                         res.prefixes.forEach(folderRef => {
-const isAmministratore = userProfile?.tipoUtente === 'amministratore';
-const isAdminFolder = folderRef.name === 'Archivio Amministratore';
+                            const isAmministratore = userProfile?.tipoUtente === 'amministratore';
+                            const isConsigliere = userProfile?.tipoUtente === 'consigliere';
+                            const isAdminFolder = folderRef.name === 'Archivio Amministratore';
+                            const isConsigliereFolder = folderRef.name === 'Archivio Consigliere';
 
-// Se non sei admin, nascondi la cartella dell'amministratore
-                        if (!isAmministratore && isAdminFolder) {
-                            return;
-                        }
-                        // L'admin vede solo la sua cartella
-                        if (isAmministratore && !isAdminFolder) {
-                            return;
-                        }
+                            // L'admin vede solo la sua cartella
+                            if (isAmministratore && !isAdminFolder) {
+                                return;
+                            }
+                            // Il consigliere nel modal di creazione cartella vede solo Archivio Consigliere
+                            if (isConsigliere && isAdminFolder) {
+                                return;
+                            }
 
-                        const displayName = folderRef.name.replace(/__SLASH__/g, '/');
-                        foldersHtml += `
+                            const displayName = folderRef.name.replace(/__SLASH__/g, '/');
+                            foldersHtml += `
                             <div class="list-item" onclick="loadFoldersInModal('${path}${folderRef.name}/')" style="cursor: pointer;">
                                 <div class="list-item-icon">
                                     <svg fill="currentColor" viewBox="0 0 24 24">
@@ -13769,7 +13918,7 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
                                 </div>
                             </div>
                         `;
-                    });
+                        });
 
                         if (foldersHtml === '') {
                             folderList.innerHTML = `<p style="color:var(--secondary-text);">Nessuna sottocartella disponibile.</p>`;
@@ -13799,7 +13948,8 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
                 };
 
                 // Carica le cartelle iniziali
-                const initialPath = userProfile?.tipoUtente === 'amministratore' ? 'Archivio Amministratore/' : '';
+                const initialPath = userProfile?.tipoUtente === 'amministratore' ? 'Archivio Amministratore/' :
+                    userProfile?.tipoUtente === 'consigliere' ? 'Archivio Consigliere/' : '';
                 loadFoldersInModal(initialPath);
 
                 // Rendi loadFoldersInModal globale per i breadcrumbs
@@ -14214,20 +14364,30 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
                 // Filtra solo i report che sono stati aggiornati da altri o che sono stati restituiti al creatore
                 const updatedByOthers = snapshot.docs.filter(doc => {
                     const report = doc.data();
-                    const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
                     const userFullName = `${userProfile?.nome} ${userProfile?.cognome}`;
 
-                    // La notifica scatta se l'ultimo aggiornamento non è dell'utente corrente,
-                    // OPPURE se la segnalazione è stata esplicitamente restituita.
-                    const wasUpdatedByOthers = lastUpdate && lastUpdate.by !== userFullName;
-                    const wasReturnedToCreator = report.returnedToCreator === true;
+                    // PRIORITÀ: Se la segnalazione è stata esplicitamente restituita al creatore, mostra sempre la notifica
+                    if (report.returnedToCreator === true) {
+                        console.log('DEBUG - Report returned to creator detected:', doc.id, report);
+                        return true;
+                    }
 
-                    return wasUpdatedByOthers || wasReturnedToCreator;
+                    // Altrimenti, controlla se l'ultimo aggiornamento è stato fatto da qualcun altro
+                    const lastUpdate = report.updates && report.updates.length > 0 ? report.updates[report.updates.length - 1] : null;
+                    const wasUpdatedByOthers = lastUpdate && lastUpdate.by !== userFullName;
+
+                    if (wasUpdatedByOthers) {
+                        console.log('DEBUG - Report updated by others:', doc.id, 'by:', lastUpdate.by);
+                    }
+
+                    return wasUpdatedByOthers;
                 });
 
                 const unreadCount = updatedByOthers.length;
-                // CORREZIONE: Aggiorna il badge principale 'segnalazioni' invece di quello secondario 'segnalazioni-inviate'
+                console.log('DEBUG - Total unread reports for creator:', unreadCount);
+                // Update both the main 'segnalazioni' badge and the 'segnalazioni-inviate' badge
                 updateNotificationUI('segnalazioni', unreadCount);
+                updateNotificationUI('segnalazioni-inviate', unreadCount);
             });
         };
 
@@ -14530,6 +14690,49 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
             }
         };
 
+        let returnedReportsListener = null;
+
+        const setupReturnedReportsListener = () => {
+            // Rimuovi il listener precedente se esiste
+            if (returnedReportsListener) {
+                returnedReportsListener();
+                returnedReportsListener = null;
+            }
+
+            // Crea un listener per le segnalazioni create dall'utente corrente
+            const userReportsQuery = query(
+                collection(db, "reports"), 
+                where("createdById", "==", currentUser.uid),
+                where("returnedToCreator", "==", true)
+            );
+
+            returnedReportsListener = onSnapshot(userReportsQuery, (snapshot) => {
+                // Controlla se ci sono nuove segnalazioni restituite
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" || change.type === "modified") {
+                        const reportData = change.doc.data();
+                        
+                        // Verifica se la segnalazione è stata appena restituita
+                        // Controlliamo se non abbiamo già mostrato questa notifica
+                        const notificationKey = `returnedReport_${change.doc.id}_${reportData.updatedAt?.toMillis()}`;
+                        const alreadyShown = sessionStorage.getItem(notificationKey);
+                        
+                        if (!alreadyShown && reportData.returnedToCreator === true) {
+                            // Marca come mostrata
+                            sessionStorage.setItem(notificationKey, 'true');
+                            
+                            // Mostra il popup immediatamente
+                            const returnedReport = {
+                                id: change.doc.id,
+                                data: () => reportData
+                            };
+                            showReturnedReportsModal([returnedReport]);
+                        }
+                    }
+                });
+            });
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 // L'utente è loggato o si è appena loggato
@@ -14538,6 +14741,9 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
                 await loadServicePermissions();
                 await loadCurrentAdministrativePeriod(); // NUOVO
                 await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
+
+                // Listener globale per segnalazioni restituite al creatore
+                setupReturnedReportsListener();
 
                 const hash = window.location.hash.substring(1);
 
@@ -14579,6 +14785,10 @@ const isAdminFolder = folderRef.name === 'Archivio Amministratore';
                 if (sentRemindersListener) {
                     sentRemindersListener();
                     sentRemindersListener = null;
+                }
+                if (returnedReportsListener) {
+                    returnedReportsListener();
+                    returnedReportsListener = null;
                 }
 
                 currentUser = null;
