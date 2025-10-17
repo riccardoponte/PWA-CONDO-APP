@@ -954,11 +954,12 @@
         }
 
         .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
 
         .modal-title {
             font-size: 1.2rem;
@@ -966,12 +967,16 @@
         }
 
         .modal-close-btn {
-            background: none;
-            border: none;
-            color: var(--secondary-text);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--secondary-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
 
         .modal-body p {
             line-height: 1.6;
@@ -10646,7 +10651,7 @@ ${renderBottomNavigation()}
                     const isConsigliere = userProfile?.tipoUtente === 'consigliere';
                     const isForSupervisor = report.recipientType === 'supervisore';
 
-                    if (!isSupervisor && !isConsigliere && userProfile?.tipoUtente !== 'adm' && userProfile?.tipoUtente !== 'custode' && userProfile?.tipoUtente !== 'fornitore') {
+                    if (!isSupervisor && !isConsigliere && userProfile?.tipoUtente !== 'adm' && userProfile?.tipoUtente !== 'amministratore' && userProfile?.tipoUtente !== 'custode' && userProfile?.tipoUtente !== 'fornitore') {
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
                     }
                     // --- FINE MODIFICA ---
@@ -10656,45 +10661,35 @@ ${renderBottomNavigation()}
                 } else if (!['amministratore', 'adm', 'custode', 'supervisore'].includes(userProfile?.tipoUtente)) {
                     // --- MODIFICA SUPERVISORE/CONSIGLIERE FINE ---
                 }
-                if (userProfile?.tipoUtente === 'amministratore') {
-                    if (report.status === 'aperta') {
-                        // For 'amministratore', always show "Non presa in carico" instead of "Riassegna" for open tickets
-                        primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
-                        // Pulsante Inoltra aggiunto come da richiesta
-                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">Inoltra</button>`;
-                    }
-                    if (report.status === 'aperta' || report.status === 'in-corso') {
-                        // NUOVO PULSANTE "MARCA COME RISOLTA" PER AMMINISTRATORE
-                        primaryActionButtonsHtml += `<button onclick="openAdminResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
-                    }
-                    // NUOVA LOGICA: Pulsante per chiudere ticket risolti
-                    if (report.status === 'risolta') {
-                        // Hide "Close Report" button if the creator ('adm') has marked it as resolved.
-                        if (report.createdByUserType !== 'adm') {
-                            primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa dall\\'amministratore.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
-                        }
-                    }
-                }
+                if (userProfile?.tipoUtente === 'adm' || userProfile?.tipoUtente === 'amministratore') {
+                    const isAdmin = userProfile?.tipoUtente === 'amministratore';
+                    const resolutionModalFunc = isAdmin ? `openAdminResolutionModal('${reportId}')` : `openAdmResolutionModal('${reportId}')`;
+                    const closeText = isAdmin ? 'Segnalazione chiusa dall\\\'amministratore.' : 'Segnalazione chiusa da ADM.';
+                    const reassignText = isAdmin ? 'Inoltra' : 'Riassegna';
 
-                if (userProfile?.tipoUtente === 'adm') {
-                    // ADM has a specific button order and capabilities
+                    // Pulsanti per stato "aperta" o "in-corso"
                     if (report.status === 'aperta' || report.status === 'in-corso') {
-                        // 1. Update (Aggiorna)
+                        // 1. Aggiorna
                         primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
-                        // 2. Mark as Resolved (Marca come risolta)
-                        primaryActionButtonsHtml += `<button onclick="openAdmResolutionModal('${reportId}')" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
+                        // 2. Marca come Risolta
+                        primaryActionButtonsHtml += `<button onclick="${resolutionModalFunc}" class="btn" style="background-color: var(--danger); color: white;">Marca come Risolta</button>`;
                     }
+
+                    // Pulsanti solo per stato "aperta"
                     if (report.status === 'aperta') {
-                        // 3. Take Charge (Prendi in carico)
+                        // 3. Prendi in Carico
                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'in-corso')" class="btn btn-primary">Prendi in Carico</button>`;
-                        // 4. Not Taken in Charge (Non presa in carico)
+                        // 4. Non presa in carico
                         primaryActionButtonsHtml += `<button onclick="openNonPresaInCaricoModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--warning); color: var(--bg-color);">Non presa in carico</button>`;
-                        // 5. Reassign (Riassegna)
-                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">Riassegna</button>`;
+                        // 5. Riassegna / Inoltra
+                        primaryActionButtonsHtml += `<button onclick="openReassignmentModal('${reportId}')" class="btn btn-secondary" style="background-color: var(--accent-color-dark); color: white;">${reassignText}</button>`;
                     }
-                    // Logic for resolved/closed tickets for ADM
+
+                    // Pulsante per stato "risolta"
                     if (report.status === 'risolta') {
-                        primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', 'Segnalazione chiusa da ADM.')" class="btn btn-primary">Chiudi Segnalazione</button>`;
+                        if (!isAdmin || report.createdByUserType !== 'adm') { // L'admin non può chiudere se ha risolto l'ADM
+                            primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', '${closeText}')" class="btn btn-primary">Chiudi Segnalazione</button>`;
+                        }
                     }
                 }
 
@@ -10795,11 +10790,7 @@ ${renderBottomNavigation()}
 
 
                     } else if (userProfile?.tipoUtente === 'amministratore') {
-                        // Gli altri ruoli (come l'amministratore) mantengono il pulsante standard,
-                        // ma nascondiamo "Aggiorna" se la segnalazione è già risolta o chiusa.
-                        if (report.status !== 'risolta' && report.status !== 'chiusa') {
-                            updateButtonHtml = `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary" style="width: 100%;">Aggiorna</button>`;
-                        }
+                        // Questa logica è ora gestita nel blocco unificato per adm e amministratore.
                     }
                     // --- FINE MODIFICA ---
                 }
@@ -11696,19 +11687,39 @@ ${renderBottomNavigation()}
             ${renderBottomNavigation()}
         `;
 
+        const viewReportDetail = (reportId) => {
+            hideModal(); // Chiude il modale di notifica
+            navigateTo('segnalazioni_utente');
+            
+            // Attende un breve momento per consentire alla pagina di caricarsi
+            setTimeout(async () => {
+                try {
+                    const reportDoc = await getDoc(doc(db, "reports", reportId));
+                    if (reportDoc.exists()) {
+                        const report = reportDoc.data();
+                        // Usa la funzione esistente per renderizzare la card all'interno di un nuovo modale
+                        const contentHtml = renderReportCardHTML(report, reportId); 
+                        showModal(`Dettaglio Segnalazione ${report.reportNumber || ''}`, contentHtml);
+                    }
+                } catch (error) {
+                    console.error("Errore nel caricare il dettaglio della segnalazione:", error);
+                }
+            }, 500); // Ritardo per permettere il rendering della nuova pagina
+        };
+        window.viewReportDetail = viewReportDetail;
+
         const showReturnedReportsModal = (returnedReports) => {
             const reportsListHtml = returnedReports.map(doc => {
                 const report = doc.data();
                 const reportNumber = report.reportNumber || 'N/A';
                 const title = report.title || 'Senza titolo';
                 const returnReason = report.returnReason || 'Nessun motivo specificato';
-                const returnedBy = report.returnedBy || 'Sconosciuto';
 
                 return `
                     <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                             <div style="background: var(--warning); color: var(--bg-color); padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
-                                #${reportNumber}
+                                ${reportNumber}
                             </div>
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${title}</div>
@@ -11720,7 +11731,7 @@ ${renderBottomNavigation()}
                             <div style="color: var(--primary-text);">${returnReason}</div>
                         </div>
                         <div style="margin-top: 0.75rem; text-align: center;">
-                            <button onclick="hideModal(); setTimeout(() => { viewReportDetail('${doc.id}'); }, 100);" class="btn btn-primary" style="width: 100%;">
+                            <button onclick="viewReportDetail('${doc.id}')" class="btn btn-primary" style="width: 100%;">
                                 Visualizza Segnalazione
                             </button>
                         </div>
@@ -11735,9 +11746,9 @@ ${renderBottomNavigation()}
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                         </svg>
                     </div>
-                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Segnalazioni Non Prese in Carico</h2>
-                    <p style="color: var(--secondary-text); font-size: 1rem;">
-                        ${returnedReports.length === 1 ? 'Una segnalazione è stata' : `${returnedReports.length} segnalazioni sono state`} restituita a te perché non ${returnedReports.length === 1 ? 'è stata presa' : 'sono state prese'} in carico.
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Segn. NON Presa in carico</h2>
+                    <p style="color: var(--secondary-text); font-size: 1rem; text-align: center;">
+                        Ti è stata restituita una segnalazione
                     </p>
                 </div>
                 <div style="flex: 1; overflow-y: auto; margin-bottom: 1rem;">
@@ -14590,18 +14601,18 @@ ${renderBottomNavigation()}
                         <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2V7h2v4z"/>
                     </svg>
                     <p style="color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.6; text-align: center;">
-                        Stai per accedere a un'area con funzionalità avanzate normalmente riservate al Supervisore. 
-                        Le azioni eseguite in questa sezione possono avere un impatto significativo sulla configurazione e sui dati dell'applicazione.
-                        <br><br>
-                        <strong>Procedi con la massima cautela.</strong>
-                    </p>
-                    <div class="flex justify-center gap-4">
+    Stai per accedere a un'area con funzionalità avanzate normalmente riservate al Supervisore. 
+</p>
+<p style="color: var(--secondary-text); margin-bottom: 1.5rem; line-height: 1.6; text-align: center;">
+    <strong>Procedi con cautela.</strong>
+</p>
+                        <div class="flex gap-4" style="justify-content: center;">
                         <button onclick="hideModal()" class="btn btn-secondary">Annulla</button>
                         <button onclick="navigateTo('gestioneGruppi'); hideModal();" class="btn btn-primary">Procedi</button>
                     </div>
                 </div>
             `;
-            showModal('Attenzione: Accesso a Funzioni Sensibili', modalContent);
+            showModal('Funzioni Sensibili', modalContent);
         };
 
         const deletePoll = async (pollId) => {
@@ -14691,61 +14702,168 @@ ${renderBottomNavigation()}
         };
 
         let returnedReportsListener = null;
+    let urgentReportsListener = null;
 
         const setupReturnedReportsListener = () => {
-            // Rimuovi il listener precedente se esiste
-            if (returnedReportsListener) {
-                returnedReportsListener();
-                returnedReportsListener = null;
-            }
+        // Rimuovi il listener precedente se esiste
+        if (returnedReportsListener) {
+            returnedReportsListener();
+            returnedReportsListener = null;
+        }
 
-            // Crea un listener per le segnalazioni create dall'utente corrente
-            const userReportsQuery = query(
-                collection(db, "reports"), 
-                where("createdById", "==", currentUser.uid),
-                where("returnedToCreator", "==", true)
-            );
+        // Crea un listener per le segnalazioni create dall'utente corrente
+        const userReportsQuery = query(
+            collection(db, "reports"), 
+            where("createdById", "==", currentUser.uid),
+            where("returnedToCreator", "==", true)
+        );
 
-            returnedReportsListener = onSnapshot(userReportsQuery, (snapshot) => {
-                // Controlla se ci sono nuove segnalazioni restituite
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added" || change.type === "modified") {
-                        const reportData = change.doc.data();
+        returnedReportsListener = onSnapshot(userReportsQuery, (snapshot) => {
+            // Controlla se ci sono nuove segnalazioni restituite
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added" || change.type === "modified") {
+                    const reportData = change.doc.data();
+                    
+                    // Verifica se la segnalazione è stata appena restituita
+                    // Controlliamo se non abbiamo già mostrato questa notifica
+                    const notificationKey = `returnedReport_${change.doc.id}_${reportData.updatedAt?.toMillis()}`;
+                    const alreadyShown = sessionStorage.getItem(notificationKey);
+                    
+                    if (!alreadyShown && reportData.returnedToCreator === true && reportData.status === 'aperta') {
+                        // Marca come mostrata
+                        sessionStorage.setItem(notificationKey, 'true');
                         
-                        // Verifica se la segnalazione è stata appena restituita
-                        // Controlliamo se non abbiamo già mostrato questa notifica
-                        const notificationKey = `returnedReport_${change.doc.id}_${reportData.updatedAt?.toMillis()}`;
+                        // Mostra il popup immediatamente
+                        const returnedReport = {
+                            id: change.doc.id,
+                            data: () => reportData
+                        };
+                        showReturnedReportsModal([returnedReport]);
+                    }
+                }
+            });
+        });
+    };
+
+    const showUrgentReportsModal = (urgentReports) => {
+        const reportsListHtml = urgentReports.map(doc => {
+            const report = doc.data();
+            const reportNumber = report.reportNumber || 'N/A';
+            const title = report.title || 'Senza titolo';
+            const creator = report.createdBy || 'Utente sconosciuto';
+
+            return `
+                <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <div style="background: var(--danger); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
+                            ${reportNumber}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.25rem;">${title}</div>
+                            <div style="color: var(--secondary-text); font-size: 0.9rem;">Sollecito inviato da: <strong>${creator}</strong></div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.75rem; text-align: center;">
+                        <button onclick="viewReportDetail('${doc.id}')" class="btn btn-primary" style="width: 100%;">
+                            Visualizza Segnalazione
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const modalContent = `
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 1rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg fill="white" viewBox="0 0 24 24" style="width: 48px; height: 48px; animation: ring 1.5s ease-out infinite;">
+                        <path d="M20,15.5C20,14.7 20.3,14 20.8,13.4L21.5,12.7C22.2,12 22.2,10.9 21.5,10.2L20.8,9.5C20.3,9 20,8.3 20,7.5V6C20,4.9 19.1,4 18,4H16.5C15.7,4 15,3.7 14.4,3.2L13.7,2.5C13,1.8 11.9,1.8 11.2,2.5L10.5,3.2C10,3.7 9.3,4 8.5,4H7C5.9,4 5,4.9 5,6V7.5C5,8.3 4.7,9 4.2,9.5L3.5,10.2C2.8,10.9 2.8,12 3.5,12.7L4.2,13.4C4.7,14 5,14.7 5,15.5V17C5,18.1 5.9,19 7,19H8.5C9.3,19 10,19.3 10.5,19.8L11.2,20.5C11.9,21.2 13,21.2 13.7,20.5L14.4,19.8C15,19.3 15.7,19 16.5,19H18C19.1,19 20,18.1 20,17V15.5M12,17C10.9,17 10,16.1 10,15C10,13.9 10.9,13 12,13C13.1,13 14,13.9 14,15C14,16.1 13.1,17 12,17M13,12H11V8H13V12Z" />
+                    </svg>
+                    <style>@keyframes ring { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }</style>
+                </div>
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Hai ricevuto un Sollecito!</h2>
+                <p style="color: var(--secondary-text); font-size: 1rem; text-align: center; max-width: 400px; margin: 0 auto;">
+    Una segnalazione a te assegnata richiede attenzione immediata.
+</p>
+            </div>
+            <div style="flex: 1; overflow-y: auto; margin-bottom: 1rem;">
+                ${reportsListHtml}
+            </div>
+            <div style="text-align: center;">
+                <button onclick="hideModal()" class="btn btn-secondary" style="width: 100%; max-width: 400px;">
+                    Chiudi
+                </button>
+            </div>
+        `;
+
+        showModal('', modalContent, true);
+    };
+
+    const setupUrgentReportsListener = () => {
+        if (urgentReportsListener) {
+            urgentReportsListener();
+            urgentReportsListener = null;
+        }
+
+        const userRole = userProfile.tipoUtente;
+        const q = query(collection(db, "reports"), where("isUrgent", "==", true));
+
+        urgentReportsListener = onSnapshot(q, (snapshot) => {
+            const newUrgentReports = [];
+
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added" || change.type === "modified") {
+                    const report = change.doc.data();
+                    
+                    let isRelevant = false;
+                    if (report.specificRecipientId) {
+                        isRelevant = report.specificRecipientId === currentUser.uid;
+                    } else if (userRole === 'supervisore') {
+                        isRelevant = report.recipientType === 'supervisore';
+                    } else if (userRole === 'adm') {
+                        isRelevant = report.recipientType === 'adm';
+                    } else if (userRole === 'amministratore') {
+                        isRelevant = report.recipientType === 'amministratore' || (userProfile?.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
+                    } else if (userRole === 'custode') {
+                        isRelevant = report.recipientType === 'custode' || (report.recipientType === 'amministratore' && report.forwardedBy && report.originalRecipient === 'custode');
+                    } else if (userRole === 'fornitore') {
+                        isRelevant = report.recipientType === 'fornitore';
+                    } else if (userRole === 'consigliere') {
+                        isRelevant = report.recipientType === 'consigliere' || (userProfile.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
+                    }
+
+                    if (isRelevant) {
+                        const notificationKey = `urgentReport_${change.doc.id}_${report.lastReminderAt?.toMillis()}`;
                         const alreadyShown = sessionStorage.getItem(notificationKey);
                         
-                        if (!alreadyShown && reportData.returnedToCreator === true) {
-                            // Marca come mostrata
+                        if (!alreadyShown) {
                             sessionStorage.setItem(notificationKey, 'true');
-                            
-                            // Mostra il popup immediatamente
-                            const returnedReport = {
-                                id: change.doc.id,
-                                data: () => reportData
-                            };
-                            showReturnedReportsModal([returnedReport]);
+                            newUrgentReports.push({ id: change.doc.id, data: () => report });
                         }
                     }
-                });
+                }
             });
-        };
+
+            if (newUrgentReports.length > 0) {
+                showUrgentReportsModal(newUrgentReports);
+            }
+        });
+    };
 
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // L'utente è loggato o si è appena loggato
-                currentUser = user;
-                await loadUserProfile(user);
-                await loadServicePermissions();
-                await loadCurrentAdministrativePeriod(); // NUOVO
-                await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
+        if (user) {
+            // L'utente è loggato o si è appena loggato
+            currentUser = user;
+            await loadUserProfile(user);
+            await loadServicePermissions();
+            await loadCurrentAdministrativePeriod(); // NUOVO
+            await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
 
-                // Listener globale per segnalazioni restituite al creatore
-                setupReturnedReportsListener();
+            // Listener globale per segnalazioni restituite al creatore
+            setupReturnedReportsListener();
+            // Listener globale per solleciti ricevuti
+            setupUrgentReportsListener();
 
-                const hash = window.location.hash.substring(1);
+            const hash = window.location.hash.substring(1);
 
                 // Determina la pagina iniziale
                 if (hash && hash !== 'login') {
@@ -14787,9 +14905,15 @@ ${renderBottomNavigation()}
                     sentRemindersListener = null;
                 }
                 if (returnedReportsListener) {
-                    returnedReportsListener();
-                    returnedReportsListener = null;
-                }
+                returnedReportsListener();
+                returnedReportsListener = null;
+            }
+            if (urgentReportsListener) {
+                urgentReportsListener();
+                urgentReportsListener = null;
+            }
+
+            currentUser = null;
 
                 currentUser = null;
                 userProfile = null;
