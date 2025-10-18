@@ -14924,64 +14924,68 @@ ${renderBottomNavigation()}
     };
 
     const listenForReportUpdates = () => {
-        if (userReportUpdateListener) {
-            userReportUpdateListener();
-            userReportUpdateListener = null;
-        }
-
-        if (!currentUser) return;
-
-        const q = query(collection(db, "reports"), where("createdById", "==", currentUser.uid));
-
-        let isInitialLoad = true;
-        const processedUpdates = new Set();
-
-        userReportUpdateListener = onSnapshot(q, (snapshot) => {
-            if (isInitialLoad) {
-                isInitialLoad = false;
-                snapshot.docs.forEach(doc => {
-                    const report = doc.data();
-                    if (report.updates && Array.isArray(report.updates)) {
-                        report.updates.forEach(update => {
-                            const updateId = `${doc.id}_${update.at.toMillis()}`;
-                            processedUpdates.add(updateId);
-                        });
-                    }
-                });
-                return;
+            if (userReportUpdateListener) {
+                userReportUpdateListener();
+                userReportUpdateListener = null;
             }
 
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === "modified") {
-                    const report = change.doc.data();
-                    const reportId = change.doc.id;
+            if (!currentUser) return;
 
-                    if (report.updates && Array.isArray(report.updates)) {
-                        const lastUpdate = report.updates[report.updates.length - 1];
-                        if (lastUpdate) {
-                            const updateId = `${reportId}_${lastUpdate.at.toMillis()}`;
+            // Recupera l'ultimo timestamp di controllo dal localStorage.
+            let lastCheckTimestamp = parseInt(localStorage.getItem(`lastReportUpdateCheck_${currentUser.uid}`), 10);
+            
+            // Se è la prima volta, imposta il timestamp a ora per evitare una valanga di vecchie notifiche.
+            if (!lastCheckTimestamp) {
+                lastCheckTimestamp = Date.now();
+                localStorage.setItem(`lastReportUpdateCheck_${currentUser.uid}`, lastCheckTimestamp);
+            }
 
-                            if (!processedUpdates.has(updateId) && lastUpdate.by !== `${userProfile.nome} ${userProfile.cognome}`) {
-                                processedUpdates.add(updateId);
+            const q = query(collection(db, "reports"), where("createdById", "==", currentUser.uid));
 
-                                const modalTitle = `Aggiornamento Segnalazione #${report.reportNumber || ''}`;
-                                const modalBody = `
-                                    <p>La tua segnalazione "<strong>${report.title}</strong>" è stata aggiornata da <strong>${lastUpdate.by}</strong>.</p>
-                                    <div style="margin-top: 1rem; padding: 0.75rem; background-color: var(--surface-color-light); border-radius: var(--radius-sm);">
-                                        <p style="margin: 0; white-space: pre-wrap;">${lastUpdate.text}</p>
-                                    </div>
-                                    <div class="flex justify-end mt-4">
-                                        <button onclick="viewReportDetail('${reportId}')" class="btn btn-primary">Vedi Dettagli</button>
-                                    </div>
-                                `;
-                                showModal(modalTitle, modalBody);
+            userReportUpdateListener = onSnapshot(q, (snapshot) => {
+                const reportsWithNewUpdates = [];
+
+                // Itera su tutti i documenti nello snapshot per trovare aggiornamenti recenti.
+                snapshot.docs.forEach(doc => {
+                    const report = doc.data();
+                    
+                    // Controlla se il report è stato modificato dopo l'ultimo controllo.
+                    if (report.updatedAt && report.updatedAt.toMillis() > lastCheckTimestamp) {
+                        if (report.updates && Array.isArray(report.updates)) {
+                            const lastUpdate = report.updates[report.updates.length - 1];
+                            
+                            // Controlla se l'ultimo aggiornamento è valido e non è stato fatto dall'utente corrente.
+                            if (lastUpdate && lastUpdate.at.toMillis() > lastCheckTimestamp && lastUpdate.by !== `${userProfile.nome} ${userProfile.cognome}`) {
+                                reportsWithNewUpdates.push({ report, reportId: doc.id, lastUpdate });
                             }
                         }
                     }
+                });
+
+                // Se ci sono nuovi aggiornamenti, mostra il modale per il più recente.
+                if (reportsWithNewUpdates.length > 0) {
+                    // Ordina per trovare l'aggiornamento più recente in assoluto
+                    reportsWithNewUpdates.sort((a, b) => b.lastUpdate.at.toMillis() - a.lastUpdate.at.toMillis());
+                    const mostRecent = reportsWithNewUpdates[0];
+                    const { report, reportId, lastUpdate } = mostRecent;
+
+                    const modalTitle = `Aggiornamento Segnalazione ${report.reportNumber || ''}`;
+                    const modalBody = `
+                        <p>La tua segnalazione "<strong>${report.title}</strong>" è stata aggiornata da <strong>${lastUpdate.by}</strong>.</p>
+                        <div style="margin-top: 1rem; padding: 0.75rem; background-color: var(--surface-color-light); border-radius: var(--radius-sm);">
+                            <p style="margin: 0; white-space: pre-wrap;">${lastUpdate.text}</p>
+                        </div>
+                        <div class="flex justify-end mt-4">
+                            <button onclick="viewReportDetail('${reportId}')" class="btn btn-primary">Vedi Dettagli</button>
+                        </div>
+                    `;
+                    showModal(modalTitle, modalBody);
                 }
+
+                // Aggiorna il timestamp a "ora" dopo ogni controllo, così le notifiche vengono "consumate".
+                localStorage.setItem(`lastReportUpdateCheck_${currentUser.uid}`, Date.now());
             });
-        });
-    };
+        };
 
         onAuthStateChanged(auth, async (user) => {
         if (user) {
