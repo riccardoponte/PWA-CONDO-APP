@@ -11721,8 +11721,15 @@ ${renderBottomNavigation()}
         };
         window.viewReportDetail = viewReportDetail;
 
-        const showNewReceivedReportModal = (newReports) => {
-            const reportCardHtml = newReports.map(doc => {
+        const showNewReceivedReportModal = (notifications) => {
+            if (!notifications || notifications.length === 0) return;
+
+            const firstNotification = notifications[0];
+            const mainTitle = firstNotification.title || "Hai ricevuto una Segnalazione!";
+            const mainSubtitle = firstNotification.subtitle || "Presta attenzione.";
+
+            const reportCardHtml = notifications.map(notification => {
+                const doc = notification.doc;
                 const report = doc.data();
                 const reportNumber = report.reportNumber || 'N/A';
                 const creator = report.createdBy || 'Utente sconosciuto';
@@ -11746,24 +11753,22 @@ ${renderBottomNavigation()}
     
             const modalBodyContent = `
                <div style="text-align: center;">
-  <div style="width: 64px; height: 64px; margin: 0 auto 1.5rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" style="width: 32px; height: 32px;">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-    </svg>
-  </div>
-  <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem;">Hai ricevuto una Segnalazione!</h2>
-  <p style="color: var(--secondary-text); font-size: 1rem; max-width: 400px; margin: 0 auto 1.5rem; text-align: center;">
-    Presta attenzione.
-  </p>
-</div>
-
-<div style="max-height: 30vh; overflow-y: auto; scrollbar-gutter: stable both-edges;">
-  ${reportCardHtml}
-</div>
-
-<button onclick="hideModal()" class="btn btn-secondary" style="width: 100%; margin-top: 1.5rem;">
-  Chiudi
-</button>
+                  <div style="width: 64px; height: 64px; margin: 0 auto 1.5rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" style="width: 32px; height: 32px;">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                  </div>
+                  <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem;">${mainTitle}</h2>
+                  <p style="color: var(--secondary-text); font-size: 1rem; max-width: 400px; margin: 0 auto 1.5rem; text-align: center;">
+                    ${mainSubtitle}
+                  </p>
+                </div>
+                <div style="max-height: 30vh; overflow-y: auto; scrollbar-gutter: stable both-edges;">
+                  ${reportCardHtml}
+                </div>
+                <button onclick="hideModal()" class="btn btn-secondary" style="width: 100%; margin-top: 1.5rem;">
+                  Chiudi
+                </button>
             `;
             
             showModal('', modalBodyContent, false); 
@@ -14250,7 +14255,9 @@ ${renderBottomNavigation()}
                 const isRelevantReport = (doc) => {
                     const data = doc.data();
                     if (data.returnedToCreator === true) return false;
-                    if (data.createdById === currentUser.uid) return false;
+                    // L'utente non dovrebbe essere notificato per le proprie azioni, ma per le azioni degli altri su un suo ticket si.
+                    // Quindi questo controllo viene spostato più avanti.
+                    // if (data.createdById === currentUser.uid) return false;
                     if (data.specificRecipientId) return data.specificRecipientId === currentUser.uid;
                     if (userRole === 'supervisore') return data.recipientType === 'supervisore';
                     if (userRole === 'adm') return data.recipientType === 'adm';
@@ -14273,25 +14280,54 @@ ${renderBottomNavigation()}
                     return false;
                 };
 
-                const allRelevantDocs = snapshot.docs.filter(isRelevantReport);
-                const unreadCount = allRelevantDocs.length;
-                // updateNotificationUI('segnalazioni', unreadCount);
-
-                const newReportsToShow = [];
+                const notificationsToShow = [];
                 snapshot.docChanges().forEach(change => {
-                    if (change.type === 'added') {
-                        const newReportDoc = change.doc;
-                        const notificationKey = `newReportModal_${newReportDoc.id}`;
+                    const reportDoc = change.doc;
+                    const reportData = reportDoc.data();
+                    const notificationKey = `reportModal_${reportDoc.id}_${reportData.updatedAt?.toMillis()}`;
 
-                        if (isRelevantReport(newReportDoc) && !sessionStorage.getItem(notificationKey)) {
-                            newReportsToShow.push(newReportDoc);
-                            sessionStorage.setItem(notificationKey, 'true');
+                    if (sessionStorage.getItem(notificationKey)) {
+                        return;
+                    }
+
+                    let notificationDetails = null;
+
+                    if (isRelevantReport(reportDoc)) {
+                        if (change.type === 'added') {
+                            notificationDetails = {
+                                doc: reportDoc,
+                                title: "Hai ricevuto una Segnalazione!",
+                                subtitle: "Presta attenzione."
+                            };
+                        } else if (change.type === 'modified') {
+                            const lastUpdate = reportData.updates && reportData.updates.length > 0 ? reportData.updates[reportData.updates.length - 1] : null;
+
+                            if (lastUpdate && lastUpdate.by !== `${userProfile.nome} ${userProfile.cognome}`) {
+                                if (lastUpdate.text.includes('Riassegnato a:')) {
+                                    notificationDetails = {
+                                        doc: reportDoc,
+                                        title: "Segnalazione Riassegnata!",
+                                        subtitle: "Ti è stata assegnata una segnalazione."
+                                    };
+                                } else if (lastUpdate.text.includes('Utente ha riaperto il ticket.')) {
+                                    notificationDetails = {
+                                        doc: reportDoc,
+                                        title: "Segnalazione Riaperta!",
+                                        subtitle: "Una segnalazione è stata riaperta dal richiedente."
+                                    };
+                                }
+                            }
                         }
+                    }
+
+                    if (notificationDetails) {
+                        notificationsToShow.push(notificationDetails);
+                        sessionStorage.setItem(notificationKey, 'true');
                     }
                 });
 
-                if (newReportsToShow.length > 0) {
-                    showNewReceivedReportModal(newReportsToShow);
+                if (notificationsToShow.length > 0) {
+                    showNewReceivedReportModal(notificationsToShow);
                 }
             });
         };
