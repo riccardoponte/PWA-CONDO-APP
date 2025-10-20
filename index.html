@@ -14302,6 +14302,7 @@ ${renderBottomNavigation()}
                         } else if (change.type === 'modified') {
                             const lastUpdate = reportData.updates && reportData.updates.length > 0 ? reportData.updates[reportData.updates.length - 1] : null;
 
+                            // Controlla se l'aggiornamento non è stato fatto dall'utente corrente (il destinatario)
                             if (lastUpdate && lastUpdate.by !== `${userProfile.nome} ${userProfile.cognome}`) {
                                 if (lastUpdate.text.includes('Riassegnato a:')) {
                                     notificationDetails = {
@@ -14314,6 +14315,14 @@ ${renderBottomNavigation()}
                                         doc: reportDoc,
                                         title: "Segnalazione Riaperta!",
                                         subtitle: "Una segnalazione è stata riaperta dal richiedente."
+                                    };
+                                } else {
+                                    // *** NUOVA LOGICA AGGIUNTA QUI ***
+                                    // Questo cattura qualsiasi altro aggiornamento (es. un commento dal mittente)
+                                    notificationDetails = {
+                                        doc: reportDoc,
+                                        title: "Aggiornamento sulla Segnalazione!",
+                                        subtitle: `L'utente ${lastUpdate.by} ha aggiunto un aggiornamento.`
                                     };
                                 }
                             }
