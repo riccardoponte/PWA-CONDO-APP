@@ -10729,10 +10729,23 @@ ${renderBottomNavigation()}
 
                                 // Mostra il pulsante "Chiudi" solo se la segnalazione NON è stata risolta dal mittente.
                                 if (!wasResolvedByCreator) {
+                                    const isAdm = !isAdmin; // Siamo all'interno del blocco ADM/Admin
+                                    const currentUserFullName = `${userProfile.nome} ${userProfile.cognome}`;
+                                    const resolvedByName = lastUpdate ? lastUpdate.by : '';
+                                    
                                     // L'amministratore non può chiudere un ticket risolto da ADM (regola aggiuntiva)
                                     if (isAdmin && report.createdByUserType === 'adm') {
                                         // Non fare nulla, l'admin non può chiudere ticket di ADM
-                                    } else {
+                                    } 
+                                    // ADM non vede il pulsante "Chiudi" se è stato lui a risolvere la segnalazione
+                                    else if (isAdm && resolvedByName === currentUserFullName) {
+                                        // Non fare nulla, ADM ha risolto, non deve vedere altri pulsanti
+                                    }
+                                    // Amministratore non vede il pulsante "Chiudi" se è stato lui a risolvere la segnalazione
+                                    else if (isAdmin && resolvedByName === currentUserFullName) {
+                                        // Non fare nulla, Amministratore ha risolto, non deve vedere altri pulsanti
+                                    }
+                                    else {
                                         primaryActionButtonsHtml += `<button onclick="updateReportStatus('${reportId}', 'chiusa', '${closeText}')" class="btn btn-primary">Chiudi Segnalazione</button>`;
                                     }
                                 }
