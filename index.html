@@ -760,6 +760,11 @@
         }
 
         /* NUOVO: Stile per i pulsanti nei menu a lista (es. Funzioni Admin) */
+        /* AGGIUNTA: Layout a colonna singola per i menu su mobile */
+        .dashboard-grid-menu {
+            grid-template-columns: 1fr;
+        }
+
         .menu-list-container {
             display: flex;
             flex-direction: column;
@@ -2234,7 +2239,7 @@
         const renderFunzioniAmministratoreMenu = () => `
             ${renderHeader('Funzioni Amministratore')}
             <main>
-                <div class="dashboard-grid">
+                <div class="dashboard-grid dashboard-grid-menu">
                     <div onclick="navigateTo('creaFornitore')" class="dashboard-item">
                         <div class="dashboard-card">
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M15,12C17.21,12 19,10.21 19,8C19,5.79 17.21,4 15,4C12.79,4 11,5.79 11,8C11,10.21 12.79,12 15,12M6,10V7H4V10H1V12H4V15H6V12H9V10H6M15,14C12.33,14 7,15.33 7,18V20H23V18C23,15.33 17.67,14 15,14Z"/></svg>
