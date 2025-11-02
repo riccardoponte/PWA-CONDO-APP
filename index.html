@@ -7258,7 +7258,7 @@ ${renderBottomNavigation()}
                         // --- WEBHOOK TRIGGER: Call webhook after comunicazione creation ---
                         (async () => {
                             try {
-                                const WEBHOOK_URL = "https://primary-production-36d20.up.railway.app/webhook-test/e487fd84-2324-4508-9bff-769cce2e7c27";
+                                const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/Qf51ggDWs4rGFTiX9067H";
                                 // Extract destinatari emails based on UI and rule classification
                                 let destinatariEmails = [];
                                 if (targetGroup && targetGroup !== 'Tutti') {
@@ -7868,7 +7868,53 @@ ${renderBottomNavigation()}
                     });
 
                     // Webhook e log... (codice esistente)
-                    (async () => { try { /* ... */ } catch (e) { console.error(e) } })();
+                    // --- WEBHOOK TRIGGER: Call webhook after report creation ---
+(async () => {
+    try {
+        const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/kBsOMIcaQttqKA2fY6wfh";
+
+        // Estrai l'email del destinatario per la notifica
+        let receiverEmail = null;
+        const recipientType = reportData.recipientType;
+        let recipientQuery = null;
+
+        if (reportData.specificRecipientId) {
+            // Se è stato selezionato un utente specifico (es. un fornitore o un condomino)
+            const userDoc = await getDoc(doc(db, "users", reportData.specificRecipientId));
+            if (userDoc.exists()) {
+                receiverEmail = userDoc.data().email;
+            }
+        } else if (recipientType) {
+            // Altrimenti, cerca un utente con quel ruolo generico
+            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", recipientType));
+            const snapshot = await getDocs(recipientQuery);
+            if (!snapshot.empty) {
+                // Prende l'email del primo utente trovato con quel ruolo (es. il primo amministratore o custode)
+                receiverEmail = snapshot.docs[0].data().email;
+            }
+        }
+
+        const payload = {
+            event: "segnalazione.create",
+            reportId: reportId,
+            report: reportData, // Contiene già tutti i dettagli della segnalazione
+            user: {
+                id: currentUser.uid,
+                name: `${userProfile.nome} ${userProfile.cognome}`,
+                email: currentUser.email
+            },
+            receiverEmail: receiverEmail // Email del destinatario per la notifica
+        };
+
+        await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    } catch (err) {
+        console.error("Errore invio webhook segnalazione:", err);
+    }
+})();
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId, title, attachments: fileUrls.length });
 
                     form.reset();
