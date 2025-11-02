@@ -664,6 +664,44 @@
             color: var(--primary-text);
         }
 
+        /* Layout per desktop e TV - griglia 5x2 con pulsanti piccoli */
+        @media (min-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 0.75rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .dashboard-card {
+                aspect-ratio: 1 / 1;
+                border-radius: var(--radius-md);
+            }
+
+            .dashboard-card svg {
+                width: 35%;
+                height: 35%;
+            }
+
+            .dashboard-item p {
+                font-size: 0.85rem;
+            }
+
+            /* Layout speciale per menu a lista (Funzioni Admin/Supervisore) */
+            .dashboard-grid-menu {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .dashboard-grid-menu .menu-list-item {
+                padding: 1rem 1.25rem;
+            }
+
+            .dashboard-grid-menu .menu-list-item p {
+                font-size: 1rem;
+            }
+        }
+
         /* Light mode specific dashboard card styling - COMPLETE OVERRIDE */
         :root[data-theme="light"] .dashboard-card {
             background-color: #e9ecef !important;
@@ -962,12 +1000,12 @@
         }
 
         .modal-header {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 1rem;
-}
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
 
         .modal-title {
             font-size: 1.2rem;
@@ -975,16 +1013,16 @@
         }
 
         .modal-close-btn {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--secondary-text);
-    font-size: 1.5rem;
-    cursor: pointer;
-}
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--secondary-text);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
 
         /* Stili per modali personalizzati (alert, confirm, prompt) */
         .custom-dialog-overlay {
@@ -1003,8 +1041,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .custom-dialog-content {
@@ -1018,11 +1061,12 @@
         }
 
         @keyframes slideUp {
-            from { 
+            from {
                 opacity: 0;
                 transform: translateY(20px);
             }
-            to { 
+
+            to {
                 opacity: 1;
                 transform: translateY(0);
             }
@@ -1546,23 +1590,23 @@
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
         // ===== MODALI PERSONALIZZATI (sostituiscono alert, confirm, prompt) =====
-        
+
         // Funzione per mostrare un alert personalizzato
-        window.customAlert = function(message) {
+        window.customAlert = function (message) {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
-                
+
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
-                
+
                 const messageEl = document.createElement('div');
                 messageEl.className = 'custom-dialog-message';
                 messageEl.textContent = message;
-                
+
                 const buttonsEl = document.createElement('div');
                 buttonsEl.className = 'custom-dialog-buttons';
-                
+
                 const okBtn = document.createElement('button');
                 okBtn.className = 'custom-dialog-btn custom-dialog-btn-primary';
                 okBtn.textContent = 'OK';
@@ -1570,33 +1614,33 @@
                     document.body.removeChild(overlay);
                     resolve();
                 };
-                
+
                 buttonsEl.appendChild(okBtn);
                 content.appendChild(messageEl);
                 content.appendChild(buttonsEl);
                 overlay.appendChild(content);
                 document.body.appendChild(overlay);
-                
+
                 okBtn.focus();
             });
         };
 
         // Funzione per mostrare un confirm personalizzato
-        window.customConfirm = function(message) {
+        window.customConfirm = function (message) {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
-                
+
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
-                
+
                 const messageEl = document.createElement('div');
                 messageEl.className = 'custom-dialog-message';
                 messageEl.textContent = message;
-                
+
                 const buttonsEl = document.createElement('div');
                 buttonsEl.className = 'custom-dialog-buttons';
-                
+
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'custom-dialog-btn custom-dialog-btn-secondary';
                 cancelBtn.textContent = 'Annulla';
@@ -1604,7 +1648,7 @@
                     document.body.removeChild(overlay);
                     resolve(false);
                 };
-                
+
                 const okBtn = document.createElement('button');
                 okBtn.className = 'custom-dialog-btn custom-dialog-btn-primary';
                 okBtn.textContent = 'OK';
@@ -1612,39 +1656,39 @@
                     document.body.removeChild(overlay);
                     resolve(true);
                 };
-                
+
                 buttonsEl.appendChild(cancelBtn);
                 buttonsEl.appendChild(okBtn);
                 content.appendChild(messageEl);
                 content.appendChild(buttonsEl);
                 overlay.appendChild(content);
                 document.body.appendChild(overlay);
-                
+
                 okBtn.focus();
             });
         };
 
         // Funzione per mostrare un prompt personalizzato
-        window.customPrompt = function(message, defaultValue = '') {
+        window.customPrompt = function (message, defaultValue = '') {
             return new Promise((resolve) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'custom-dialog-overlay';
-                
+
                 const content = document.createElement('div');
                 content.className = 'custom-dialog-content';
-                
+
                 const messageEl = document.createElement('div');
                 messageEl.className = 'custom-dialog-message';
                 messageEl.textContent = message;
-                
+
                 const inputEl = document.createElement('input');
                 inputEl.type = 'text';
                 inputEl.className = 'custom-dialog-input';
                 inputEl.value = defaultValue;
-                
+
                 const buttonsEl = document.createElement('div');
                 buttonsEl.className = 'custom-dialog-buttons';
-                
+
                 const cancelBtn = document.createElement('button');
                 cancelBtn.className = 'custom-dialog-btn custom-dialog-btn-secondary';
                 cancelBtn.textContent = 'Annulla';
@@ -1652,7 +1696,7 @@
                     document.body.removeChild(overlay);
                     resolve(null);
                 };
-                
+
                 const okBtn = document.createElement('button');
                 okBtn.className = 'custom-dialog-btn custom-dialog-btn-primary';
                 okBtn.textContent = 'OK';
@@ -1660,7 +1704,7 @@
                     document.body.removeChild(overlay);
                     resolve(inputEl.value);
                 };
-                
+
                 inputEl.onkeydown = (e) => {
                     if (e.key === 'Enter') {
                         okBtn.click();
@@ -1668,7 +1712,7 @@
                         cancelBtn.click();
                     }
                 };
-                
+
                 buttonsEl.appendChild(cancelBtn);
                 buttonsEl.appendChild(okBtn);
                 content.appendChild(messageEl);
@@ -1676,7 +1720,7 @@
                 content.appendChild(buttonsEl);
                 overlay.appendChild(content);
                 document.body.appendChild(overlay);
-                
+
                 inputEl.focus();
                 inputEl.select();
             });
@@ -1707,7 +1751,7 @@
         let reportsListener = null; // NUOVA RIGA
         let sollecitisListener = null; // NUOVA RIGA
         let sentRemindersListener = null;
-let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-time del modale
+        let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-time del modale
         let userReportUpdateListener = null;
         let servicePermissions = null;
         let currentStoragePath = '';
@@ -3768,7 +3812,7 @@ let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-ti
             return `
             ${renderHeader('Segnalazioni')}
             <main>
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dashboard-grid">
                     ${menuItemsHtml.join('')}
                 </div>
             </main>
@@ -4059,7 +4103,7 @@ let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-ti
                 return `
                 ${renderHeader('Numeri Utili')}
                 <main>
-                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="dashboard-grid">
                         <div onclick="navigateTo('numeriUtiliImportati')" class="dashboard-item">
                             <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg></div>
                             <p>Importazione</p>
@@ -4097,7 +4141,7 @@ let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-ti
                     return `
             ${renderHeader('Numeri Utili')}
             <main>
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dashboard-grid">
                     <div onclick="navigateTo('numeriUtiliRubrica')" class="dashboard-item">
                         <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20,2H4A2,2 0,0,0 2,4V20A2,2 0,0,0 4,22H20A2,2 0,0,0 22,20V4A2,2 0,0,0 20,2M12,6A3,3 0,0,1 15,9A3,3 0,0,1 12,12A3,3 0,0,1 9,9A3,3 0,0,1 12,6M18,20H6V18.6C6,16.6 10,15.5 12,15.5C14,15.5 18,16.6 18,18.6V20Z"/></svg></div>
                         <p>Fornitori</p>
@@ -4116,7 +4160,7 @@ let reportDetailListener = null; // Aggiunto per gestire l'aggiornamento real-ti
                     return `
 ${renderHeader('Numeri Utili')}
 <main>
-    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="dashboard-grid">
         <div onclick="navigateTo('numeriUtiliRubrica')" class="dashboard-item">
             <div class="dashboard-card"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M20,2H4A2,2 0,0,0 2,4V20A2,2 0,0,0 4,22H20A2,2 0,0,0 22,20V4A2,2 0,0,0 20,2M12,6A3,3 0,0,1 15,9A3,3 0,0,1 12,12A3,3 0,0,1 9,9A3,3 0,0,1 12,6M18,20H6V18.6C6,16.6 10,15.5 12,15.5C14,15.5 18,16.6 18,18.6V20Z"/></svg></div>
             <p>Rubrica Fornitori</p>
@@ -4646,7 +4690,7 @@ ${renderBottomNavigation()}
         const renderOrariCustode = () => `
             ${renderHeader('Orari Custode')}
             <main>
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dashboard-grid">
                     <div onclick="navigateTo('orariCustode_manuale')" class="dashboard-item">
                         <div class="dashboard-card">
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/></svg>
@@ -4791,7 +4835,7 @@ ${renderBottomNavigation()}
         const renderDatiAmministratoreMenu = () => `
             ${renderHeader('Dati Amministratore')}
             <main>
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dashboard-grid">
                     <div onclick="navigateTo('datiAmministratore_manuale')" class="dashboard-item">
                         <div class="dashboard-card">
                             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/></svg>
@@ -4937,7 +4981,7 @@ ${renderBottomNavigation()}
         const renderGestioneGruppiMenu = () => `
         ${renderHeader(userProfile?.tipoUtente === 'adm' ? 'Funzioni Admin' : 'Funzioni Supervisore')}
         <main>
-            <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+            <div class="dashboard-grid dashboard-grid-menu">
                 <div onclick="navigateTo('datiAmministratore')" class="dashboard-item">
                     <div class="menu-list-item">
                         <svg fill="currentColor" viewBox="0 0 24 24" style="width: 32px; height: 32px; flex-shrink: 0;"><path d="M10,2H14A2,2 0 0,1 16,4V6H20A2,2 0 0,1 22,8V19A2,2 0 0,1 20,21H4A2,2 0 0,1 2,19V8A2,2 0 0,1 4,6H8V4A2,2 0 0,1 10,2M14,6V4H10V6H14Z"/></svg>
@@ -9150,9 +9194,9 @@ ${renderBottomNavigation()}
             const ruleName = form.querySelector('#rule-name').value.trim();
             const ruleType = form.querySelector('#rule-type').value;
             let classification = form.querySelector('#rule-classification').value;
-            if (!ruleName) { 
-                await customAlert('Il nome della regola è obbligatorio.'); 
-                return; 
+            if (!ruleName) {
+                await customAlert('Il nome della regola è obbligatorio.');
+                return;
             }
             if (classification === '__CREATE_NEW__') {
                 const newGroupNameInput = form.querySelector('#rule-new-group-name');
@@ -9171,29 +9215,29 @@ ${renderBottomNavigation()}
                     return;
                 }
             }
-            if (!classification) { 
-                await customAlert('Seleziona un gruppo a cui assegnare la classificazione.'); 
-                return; 
+            if (!classification) {
+                await customAlert('Seleziona un gruppo a cui assegnare la classificazione.');
+                return;
             }
             const ruleData = { name: ruleName, type: ruleType, params: {}, isActive: true, updatedAt: serverTimestamp() };
             if (ruleType === 'row_range_classification') {
                 const startRow = parseInt(form.querySelector('#rule-start-row').value, 10);
                 const endRow = parseInt(form.querySelector('#rule-end-row').value, 10);
-                if (!startRow || !endRow) { 
-                    await customAlert('Specifica un intervallo di righe valido.'); 
-                    return; 
+                if (!startRow || !endRow) {
+                    await customAlert('Specifica un intervallo di righe valido.');
+                    return;
                 }
-                if (startRow > endRow) { 
-                    await customAlert('La riga di inizio non può essere maggiore della riga di fine.'); 
-                    return; 
+                if (startRow > endRow) {
+                    await customAlert('La riga di inizio non può essere maggiore della riga di fine.');
+                    return;
                 }
                 ruleData.params = { startRow, endRow, classification };
             } else if (ruleType === 'text_contains_classification') {
                 const targetColumn = form.querySelector('#rule-target-column').value;
                 const searchText = form.querySelector('#rule-search-text').value.trim();
-                if (!targetColumn || !searchText) { 
-                    await customAlert('Specifica una colonna e un testo da cercare.'); 
-                    return; 
+                if (!targetColumn || !searchText) {
+                    await customAlert('Specifica una colonna e un testo da cercare.');
+                    return;
                 }
                 ruleData.params = { targetColumn, searchText, classification };
             }
@@ -10940,10 +10984,10 @@ ${renderBottomNavigation()}
                     if (report.status === 'aperta' || report.status === 'in-corso') {
                         // Pulsante Sollecita
                         primaryActionButtonsHtml += `<button onclick="sendReportReminder('${reportId}')" class="btn btn-secondary">Sollecita</button>`;
-                        
+
                         // Pulsante Aggiorna
                         primaryActionButtonsHtml += `<button onclick="openReportUpdateModal('${reportId}')" class="btn btn-secondary">Aggiorna</button>`;
-                        
+
                         // Pulsante Marca come Risolta (con modale specifico per il ruolo di chi ha inoltrato)
                         let resolutionModalFunction = '';
                         switch (userProfile?.tipoUtente) {
@@ -11023,11 +11067,11 @@ ${renderBottomNavigation()}
                                     const isAdm = !isAdmin; // Siamo all'interno del blocco ADM/Admin
                                     const currentUserFullName = `${userProfile.nome} ${userProfile.cognome}`;
                                     const resolvedByName = lastUpdate ? lastUpdate.by : '';
-                                    
+
                                     // L'amministratore non può chiudere un ticket risolto da ADM (regola aggiuntiva)
                                     if (isAdmin && report.createdByUserType === 'adm') {
                                         // Non fare nulla, l'admin non può chiudere ticket di ADM
-                                    } 
+                                    }
                                     // ADM non vede il pulsante "Chiudi" se è stato lui a risolvere la segnalazione
                                     else if (isAdm && resolvedByName === currentUserFullName) {
                                         // Non fare nulla, ADM ha risolto, non deve vedere altri pulsanti
@@ -12025,24 +12069,24 @@ ${renderBottomNavigation()}
         const viewReportDetail = (reportId, destinationPage = 'segnalazioni_utente') => {
             hideModal(); // Chiude il modale di notifica
             navigateTo(destinationPage);
-            
+
             setTimeout(() => {
                 // --- MODIFICA INIZIO: Utilizzo di onSnapshot per il dettaglio real-time ---
                 // Apriamo subito il modale con un messaggio di caricamento.
                 showModal('Caricamento Dettaglio...', '<p style="color:var(--secondary-text);">Caricamento...</p>');
-    
+
                 // Rimuoviamo eventuali listener precedenti per sicurezza.
                 if (reportDetailListener) {
                     reportDetailListener();
                     reportDetailListener = null;
                 }
-    
+
                 // Creiamo un nuovo listener in tempo reale sul documento della segnalazione.
                 reportDetailListener = onSnapshot(doc(db, "reports", reportId), (reportDoc) => {
                     if (reportDoc.exists()) {
                         const report = reportDoc.data();
                         const reportId = reportDoc.id; // Prendiamo l'ID dal documento
-                        
+
                         // Aggiorniamo il titolo del modale e il suo contenuto
                         modalTitle.textContent = `Dettaglio Segnalazione ${report.reportNumber || ''}`;
                         modalBody.innerHTML = renderReportCardHTML(report, reportId);
@@ -12073,7 +12117,7 @@ ${renderBottomNavigation()}
                 const report = doc.data();
                 const reportNumber = report.reportNumber || 'N/A';
                 const creator = report.createdBy || 'Utente sconosciuto';
-    
+
                 return `
                     <div style="background-color: var(--surface-color-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
@@ -12090,7 +12134,7 @@ ${renderBottomNavigation()}
                     </div>
                 `;
             }).join('');
-    
+
             const modalBodyContent = `
                <div style="text-align: center;">
                   <div style="width: 64px; height: 64px; margin: 0 auto 1.5rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -12110,8 +12154,8 @@ ${renderBottomNavigation()}
                   Chiudi
                 </button>
             `;
-            
-            showModal('', modalBodyContent, false); 
+
+            showModal('', modalBodyContent, false);
         };
 
         const showReturnedReportsModal = (returnedReports) => {
@@ -13170,7 +13214,7 @@ ${renderBottomNavigation()}
                     // Inserire un commento/aggiornamento equivale a "leggere" la segnalazione.
                     // Aggiorniamo i timestamp per tutte le notifiche relative alle segnalazioni
                     // per rimuovere i badge corrispondenti.
-                    
+
                     // Per le notifiche "Segnalazioni" (inviate e ricevute)
                     localStorage.setItem(`lastSeenReport_${currentUser.uid}`, Date.now());
                     localStorage.setItem(`lastSeenSegnalazioniInviate_${currentUser.uid}`, Date.now());
@@ -14857,7 +14901,7 @@ ${renderBottomNavigation()}
                 const unreadCount = updatedByOthers.length;
                 console.log('DEBUG - Total unread reports for creator:', unreadCount);
                 // Update both the main 'segnalazioni' badge and the 'segnalazioni-inviate' badge
-               // updateNotificationUI('segnalazioni', unreadCount);
+                // updateNotificationUI('segnalazioni', unreadCount);
                 // updateNotificationUI('segnalazioni-inviate', unreadCount);
             });
         };
@@ -15162,57 +15206,57 @@ ${renderBottomNavigation()}
         };
 
         let returnedReportsListener = null;
-    let urgentReportsListener = null;
+        let urgentReportsListener = null;
 
         const setupReturnedReportsListener = () => {
-        // Rimuovi il listener precedente se esiste
-        if (returnedReportsListener) {
-            returnedReportsListener();
-            returnedReportsListener = null;
-        }
+            // Rimuovi il listener precedente se esiste
+            if (returnedReportsListener) {
+                returnedReportsListener();
+                returnedReportsListener = null;
+            }
 
-        // Crea un listener per le segnalazioni create dall'utente corrente
-        const userReportsQuery = query(
-            collection(db, "reports"), 
-            where("createdById", "==", currentUser.uid),
-            where("returnedToCreator", "==", true)
-        );
+            // Crea un listener per le segnalazioni create dall'utente corrente
+            const userReportsQuery = query(
+                collection(db, "reports"),
+                where("createdById", "==", currentUser.uid),
+                where("returnedToCreator", "==", true)
+            );
 
-        returnedReportsListener = onSnapshot(userReportsQuery, (snapshot) => {
-            // Controlla se ci sono nuove segnalazioni restituite
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === "added" || change.type === "modified") {
-                    const reportData = change.doc.data();
-                    
-                    // Verifica se la segnalazione è stata appena restituita
-                    // Controlliamo se non abbiamo già mostrato questa notifica
-                    const notificationKey = `returnedReport_${change.doc.id}_${reportData.updatedAt?.toMillis()}`;
-                    const alreadyShown = sessionStorage.getItem(notificationKey);
-                    
-                    if (!alreadyShown && reportData.returnedToCreator === true && reportData.status === 'aperta') {
-                        // Marca come mostrata
-                        sessionStorage.setItem(notificationKey, 'true');
-                        
-                        // Mostra il popup immediatamente
-                        const returnedReport = {
-                            id: change.doc.id,
-                            data: () => reportData
-                        };
-                        showReturnedReportsModal([returnedReport]);
+            returnedReportsListener = onSnapshot(userReportsQuery, (snapshot) => {
+                // Controlla se ci sono nuove segnalazioni restituite
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" || change.type === "modified") {
+                        const reportData = change.doc.data();
+
+                        // Verifica se la segnalazione è stata appena restituita
+                        // Controlliamo se non abbiamo già mostrato questa notifica
+                        const notificationKey = `returnedReport_${change.doc.id}_${reportData.updatedAt?.toMillis()}`;
+                        const alreadyShown = sessionStorage.getItem(notificationKey);
+
+                        if (!alreadyShown && reportData.returnedToCreator === true && reportData.status === 'aperta') {
+                            // Marca come mostrata
+                            sessionStorage.setItem(notificationKey, 'true');
+
+                            // Mostra il popup immediatamente
+                            const returnedReport = {
+                                id: change.doc.id,
+                                data: () => reportData
+                            };
+                            showReturnedReportsModal([returnedReport]);
+                        }
                     }
-                }
+                });
             });
-        });
-    };
+        };
 
-    const showUrgentReportsModal = (urgentReports) => {
-        const reportsListHtml = urgentReports.map(doc => {
-            const report = doc.data();
-            const reportNumber = report.reportNumber || 'N/A';
-            const title = report.title || 'Senza titolo';
-            const creator = report.createdBy || 'Utente sconosciuto';
+        const showUrgentReportsModal = (urgentReports) => {
+            const reportsListHtml = urgentReports.map(doc => {
+                const report = doc.data();
+                const reportNumber = report.reportNumber || 'N/A';
+                const title = report.title || 'Senza titolo';
+                const creator = report.createdBy || 'Utente sconosciuto';
 
-            return `
+                return `
                 <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--surface-color-light);">
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                         <div style="background: var(--danger); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700;">
@@ -15230,9 +15274,9 @@ ${renderBottomNavigation()}
                     </div>
                 </div>
             `;
-        }).join('');
+            }).join('');
 
-        const modalContent = `
+            const modalContent = `
             <div style="text-align: center; margin-bottom: 1.5rem;">
                 <div style="width: 80px; height: 80px; margin: 0 auto 1rem; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                     <svg fill="white" viewBox="0 0 24 24" style="width: 48px; height: 48px; animation: ring 1.5s ease-out infinite;">
@@ -15255,61 +15299,61 @@ ${renderBottomNavigation()}
             </div>
         `;
 
-        showModal('', modalContent, true);
-    };
+            showModal('', modalContent, true);
+        };
 
-    const setupUrgentReportsListener = () => {
-        if (urgentReportsListener) {
-            urgentReportsListener();
-            urgentReportsListener = null;
-        }
+        const setupUrgentReportsListener = () => {
+            if (urgentReportsListener) {
+                urgentReportsListener();
+                urgentReportsListener = null;
+            }
 
-        const userRole = userProfile.tipoUtente;
-        const q = query(collection(db, "reports"), where("isUrgent", "==", true));
+            const userRole = userProfile.tipoUtente;
+            const q = query(collection(db, "reports"), where("isUrgent", "==", true));
 
-        urgentReportsListener = onSnapshot(q, (snapshot) => {
-            const newUrgentReports = [];
+            urgentReportsListener = onSnapshot(q, (snapshot) => {
+                const newUrgentReports = [];
 
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === "added" || change.type === "modified") {
-                    const report = change.doc.data();
-                    
-                    let isRelevant = false;
-                    if (report.specificRecipientId) {
-                        isRelevant = report.specificRecipientId === currentUser.uid;
-                    } else if (userRole === 'supervisore') {
-                        isRelevant = report.recipientType === 'supervisore';
-                    } else if (userRole === 'adm') {
-                        isRelevant = report.recipientType === 'adm';
-                    } else if (userRole === 'amministratore') {
-                        isRelevant = report.recipientType === 'amministratore' || (userProfile?.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
-                    } else if (userRole === 'custode') {
-                        isRelevant = report.recipientType === 'custode' || (report.recipientType === 'amministratore' && report.forwardedBy && report.originalRecipient === 'custode');
-                    } else if (userRole === 'fornitore') {
-                        isRelevant = report.recipientType === 'fornitore';
-                    } else if (userRole === 'consigliere') {
-                        isRelevant = report.recipientType === 'consigliere' || (userProfile.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
-                    }
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" || change.type === "modified") {
+                        const report = change.doc.data();
 
-                    if (isRelevant) {
-                        const notificationKey = `urgentReport_${change.doc.id}_${report.lastReminderAt?.toMillis()}`;
-                        const alreadyShown = sessionStorage.getItem(notificationKey);
-                        
-                        if (!alreadyShown) {
-                            sessionStorage.setItem(notificationKey, 'true');
-                            newUrgentReports.push({ id: change.doc.id, data: () => report });
+                        let isRelevant = false;
+                        if (report.specificRecipientId) {
+                            isRelevant = report.specificRecipientId === currentUser.uid;
+                        } else if (userRole === 'supervisore') {
+                            isRelevant = report.recipientType === 'supervisore';
+                        } else if (userRole === 'adm') {
+                            isRelevant = report.recipientType === 'adm';
+                        } else if (userRole === 'amministratore') {
+                            isRelevant = report.recipientType === 'amministratore' || (userProfile?.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
+                        } else if (userRole === 'custode') {
+                            isRelevant = report.recipientType === 'custode' || (report.recipientType === 'amministratore' && report.forwardedBy && report.originalRecipient === 'custode');
+                        } else if (userRole === 'fornitore') {
+                            isRelevant = report.recipientType === 'fornitore';
+                        } else if (userRole === 'consigliere') {
+                            isRelevant = report.recipientType === 'consigliere' || (userProfile.canAccessSupervisorFunctions && report.recipientType === 'supervisore');
+                        }
+
+                        if (isRelevant) {
+                            const notificationKey = `urgentReport_${change.doc.id}_${report.lastReminderAt?.toMillis()}`;
+                            const alreadyShown = sessionStorage.getItem(notificationKey);
+
+                            if (!alreadyShown) {
+                                sessionStorage.setItem(notificationKey, 'true');
+                                newUrgentReports.push({ id: change.doc.id, data: () => report });
+                            }
                         }
                     }
+                });
+
+                if (newUrgentReports.length > 0) {
+                    showUrgentReportsModal(newUrgentReports);
                 }
             });
+        };
 
-            if (newUrgentReports.length > 0) {
-                showUrgentReportsModal(newUrgentReports);
-            }
-        });
-    };
-
-    const listenForReportUpdates = () => {
+        const listenForReportUpdates = () => {
             if (userReportUpdateListener) {
                 userReportUpdateListener();
                 userReportUpdateListener = null;
@@ -15319,7 +15363,7 @@ ${renderBottomNavigation()}
 
             // Recupera l'ultimo timestamp di controllo dal localStorage.
             let lastCheckTimestamp = parseInt(localStorage.getItem(`lastReportUpdateCheck_${currentUser.uid}`), 10);
-            
+
             // Se è la prima volta, imposta il timestamp a ora per evitare una valanga di vecchie notifiche.
             if (!lastCheckTimestamp) {
                 lastCheckTimestamp = Date.now();
@@ -15334,12 +15378,12 @@ ${renderBottomNavigation()}
                 // Itera su tutti i documenti nello snapshot per trovare aggiornamenti recenti.
                 snapshot.docs.forEach(doc => {
                     const report = doc.data();
-                    
+
                     // Controlla se il report è stato modificato dopo l'ultimo controllo.
                     if (report.updatedAt && report.updatedAt.toMillis() > lastCheckTimestamp) {
                         if (report.updates && Array.isArray(report.updates)) {
                             const lastUpdate = report.updates[report.updates.length - 1];
-                            
+
                             // Controlla se l'ultimo aggiornamento è valido e non è stato fatto dall'utente corrente.
                             if (lastUpdate && lastUpdate.at.toMillis() > lastCheckTimestamp && lastUpdate.by !== `${userProfile.nome} ${userProfile.cognome}`) {
                                 reportsWithNewUpdates.push({ report, reportId: doc.id, lastUpdate });
@@ -15374,21 +15418,21 @@ ${renderBottomNavigation()}
         };
 
         onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            // L'utente è loggato o si è appena loggato
-            currentUser = user;
-            await loadUserProfile(user);
-            await loadServicePermissions();
-            await loadCurrentAdministrativePeriod(); // NUOVO
-            await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
+            if (user) {
+                // L'utente è loggato o si è appena loggato
+                currentUser = user;
+                await loadUserProfile(user);
+                await loadServicePermissions();
+                await loadCurrentAdministrativePeriod(); // NUOVO
+                await loadCustodianPermissions(); // NUOVO: Carica i permessi del custode
 
-            // Listener globale per segnalazioni restituite al creatore
-            setupReturnedReportsListener();
-            // Listener globale per solleciti ricevuti
-            setupUrgentReportsListener();
-            listenForReportUpdates();
+                // Listener globale per segnalazioni restituite al creatore
+                setupReturnedReportsListener();
+                // Listener globale per solleciti ricevuti
+                setupUrgentReportsListener();
+                listenForReportUpdates();
 
-            const hash = window.location.hash.substring(1);
+                const hash = window.location.hash.substring(1);
 
                 // Determina la pagina iniziale
                 if (hash && hash !== 'login') {
@@ -15430,19 +15474,19 @@ ${renderBottomNavigation()}
                     sentRemindersListener = null;
                 }
                 if (returnedReportsListener) {
-                returnedReportsListener();
-                returnedReportsListener = null;
-            }
-            if (urgentReportsListener) {
-                urgentReportsListener();
-                urgentReportsListener = null;
-            }
-            if (userReportUpdateListener) {
-                userReportUpdateListener();
-                userReportUpdateListener = null;
-            }
+                    returnedReportsListener();
+                    returnedReportsListener = null;
+                }
+                if (urgentReportsListener) {
+                    urgentReportsListener();
+                    urgentReportsListener = null;
+                }
+                if (userReportUpdateListener) {
+                    userReportUpdateListener();
+                    userReportUpdateListener = null;
+                }
 
-            currentUser = null;
+                currentUser = null;
 
                 currentUser = null;
                 userProfile = null;
