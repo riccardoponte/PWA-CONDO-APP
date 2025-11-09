@@ -1590,7 +1590,7 @@
 
     <script type="module">
         import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, verifyBeforeUpdateEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, updateDoc, where, getDocs, deleteDoc, runTransaction, arrayUnion, writeBatch, startAfter } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, listAll, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
@@ -7975,18 +7975,28 @@ ${renderBottomNavigation()}
                     // 1. Gestisci la modifica dell'email se è cambiata
                     if (newEmail && newEmail !== currentUser.email) {
                         try {
-                            // Aggiorna prima l'email in Firebase Authentication
-                            await updateEmail(auth.currentUser, newEmail);
-                            // Se l'aggiornamento ha successo, aggiungi l'email agli aggiornamenti di Firestore
-                            firestoreUpdates.email = newEmail;
+                            // Invia un'email di verifica al nuovo indirizzo.
+                            await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+
+                            // Mostra un modale di notifica all'utente.
+                            await window.customAlert(
+                                `Verifica il Tuo Nuovo Indirizzo Email\n\n` +
+                                `Ti abbiamo inviato un'email di verifica al nuovo indirizzo: ${newEmail}.\n\n` +
+                                `Per favore, clicca sul link contenuto nell'email per completare la modifica. Fino ad allora, il tuo indirizzo email non verrà cambiato.`
+                            );
+
+                            // Interrompi l'esecuzione per non salvare le altre modifiche del profilo.
+                            // L'utente si concentrerà sulla verifica dell'email.
+                            return; 
+                            
                         } catch (authError) {
-                            // Gestisci errori comuni, come la necessità di un login recente
+                            // Gestisci errori comuni con un modale per coerenza.
                             if (authError.code === 'auth/requires-recent-login') {
-                                showProfileMessage("error", "Azione sensibile. Effettua nuovamente il login prima di cambiare l'email.");
+                                await window.customAlert("Azione sensibile. Effettua nuovamente il login prima di cambiare l'email.");
                             } else {
-                                showProfileMessage("error", `Errore email: ${authError.message}`);
+                                await window.customAlert(`Errore email: ${authError.message}`);
                             }
-                            return; // Interrompi l'esecuzione se l'aggiornamento dell'email fallisce
+                            return; // Interrompi l'esecuzione se l'invio dell'email fallisce
                         }
                     }
 
