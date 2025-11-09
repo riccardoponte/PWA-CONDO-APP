@@ -1905,6 +1905,36 @@
             modalContainer.classList.add('hidden');
             modalContainer.classList.remove('fullscreen-notification');
         };
+
+        const showBetaTestAgreement = () => {
+            const agreementTitle = 'Accordo per la Sperimentazione Privata (Beta Test)';
+            const agreementHtml = `
+                <p style="font-size: 0.9rem; text-align: center; color: var(--secondary-text); margin-top: -1rem; margin-bottom: 1.5rem;">Benvenuto/a nel programma di test privato di "Con-bridge"! Prima di iniziare, ti chiediamo di leggere e accettare i seguenti punti che regolano questa fase di prova.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">1. Oggetto e Caratteristiche del Servizio</h4>
+                <p>Il Fornitore concede l'accesso al servizio "Con-bridge", fornito secondo il modello <strong>"Software as a Service" (SaaS)</strong>. Ciò significa che il software non viene venduto, ma ne viene concesso l'uso tramite internet per tutta la durata del servizio, senza necessità di installazioni complesse da parte dell'utente.</p>
+                <p style="margin-top: 0.5rem;">Tecnicamente, il Servizio è una <strong>Progressive Web App (PWA)</strong>: un'applicazione web moderna che funziona su qualsiasi browser (Chrome, Safari, Firefox, ecc.) ma offre un'esperienza simile a un'app nativa, inclusa la possibilità di essere aggiunta alla schermata principale del proprio dispositivo per un accesso rapido.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">2. Requisiti di Partecipazione</h4>
+                <p>La partecipazione al Beta Test è riservata esclusivamente ai condomini proprietari di una o più unità immobiliari site nei complessi condominiali di Cormano (MI) agli indirizzi <strong>Via Bellini 11/13</strong> e <strong>Via Mascagni 13/15</strong>. Accettando, dichiari di possedere tale requisito.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">3. Scopo, Durata e Gratuità</h4>
+                <p>La sperimentazione è completamente <strong>gratuita</strong> e ha l'unico scopo di raccogliere feedback per migliorare l'applicazione e valutarne l'adozione. Al termine del periodo di prova, l'accesso all'app sarà disattivato e i dati inseriti verranno cancellati.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">4. Contenuti Generati dagli Utenti e Responsabilità</h4>
+                <p>L'utente è l'unico ed esclusivo responsabile di qualsiasi contenuto (testi, messaggi, file, immagini o altro materiale) pubblicato, caricato o trasmesso attraverso il Servizio. Il Fornitore agisce come un intermediario tecnico (hosting provider) e <strong>non esercita alcun controllo preventivo sui contenuti caricati dagli utenti</strong>. Pertanto, il Fornitore non potrà essere ritenuto responsabile per la liceità, veridicità o natura di tali contenuti. L'utente si impegna a manlevare e tenere indenne il Fornitore da qualsiasi pretesa, danno o sanzione derivante dalla pubblicazione di contenuti illeciti, diffamatori o che violino diritti di terzi.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">5. Servizio Fornito "AS IS" (Così Com'è)</h4>
+                <p>Poiché si tratta di un software in fase di test, l'applicazione viene fornita "così com'è", senza garanzie di alcun tipo. Potrebbero verificarsi bug, interruzioni o malfunzionamenti. Il Fornitore non sarà responsabile per eventuali disagi o perdite di dati, salvo i casi di dolo o colpa grave.</p>
+                
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">6. Trattamento dei Dati (GDPR)</h4>
+                <p>Accettando, confermi di aver letto l'Informativa Privacy. Prendi atto che, per la sola durata di questa sperimentazione, il Fornitore agisce come <strong>Titolare del Trattamento</strong> dei dati che fornisci, al solo scopo di gestire il test.</p>
+
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">7. Proprietà Intellettuale</h4>
+                <p>L'applicazione "Con-bridge" è e rimane di esclusiva proprietà dei suoi sviluppatori. Ti impegni a non copiare, modificare o distribuire il software.</p>
+            `;
+            showModal(agreementTitle, agreementHtml);
+        };
         const showPrivacyPolicy = () => {
             const policyTitle = 'Informativa sul Trattamento dei Dati Personali';
             const policyHtml = `
@@ -3053,6 +3083,12 @@
                     </div>
                         <!-- SPOSTATO QUI -->
                         <div class="form-group" style="margin-top: 1.5rem;">
+                            <div class="permission-item flex items-center justify-between" style="margin-bottom: 0.75rem;">
+                                <label for="beta-test-consent" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">
+                                    Accetto i termini dell'<a href="#" onclick="event.preventDefault(); showBetaTestAgreement()" style="color: var(--accent-color); text-decoration: underline;">Accordo di Sperimentazione (Beta Test)</a>.
+                                </label>
+                                <input type="checkbox" id="beta-test-consent" name="betaTestConsent" class="form-check-input">
+                            </div>
                             <div class="permission-item flex items-center justify-between">
                                 <label for="privacy-policy-consent" class="flex-grow pr-4" style="color: var(--secondary-text); font-size: 0.9rem;">
                                     Dichiaro di aver letto e accettato l'<a href="#" onclick="event.preventDefault(); showPrivacyPolicy()" style="color: var(--accent-color); text-decoration: underline;">Informativa Privacy</a>.
@@ -7042,12 +7078,16 @@ ${renderBottomNavigation()}
                         const allowFornitoreViewPhone = document.getElementById("allowFornitoreViewPhone").checked;
                         const allowAdminViewContacts = document.getElementById("allowAdminViewContacts").checked; // Sempre true
                         const privacyPolicyConsent = document.getElementById("privacy-policy-consent").checked;
+                        const betaTestConsent = document.getElementById("beta-test-consent").checked;
 
+                        if (!betaTestConsent) {
+                            throw new Error("È necessario accettare i termini della sperimentazione per partecipare al test.");
+                        }
                         if (!privacyPolicyConsent) {
                             throw new Error("È necessario accettare l'Informativa Privacy per procedere con la registrazione.");
                         }
 
-                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent });
+                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent });
                         r.textContent = "Registrazione completata! Ora puoi accedere."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
@@ -15217,6 +15257,7 @@ ${renderBottomNavigation()}
         window.deletePoll = deletePoll;
         window.showSupervisorWarningForConsigliere = showSupervisorWarningForConsigliere;
         window.showPrivacyPolicy = showPrivacyPolicy;
+        window.showBetaTestAgreement = showBetaTestAgreement;
 
         let availableGroups = []; // Variabile globale per contenere i gruppi
 
