@@ -13593,14 +13593,19 @@ ${renderBottomNavigation()}
                     const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT') : 'N/D';
 
                     return `
-                    <div class="list-item" style="background: var(--surface-color-light);">
-                        <label class="flex items-center gap-4 w-full cursor-pointer">
+                    <div class="list-item" style="background: var(--surface-color-light); display: flex; align-items: center; gap: 0.75rem;">
+                        <label class="flex items-center gap-4 cursor-pointer" style="flex: 1; min-width: 0;">
                              <input type="checkbox" class="validation-checkbox" data-id="${userId}" ${user.isValidated ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); flex-shrink: 0;">
-                            <div class="list-item-content">
+                            <div class="list-item-content" style="min-width: 0;">
                                 <div class="title">${user.cognome} ${user.nome}</div>
-                                <div class="subtitle">${user.email} - Tel: ${user.telefono || 'N/D'} - Registrato il: ${registrationDate}</div>
+                                <div class="subtitle" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${user.email}</div>
                             </div>
                         </label>
+                        <button onclick="showUserDetails('${userId}')" class="btn-icon" style="flex-shrink: 0;" title="Visualizza dettagli">
+                            <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                            </svg>
+                        </button>
                     </div>
                     `;
                 }).join('');
@@ -15349,9 +15354,17 @@ ${renderBottomNavigation()}
             }
 
             const usersList = pendingUsers.map(user => 
-                `<div style="padding: 0.5rem 0; border-bottom: 1px solid var(--surface-color-light);">
-                    <strong>${user.cognome} ${user.nome}</strong><br>
-                    <span style="font-size: 0.9rem; color: var(--secondary-text);">${user.email}</span>
+                `<div style="padding: 0.75rem; border-bottom: 1px solid var(--surface-color-light); display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="flex-grow: 1;">
+                        <strong>${user.cognome} ${user.nome}</strong><br>
+                        <span style="font-size: 0.9rem; color: var(--secondary-text);">${user.email}</span><br>
+                        <span style="font-size: 0.9rem; color: var(--secondary-text);">Tel: ${user.telefono || 'N/D'}</span>
+                    </div>
+                    <button onclick="showUserDetails('${user.id}')" class="btn-icon" style="flex-shrink: 0;">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 20px; height: 20px;">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                    </button>
                 </div>`
             ).join('');
 
@@ -15366,7 +15379,7 @@ ${renderBottomNavigation()}
                             <p style="margin-bottom: 1rem; color: var(--secondary-text);">
                                 ${pendingUsers.length === 1 ? 'C\'è un nuovo utente' : `Ci sono ${pendingUsers.length} nuovi utenti`} in attesa di approvazione:
                             </p>
-                            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1.5rem;">
+                            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem;">
                                 ${usersList}
                             </div>
                             <button onclick="goToApprovalSection()" class="btn btn-primary w-full">
@@ -15398,6 +15411,94 @@ ${renderBottomNavigation()}
         window.goToApprovalSection = () => {
             closePendingUsersModal();
             navigateTo('convalidaCondomini');
+        };
+
+        window.showUserDetails = async (userId) => {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', userId));
+                if (!userDoc.exists()) {
+                    await customAlert('Errore', 'Utente non trovato.');
+                    return;
+                }
+
+                const user = userDoc.data();
+                const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }) : 'N/D';
+
+                const properties = user.properties || [];
+                const propertiesList = properties.length > 0 
+                    ? properties.map(p => `<li>${p.name} - Gruppo: ${p.group || 'N/D'} - Piano: ${p.plan || 'N/D'}</li>`).join('')
+                    : '<li>Nessuna proprietà selezionata</li>';
+
+                const detailsHtml = `
+                    <div id="user-details-modal" class="modal-overlay" style="z-index: 3500;">
+                        <div class="modal-content" style="max-width: 500px;">
+                            <div class="modal-header">
+                                <h3 class="modal-title">Dettagli Utente</h3>
+                                <button class="modal-close-btn" onclick="closeUserDetailsModal()">×</button>
+                            </div>
+                            <div class="modal-body">
+                                <div style="margin-bottom: 1.5rem;">
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Nome Completo:</strong><br>
+                                        <span style="color: var(--secondary-text);">${user.cognome} ${user.nome}</span>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Email:</strong><br>
+                                        <span style="color: var(--secondary-text);">${user.email}</span>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Telefono:</strong><br>
+                                        <span style="color: var(--secondary-text);">${user.telefono || 'N/D'}</span>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Data Registrazione:</strong><br>
+                                        <span style="color: var(--secondary-text);">${registrationDate}</span>
+                                    </div>
+                                    <div style="margin-bottom: 1rem;">
+                                        <strong style="color: var(--primary-text);">Stato:</strong><br>
+                                        <span class="badge ${user.isValidated ? 'status-chiusa' : 'status-aperta'}">${user.isValidated ? 'Convalidato' : 'In Attesa'}</span>
+                                    </div>
+                                    <div>
+                                        <strong style="color: var(--primary-text);">Proprietà:</strong><br>
+                                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem; color: var(--secondary-text);">
+                                            ${propertiesList}
+                                        </ul>
+                                    </div>
+                                </div>
+                                <button onclick="closeUserDetailsModal()" class="btn btn-secondary w-full">
+                                    Chiudi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.body.insertAdjacentHTML('beforeend', detailsHtml);
+
+                const modal = document.getElementById('user-details-modal');
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeUserDetailsModal();
+                    }
+                });
+
+            } catch (error) {
+                console.error('Errore nel caricamento dei dettagli utente:', error);
+                await customAlert('Errore', 'Impossibile caricare i dettagli dell\'utente.');
+            }
+        };
+
+        window.closeUserDetailsModal = () => {
+            const modal = document.getElementById('user-details-modal');
+            if (modal) {
+                modal.remove();
+            }
         };
 
         // --- FUNZIONE onAuthStateChanged CORRETTA E ROBUSTA ---
