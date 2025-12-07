@@ -1539,6 +1539,152 @@
             line-height: 1;
         }
 
+        /* --- Stili per Upload Foto Profilo Registrazione --- */
+        .profile-photo-upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--surface-color-light);
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+        }
+
+        .profile-photo-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px dashed var(--secondary-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
+            background: var(--bg-color);
+        }
+
+        .profile-photo-preview:hover {
+            border-color: var(--accent-color);
+            transform: scale(1.02);
+        }
+
+        .profile-photo-preview.has-photo {
+            border-style: solid;
+            border-color: var(--accent-color);
+        }
+
+        .profile-photo-preview.error {
+            border-color: var(--danger);
+        }
+
+        .profile-photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-photo-preview svg {
+            width: 48px;
+            height: 48px;
+            color: var(--secondary-text);
+        }
+
+        .profile-photo-info {
+            text-align: center;
+            max-width: 280px;
+        }
+
+        .profile-photo-info p {
+            font-size: 0.85rem;
+            color: var(--secondary-text);
+            line-height: 1.4;
+        }
+
+        .profile-photo-info .photo-notice {
+            font-size: 0.75rem;
+            color: var(--warning);
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        /* --- Fullscreen Image Viewer --- */
+        .fullscreen-image-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            animation: fadeInOverlay 0.3s ease forwards;
+        }
+
+        @keyframes fadeInOverlay {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .fullscreen-image-container {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-image-container img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .fullscreen-close-btn {
+            position: absolute;
+            top: -40px;
+            right: -10px;
+            width: 36px;
+            height: 36px;
+            background: var(--surface-color);
+            border: none;
+            border-radius: 50%;
+            color: var(--primary-text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .fullscreen-close-btn:hover {
+            background: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        .clickable-photo {
+            cursor: zoom-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .clickable-photo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(29, 185, 84, 0.3);
+        }
+
+
         .report-attachments-gallery {
             padding-left: 64px;
             /* Allineato con la descrizione */
@@ -1766,6 +1912,7 @@
         let selectedCommunicationFiles = []; // Array per i file della comunicazione
         let currentAdministrativePeriod = null; // NUOVO: Oggetto per il periodo amministrativo corrente
         let custodianPermissions = null; // NUOVO: Oggetto per i permessi del custode
+        let selectedProfilePhoto = null; // File della foto profilo per la registrazione
 
         // Stato per la registrazione, reso globale a livello di modulo per un reset corretto
         let groupedProperties = {};
@@ -1961,6 +2108,16 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                     <li style="margin-bottom: 0.5rem;">
                         <strong>Dati Tecnici e di Utilizzo:</strong> Informazioni sulle tue interazioni con l'app (log delle attività per finalità di sicurezza e miglioramento del servizio.
                     </li>
+                    <li style="margin-bottom: 0.5rem;">
+                        <strong>Foto Profilo Temporanea (solo per la registrazione):</strong> Al momento della registrazione, ti viene richiesta una foto per verificare la tua identità. 
+                        <br>
+                        <em style="font-size: 0.9em; display: block; margin-top: 0.5rem; padding: 0.5rem; background: rgba(241, 196, 15, 0.1); border-radius: 4px;">
+                            <strong>Finalità:</strong> Esclusivamente verifica dell'identità durante il processo di approvazione.<br>
+                            <strong>Accesso:</strong> Solo gli amministratori autorizzati all'approvazione degli account.<br>
+                            <strong>Conservazione:</strong> Fino alla conferma dell'account.<br>
+                            <strong>Cancellazione:</strong> La foto viene <strong>eliminata automaticamente e in modo permanente</strong> sia dal nostro archivio che dal database immediatamente dopo l'approvazione dell'account. Non ne viene conservata alcuna copia.
+                        </em>
+                    </li>
                 </ul>
 
                 <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-weight: 600;">3. Finalità e Base Giuridica del Trattamento</h4>
@@ -2135,7 +2292,33 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                 console.error("Errore nel logging dell'attività:", error);
             }
         };
-        const register = async (t, e, o) => { const a = await createUserWithEmailAndPassword(auth, t, e); const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0); return await setDoc(doc(db, "users", a.user.uid), { nome: o.nome, cognome: o.cognome, email: t, tipoUtente: o.tipoUtente, proprieta: o.proprieta || [], telefono: o.telefono || "", millesimiTotali: totalMillesimi, createdAt: (new Date).toISOString(), allowCustodeViewPhone: o.allowCustodeViewPhone, allowFornitoreViewPhone: o.allowFornitoreViewPhone, allowAdminViewContacts: o.allowAdminViewContacts, privacyAccepted: o.privacyAccepted || false, isValidated: false }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a };
+        const register = async (t, e, o) => {
+            const a = await createUserWithEmailAndPassword(auth, t, e);
+            const totalMillesimi = o.proprieta.reduce(((sum, prop) => sum + (parseFloat(prop.millesimi) || 0)), 0);
+
+            // Upload foto profilo se presente
+            let registrationPhotoUrl = null;
+            if (o.profilePhoto) {
+                registrationPhotoUrl = await uploadRegistrationPhoto(a.user.uid, o.profilePhoto);
+            }
+
+            return await setDoc(doc(db, "users", a.user.uid), {
+                nome: o.nome,
+                cognome: o.cognome,
+                email: t,
+                tipoUtente: o.tipoUtente,
+                proprieta: o.proprieta || [],
+                telefono: o.telefono || "",
+                millesimiTotali: totalMillesimi,
+                createdAt: (new Date).toISOString(),
+                allowCustodeViewPhone: o.allowCustodeViewPhone,
+                allowFornitoreViewPhone: o.allowFornitoreViewPhone,
+                allowAdminViewContacts: o.allowAdminViewContacts,
+                privacyAccepted: o.privacyAccepted || false,
+                isValidated: false,
+                registrationPhotoUrl: registrationPhotoUrl
+            }), await logActivity("user_registered", a.user.uid, `${o.nome} ${o.cognome}`, { userType: o.tipoUtente }), a
+        };
 
         const adminCreateUser = async (email, password, profileData) => {
             const tempAppName = `user-creation-${Date.now()}`;
@@ -3065,7 +3248,25 @@ Ti impegni a non copiare, modificare o distribuire il software.e.</p>
                         </div>
                                             <div class="form-group"><label for="telefono" class="form-label">Telefono</label><input id="telefono" name="telefono" type="tel" placeholder="123-456-7890" class="form-input"></div>
                     
+                    <!-- Foto Profilo per Verifica Identità -->
+                    <div class="profile-photo-upload-container">
+                        <label class="form-label" style="font-weight: 600; color: var(--primary-text); margin-bottom: 0;">Foto Profilo per Verifica *</label>
+                        <div id="profile-photo-preview" class="profile-photo-preview" onclick="document.getElementById('profile-photo-input').click()">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+                            </svg>
+                        </div>
+                        <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleProfilePhotoSelection(event)">
+                        <div class="profile-photo-info">
+                            <p>Tocca per caricare una tua foto</p>
+                            <div class="photo-notice">
+                                <strong>⚠️ Attenzione:</strong> E' obbligatoria una tua foto profilo per la verifica dell’identità. L’immagine verrà cancellata in modo permanente dopo l’approvazione dell’account.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Sezione Autorizzazioni -->
+
                     <div class="form-group" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--surface-color-light);">
                         <h4 class="form-label" style="font-weight: 600; color: var(--primary-text); margin-bottom: 1rem;">AUTORIZZAZIONI</h4>
                         
@@ -7090,11 +7291,23 @@ ${renderBottomNavigation()}
                             throw new Error("È necessario accettare l'Informativa Privacy per procedere con la registrazione.");
                         }
 
-                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent });
+                        // Validazione foto profilo
+                        if (!selectedProfilePhoto) {
+                            throw new Error("La foto profilo è obbligatoria per la registrazione.");
+                        }
+
+                        await register(o, n, { nome: i, cognome: s, tipoUtente: a, telefono: l, proprieta: propertiesForUser, allowCustodeViewPhone, allowFornitoreViewPhone, allowAdminViewContacts, privacyAccepted: privacyPolicyConsent, betaTestAccepted: betaTestConsent, profilePhoto: selectedProfilePhoto });
                         r.textContent = "Registrazione completata! Ora puoi accedere."; r.style.display = "block"; authForm.reset();
                         propertyItemsContainer.innerHTML = '';
                         propertySelectionWrapper.classList.add('hidden');
                         summaryEl.innerHTML = 'Seleziona un nominativo per continuare...';
+                        // Reset foto profilo
+                        selectedProfilePhoto = null;
+                        const photoPreview = document.getElementById('profile-photo-preview');
+                        if (photoPreview) {
+                            photoPreview.classList.remove('has-photo');
+                            photoPreview.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>`;
+                        }
                     } else { await login(o, n); }
                 } catch (p) { d.textContent = p.message; d.style.display = "block"; }
             });
@@ -7685,6 +7898,57 @@ ${renderBottomNavigation()}
             return Promise.all(uploadPromises);
         };
 
+        // --- Gestione Foto Profilo per Registrazione ---
+        window.handleProfilePhotoSelection = (event) => {
+            const file = event.target.files[0];
+            const previewEl = document.getElementById('profile-photo-preview');
+
+            if (!file) {
+                selectedProfilePhoto = null;
+                if (previewEl) {
+                    previewEl.classList.remove('has-photo', 'error');
+                    previewEl.innerHTML = `<svg fill="currentColor" viewBox="0 0 24 24"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>`;
+                }
+                return;
+            }
+
+            // Validazione formato
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                customAlert('Formato non valido. Carica un\'immagine in formato JPEG, PNG o WebP.');
+                event.target.value = '';
+                if (previewEl) previewEl.classList.add('error');
+                return;
+            }
+
+            // Validazione dimensione (max 5MB)
+            const maxSizeBytes = 5 * 1024 * 1024;
+            if (file.size > maxSizeBytes) {
+                customAlert('La foto è troppo grande. Dimensione massima consentita: 5MB.');
+                event.target.value = '';
+                if (previewEl) previewEl.classList.add('error');
+                return;
+            }
+
+            // Validazione passata, mostra preview
+            selectedProfilePhoto = file;
+            if (previewEl) {
+                previewEl.classList.remove('error');
+                previewEl.classList.add('has-photo');
+                const objectURL = URL.createObjectURL(file);
+                previewEl.innerHTML = `<img src="${objectURL}" alt="Anteprima foto profilo">`;
+            }
+        };
+
+        // --- Upload Foto Profilo per Registrazione ---
+        const uploadRegistrationPhoto = async (userId, file) => {
+            const fileName = `${Date.now()}_${file.name}`;
+            const filePath = `registration-photos/${userId}/${fileName}`;
+            const fileRef = ref(storage, filePath);
+            await uploadBytes(fileRef, file);
+            return await getDownloadURL(fileRef);
+        };
+
         const setupReportHandlers = () => {
             const populateCategoryDropdown = async () => {
                 const categorySelect = document.getElementById("report-category");
@@ -7937,52 +8201,52 @@ ${renderBottomNavigation()}
 
                     // Webhook e log... (codice esistente)
                     // --- WEBHOOK TRIGGER: Call webhook after report creation ---
-(async () => {
-    try {
-        const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/kBsOMIcaQttqKA2fY6wfh";
+                    (async () => {
+                        try {
+                            const WEBHOOK_URL = "https://cloud.activepieces.com/api/v1/webhooks/kBsOMIcaQttqKA2fY6wfh";
 
-        // Estrai l'email del destinatario per la notifica
-        let receiverEmail = null;
-        const recipientType = reportData.recipientType;
-        let recipientQuery = null;
+                            // Estrai l'email del destinatario per la notifica
+                            let receiverEmail = null;
+                            const recipientType = reportData.recipientType;
+                            let recipientQuery = null;
 
-        if (reportData.specificRecipientId) {
-            // Se è stato selezionato un utente specifico (es. un fornitore o un condomino)
-            const userDoc = await getDoc(doc(db, "users", reportData.specificRecipientId));
-            if (userDoc.exists()) {
-                receiverEmail = userDoc.data().email;
-            }
-        } else if (recipientType) {
-            // Altrimenti, cerca un utente con quel ruolo generico
-            recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", recipientType));
-            const snapshot = await getDocs(recipientQuery);
-            if (!snapshot.empty) {
-                // Prende l'email del primo utente trovato con quel ruolo (es. il primo amministratore o custode)
-                receiverEmail = snapshot.docs[0].data().email;
-            }
-        }
+                            if (reportData.specificRecipientId) {
+                                // Se è stato selezionato un utente specifico (es. un fornitore o un condomino)
+                                const userDoc = await getDoc(doc(db, "users", reportData.specificRecipientId));
+                                if (userDoc.exists()) {
+                                    receiverEmail = userDoc.data().email;
+                                }
+                            } else if (recipientType) {
+                                // Altrimenti, cerca un utente con quel ruolo generico
+                                recipientQuery = query(collection(db, "users"), where("tipoUtente", "==", recipientType));
+                                const snapshot = await getDocs(recipientQuery);
+                                if (!snapshot.empty) {
+                                    // Prende l'email del primo utente trovato con quel ruolo (es. il primo amministratore o custode)
+                                    receiverEmail = snapshot.docs[0].data().email;
+                                }
+                            }
 
-        const payload = {
-            event: "segnalazione.create",
-            reportId: reportId,
-            report: reportData, // Contiene già tutti i dettagli della segnalazione
-            user: {
-                id: currentUser.uid,
-                name: `${userProfile.nome} ${userProfile.cognome}`,
-                email: currentUser.email
-            },
-            receiverEmail: receiverEmail // Email del destinatario per la notifica
-        };
+                            const payload = {
+                                event: "segnalazione.create",
+                                reportId: reportId,
+                                report: reportData, // Contiene già tutti i dettagli della segnalazione
+                                user: {
+                                    id: currentUser.uid,
+                                    name: `${userProfile.nome} ${userProfile.cognome}`,
+                                    email: currentUser.email
+                                },
+                                receiverEmail: receiverEmail // Email del destinatario per la notifica
+                            };
 
-        await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-    } catch (err) {
-        console.error("Errore invio webhook segnalazione:", err);
-    }
-})();
+                            await fetch(WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                        } catch (err) {
+                            console.error("Errore invio webhook segnalazione:", err);
+                        }
+                    })();
                     await logActivity("report_created", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`, { reportId, title, attachments: fileUrls.length });
 
                     form.reset();
@@ -8050,8 +8314,8 @@ ${renderBottomNavigation()}
 
                             // Interrompi l'esecuzione per non salvare le altre modifiche del profilo.
                             // L'utente si concentrerà sulla verifica dell'email.
-                            return; 
-                            
+                            return;
+
                         } catch (authError) {
                             // Gestisci errori comuni con un modale per coerenza.
                             if (authError.code === 'auth/requires-recent-login') {
@@ -13627,14 +13891,49 @@ ${renderBottomNavigation()}
                 try {
                     const batch = writeBatch(db);
                     const checkboxes = form.querySelectorAll('.validation-checkbox');
+                    const photoDeletionPromises = [];
 
-                    checkboxes.forEach(cb => {
+                    // Prima raccogli tutti gli utenti che stanno per essere validati
+                    for (const cb of checkboxes) {
                         const userId = cb.dataset.id;
                         const isValidated = cb.checked;
                         const userRef = doc(db, 'users', userId);
-                        batch.update(userRef, { isValidated: isValidated });
-                    });
 
+                        // Se l'utente viene validato, elimina la foto profilo temporanea
+                        if (isValidated) {
+                            const userDoc = await getDoc(userRef);
+                            if (userDoc.exists()) {
+                                const userData = userDoc.data();
+                                // Controlla se l'utente ha una foto registrazione e non era già validato
+                                if (userData.registrationPhotoUrl && !userData.isValidated) {
+                                    // Estrai il percorso del file dalla URL
+                                    try {
+                                        const fileUrl = userData.registrationPhotoUrl;
+                                        const urlObj = new URL(fileUrl);
+                                        const pathMatch = urlObj.pathname.match(/\/o\/(.+?)\?/);
+                                        if (pathMatch) {
+                                            const filePath = decodeURIComponent(pathMatch[1]);
+                                            const photoRef = ref(storage, filePath);
+                                            photoDeletionPromises.push(deleteObject(photoRef).catch(err => {
+                                                console.warn(`Impossibile eliminare la foto per l'utente ${userId}:`, err);
+                                            }));
+                                        }
+                                    } catch (urlError) {
+                                        console.warn('Errore nel parsing URL foto:', urlError);
+                                    }
+                                    // Rimuovi anche il campo dalla Firestore
+                                    batch.update(userRef, { isValidated: true, registrationPhotoUrl: null });
+                                } else {
+                                    batch.update(userRef, { isValidated: isValidated });
+                                }
+                            }
+                        } else {
+                            batch.update(userRef, { isValidated: isValidated });
+                        }
+                    }
+
+                    // Esegui le eliminazioni delle foto in parallelo
+                    await Promise.all(photoDeletionPromises);
                     await batch.commit();
                     await logActivity("user_validation_updated", currentUser.uid, `${userProfile.nome} ${userProfile.cognome}`);
 
@@ -15328,7 +15627,7 @@ ${renderBottomNavigation()}
 
             // Listener per utenti in attesa di convalida
             const q = query(
-                collection(db, "users"), 
+                collection(db, "users"),
                 where("tipoUtente", "==", "condomino"),
                 where("isValidated", "==", false)
             );
@@ -15340,7 +15639,7 @@ ${renderBottomNavigation()}
                         id: doc.id,
                         ...doc.data()
                     }));
-                    
+
                     showPendingUsersModal(pendingUsers);
                 }
             }, (error) => {
@@ -15355,7 +15654,7 @@ ${renderBottomNavigation()}
                 existingModal.remove();
             }
 
-            const usersList = pendingUsers.map(user => 
+            const usersList = pendingUsers.map(user =>
                 `<div style="padding: 0.75rem; border-bottom: 1px solid var(--surface-color-light); display: flex; align-items: center; gap: 0.75rem;">
                     <div style="flex-grow: 1;">
                         <strong>${user.cognome} ${user.nome}</strong><br>
@@ -15424,16 +15723,16 @@ ${renderBottomNavigation()}
                 }
 
                 const user = userDoc.data();
-                const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT', { 
-                    year: 'numeric', 
-                    month: 'long', 
+                const registrationDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString('it-IT', {
+                    year: 'numeric',
+                    month: 'long',
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
                 }) : 'N/D';
 
                 const properties = user.properties || [];
-                const propertiesList = properties.length > 0 
+                const propertiesList = properties.length > 0
                     ? properties.map(p => `<li>${p.name} - Gruppo: ${p.group || 'N/D'} - Piano: ${p.plan || 'N/D'}</li>`).join('')
                     : '<li>Nessuna proprietà selezionata</li>';
 
@@ -15445,6 +15744,12 @@ ${renderBottomNavigation()}
                                 <button class="modal-close-btn" onclick="closeUserDetailsModal()">×</button>
                             </div>
                             <div class="modal-body">
+                                ${user.registrationPhotoUrl ? `
+                                <div style="text-align: center; margin-bottom: 1.5rem;">
+                                    <img src="${user.registrationPhotoUrl}" alt="Foto profilo di ${user.nome}" class="clickable-photo" onclick="openFullscreenImage('${user.registrationPhotoUrl}', 'Foto profilo di ${user.nome}')" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color);">
+                                    <p style="font-size: 0.75rem; color: var(--warning); margin-top: 0.5rem;">📸 Foto per verifica identità (clicca per ingrandire)</p>
+                                </div>
+                                ` : ''}
                                 <div style="margin-bottom: 1.5rem;">
                                     <div style="margin-bottom: 1rem;">
                                         <strong style="color: var(--primary-text);">Nome Completo:</strong><br>
@@ -15500,6 +15805,50 @@ ${renderBottomNavigation()}
             const modal = document.getElementById('user-details-modal');
             if (modal) {
                 modal.remove();
+            }
+        };
+
+        // --- Fullscreen Image Viewer Functions ---
+        window.openFullscreenImage = (imageUrl, altText) => {
+            // Remove existing overlay if present
+            const existingOverlay = document.getElementById('fullscreen-image-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            const overlayHtml = `
+                <div id="fullscreen-image-overlay" class="fullscreen-image-overlay" onclick="closeFullscreenImage(event)">
+                    <div class="fullscreen-image-container" onclick="event.stopPropagation()">
+                        <button class="fullscreen-close-btn" onclick="closeFullscreenImage(event)">×</button>
+                        <img src="${imageUrl}" alt="${altText || 'Immagine a schermo intero'}">
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', overlayHtml);
+
+            // Add keyboard listener for Escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    closeFullscreenImage();
+                    document.removeEventListener('keydown', handleEscape);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+        };
+
+        window.closeFullscreenImage = (event) => {
+            if (event) {
+                event.stopPropagation();
+            }
+            const overlay = document.getElementById('fullscreen-image-overlay');
+            if (overlay) {
+                overlay.style.animation = 'none';
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.2s ease';
+                setTimeout(() => {
+                    overlay.remove();
+                }, 200);
             }
         };
 
